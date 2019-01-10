@@ -1,0 +1,5 @@
+Usage:
+        ./firmware_ramdump.sh
+input:  host core dump file and vmlinux
+output: 3 firmware dump files: fwsram.bin, paging.bin, remote.bin
+Tested on Ubuntu 14.4/16.4
