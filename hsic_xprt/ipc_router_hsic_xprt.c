@@ -234,7 +234,7 @@ static int msm_ipc_router_hsic_remote_write(void *data,
 	struct sk_buff *skb;
 	struct ipc_bridge_platform_data *pdata;
 	struct msm_ipc_router_hsic_xprt *hsic_xprtp;
-	int ret;
+	int ret = -1;
 	uint32_t bytes_written = 0;
 	uint32_t bytes_to_write;
 	unsigned char *tx_data;

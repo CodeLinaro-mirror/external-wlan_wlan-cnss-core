@@ -52,7 +52,7 @@ static int bhi_alloc_bhie_xfer(struct mhi_device_ctxt *mhi_dev_ctxt,
 	struct bhie_mem_info *bhie_mem_info, *info = NULL;
 
 	mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-		"Total size:%lu total_seg:%d seg_size:%lu\n",
+		"Total size:%zu total_seg:%d seg_size:%zu\n",
 		size, segments, seg_size);
 
 	sg_list = kcalloc(segments, sizeof(*sg_list), GFP_KERNEL);
@@ -139,7 +139,7 @@ static int bhi_alloc_pbl_xfer(struct mhi_device_ctxt *mhi_dev_ctxt,
 	mem_info->aligned = mem_info->pre_aligned + (mem_info->phys_addr -
 						     mem_info->dma_handle);
 	mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-		"alloc_size:%lu image_size:%lu unal_addr:0x%llx0x al_addr:0x%llx\n",
+		"alloc_size:%zu image_size:%zu unal_addr:0x%llx0x al_addr:0x%llx\n",
 		mem_info->alloc_size, mem_info->size,
 		mem_info->dma_handle, mem_info->phys_addr);
 
@@ -619,7 +619,7 @@ int bhi_probe(struct mhi_device_ctxt *mhi_dev_ctxt)
 		fw_info->segment_size <<= 1;
 
 	mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-		"max sbl image size:%lu segment size:%lu\n",
+		"max sbl image size:%zu segment size:%zu\n",
 		fw_info->max_sbl_len, fw_info->segment_size);
 
 #ifdef CONFIG_NAPIER_X86

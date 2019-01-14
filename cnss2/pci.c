@@ -2040,8 +2040,8 @@ static int cnss_pci_register_mhi(struct cnss_pci_data *pci_priv)
 #endif
 	mhi_dev->pci_dev = pci_dev;
 
-	mhi_dev->resources[0].start = (resource_size_t)pci_priv->bar;
-	mhi_dev->resources[0].end = (resource_size_t)pci_priv->bar +
+	mhi_dev->resources[0].start = (resource_size_t)(uintptr_t)pci_priv->bar;
+	mhi_dev->resources[0].end = (resource_size_t)(uintptr_t)pci_priv->bar +
 		pci_resource_len(pci_dev, PCI_BAR_NUM);
 	mhi_dev->resources[0].flags =
 		pci_resource_flags(pci_dev, PCI_BAR_NUM);

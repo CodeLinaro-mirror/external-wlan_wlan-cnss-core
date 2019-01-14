@@ -61,7 +61,7 @@ static int enable_bb_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
 #endif
 
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-			"Creating pool %s for chan:%d payload: 0x%lx\n",
+			"Creating pool %s for chan:%d payload: 0x%zu\n",
 			pool_name, chan, max_payload);
 
 		bb_ctxt->dma_pool = dma_pool_create(pool_name,
@@ -985,7 +985,7 @@ int mhi_queue_xfer(struct mhi_client_handle *client_handle,
 {
 	int r;
 	enum dma_data_direction dma_dir;
-	struct mhi_buf_info *bb;
+	struct mhi_buf_info *bb = NULL;
 	struct mhi_device_ctxt *mhi_dev_ctxt;
 	u32 chan;
 	unsigned long flags;
@@ -1919,7 +1919,7 @@ int mhi_register_device(struct mhi_device *mhi_device,
 	u32 slot = PCI_SLOT(pci_dev->devfn);
 	int ret, i;
 	char node[32];
-	struct pcie_core_info *core;
+	struct pcie_core_info *core = NULL;
 
 	/* Traverse thru the list */
 	mutex_lock(&mhi_device_drv->lock);
@@ -1970,8 +1970,8 @@ int mhi_register_device(struct mhi_device *mhi_device,
 		switch (resource_type(res)) {
 		case IORESOURCE_MEM:
 			/* bus master already mapped it */
-			core_info->bar0_base = (void __iomem *)res->start;
-			core_info->bar0_end = (void __iomem *)res->end;
+			core_info->bar0_base = (void __iomem *)(uintptr_t)res->start;
+			core_info->bar0_end = (void __iomem *)(uintptr_t)res->end;
 			mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
 				"bar mapped to:0x%llx - 0x%llx (virtual)\n",
 				res->start, res->end);
@@ -2022,7 +2022,7 @@ int mhi_register_device(struct mhi_device *mhi_device,
 		mhi_dev_ctxt->bhi_ctxt.rddm_table.sequence = 1;
 
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-			"Device support rddm of size:0x%lx bytes\n",
+			"Device support rddm of size:0x%zu bytes\n",
 			mhi_dev_ctxt->bhi_ctxt.rddm_size);
 	}
 
@@ -2047,7 +2047,7 @@ void mhi_deregister_device(struct mhi_device *mhi_device)
 	struct pci_dev *pci_dev = mhi_device->pci_dev;
 	struct mhi_device_ctxt *mhi_ctxt = NULL;
 	struct mhi_device_ctxt *entry;
-	struct pcie_core_info *core;
+	struct pcie_core_info *core = NULL;
 
 	if (!mhi_device)
 		return;
