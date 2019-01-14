@@ -480,7 +480,11 @@ static int __exit mhi_plat_remove(void)
 	return 0;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void mhi_exit(void)
+#else
 static void __exit mhi_exit(void)
+#endif
 {
 	pci_unregister_driver(&mhi_pcie_driver);
 	mhi_plat_remove();
@@ -619,7 +623,11 @@ static struct platform_driver mhi_plat_driver = {
 	},
 };
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void mhi_exit(void)
+#else
 static void __exit mhi_exit(void)
+#endif
 {
 	pci_unregister_driver(&mhi_pcie_driver);
 	platform_driver_unregister(&mhi_plat_driver);
@@ -634,7 +642,11 @@ static int __exit mhi_plat_remove(struct platform_device *pdev)
 }
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int mhi_init(void)
+#else
 static int __init mhi_init(void)
+#endif
 {
 	int r = -EAGAIN;
 	struct mhi_device_driver *mhi_dev_drv;
@@ -698,10 +710,11 @@ DECLARE_PCI_FIXUP_HEADER(MHI_PCIE_VENDOR_ID,
 		MHI_PCIE_DEVICE_ID_ZIRC,
 		mhi_msm_fixup);
 
-
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_exit(mhi_exit);
 subsys_initcall(mhi_init);
 
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("MHI_CORE");
 MODULE_DESCRIPTION("MHI Host Driver");
+#endif

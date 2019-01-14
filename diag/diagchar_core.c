@@ -163,7 +163,11 @@ static int diagfwd_usb_probe(struct platform_device *pdev)
 }
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int diagchar_init(void)
+#else
 static int __init diagchar_init(void)
+#endif
 {
 	int ret;
 
@@ -205,8 +209,11 @@ static int __init diagchar_init(void)
 #endif
 	return 0;
 }
-
+#ifdef CONFIG_WLAN_CNSS_CORE
+void diagchar_exit(void)
+#else
 static void diagchar_exit(void)
+#endif
 {
 	printk(KERN_INFO "diagchar exiting ..\n");
 	diagfwd_bridge_exit();
@@ -214,5 +221,7 @@ static void diagchar_exit(void)
 	printk(KERN_INFO "done diagchar exit\n");
 }
 
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(diagchar_init);
 module_exit(diagchar_exit);
+#endif

@@ -2184,7 +2184,11 @@ static struct platform_driver cnss_platform_driver = {
 };
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int cnss_initialize(void)
+#else
 static int __init cnss_initialize(void)
+#endif
 {
 	int ret = 0;
 
@@ -2200,7 +2204,11 @@ static int __init cnss_initialize(void)
 	return ret;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void cnss_exit(void)
+#else
 static void __exit cnss_exit(void)
+#endif
 {
 #ifdef CONFIG_NAPIER_X86
 	cnss_remove(NULL);
@@ -2211,9 +2219,10 @@ static void __exit cnss_exit(void)
 
 	cnss_pr_info("Platform driver exit\n");
 }
-
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(cnss_initialize);
 module_exit(cnss_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("CNSS2 Platform Driver");
+#endif

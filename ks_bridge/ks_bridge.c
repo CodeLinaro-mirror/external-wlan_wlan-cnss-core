@@ -1011,7 +1011,11 @@ static const struct file_operations dbg_fops = {
 
 static struct dentry *dbg_dir;
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int ksb_init(void)
+#else
 static int __init ksb_init(void)
+#endif
 {
 	struct ks_bridge *ksb;
 	int num_instances = 0;
@@ -1093,7 +1097,11 @@ dev_free:
 
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void ksb_exit(void)
+#else
 static void __exit ksb_exit(void)
+#endif
 {
 	struct ks_bridge *ksb;
 	int i;
@@ -1111,9 +1119,10 @@ static void __exit ksb_exit(void)
 		kfree(ksb);
 	}
 }
-
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(ksb_init);
 module_exit(ksb_exit);
 
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL v2");
+#endif

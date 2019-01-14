@@ -820,7 +820,11 @@ static struct platform_driver msm_ipc_router_hsic_xprt_driver = {
 };
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int msm_ipc_router_hsic_xprt_init(void)
+#else
 static int __init msm_ipc_router_hsic_xprt_init(void)
+#endif
 {
 	int rc;
 
@@ -843,7 +847,8 @@ static int __init msm_ipc_router_hsic_xprt_init(void)
 
 	return 0;
 }
-
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(msm_ipc_router_hsic_xprt_init);
 MODULE_DESCRIPTION("IPC Router HSIC XPRT");
 MODULE_LICENSE("GPL v2");
+#endif

@@ -812,7 +812,11 @@ static struct usb_driver diag_bridge_driver = {
 	.supports_autosuspend = 1,
 };
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int diag_bridge_init(void)
+#else
 static int __init diag_bridge_init(void)
+#endif
 {
 	int ret;
 
@@ -825,13 +829,19 @@ static int __init diag_bridge_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void diag_bridge_exit(void)
+#else
 static void __exit diag_bridge_exit(void)
+#endif
 {
 	usb_deregister(&diag_bridge_driver);
 }
 
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(diag_bridge_init);
 module_exit(diag_bridge_exit);
 
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL v2");
+#endif

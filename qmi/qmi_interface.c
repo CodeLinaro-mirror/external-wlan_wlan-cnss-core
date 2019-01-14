@@ -2264,12 +2264,18 @@ int qmi_svc_unregister(struct qmi_handle *handle)
 }
 EXPORT_SYMBOL(qmi_svc_unregister);
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int qmi_interface_init(void)
+#else
 static int __init qmi_interface_init(void)
+#endif
 {
 	qmi_log_init();
 	return 0;
 }
-module_init(qmi_interface_init);
 
+#ifndef CONFIG_WLAN_CNSS_CORE
+module_init(qmi_interface_init);
 MODULE_DESCRIPTION("MSM QMI Interface");
 MODULE_LICENSE("GPL v2");
+#endif

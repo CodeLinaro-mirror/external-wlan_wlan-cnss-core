@@ -4383,7 +4383,11 @@ static int ipc_router_core_init(void)
 	return ret;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int msm_ipc_router_init(void)
+#else
 static int msm_ipc_router_init(void)
+#endif
 {
 	int ret;
 
@@ -4403,11 +4407,11 @@ static int msm_ipc_router_init(void)
 	ipc_router_log_ctx_init();
 	return ret;
 }
-
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(msm_ipc_router_init);
 MODULE_DESCRIPTION("MSM IPC Router");
 MODULE_LICENSE("GPL v2");
-
+#endif
 EXPORT_SYMBOL(clone_pkt);
 EXPORT_SYMBOL(ipc_router_peek_pkt_size);
 EXPORT_SYMBOL(release_pkt);
