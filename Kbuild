@@ -82,6 +82,10 @@ ifneq ($(CONFIG_WLAN_CNSS_CORE),)
     KBUILD_CPPFLAGS += -DCONFIG_WLAN_CNSS_CORE
 endif
 
+ifneq ($(CONFIG_CNSS_UTILS),)
+    KBUILD_CPPFLAGS += -DCONFIG_CNSS_UTILS
+endif
+
 CDEFINES :=	-Wall\
 		-Werror
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -96,7 +100,7 @@ obj-$(CONFIG_MSM_QMI_INTERFACE) += qmi/
 obj-$(CONFIG_MSM_DIAG_INTERFACE) += diag/
 obj-$(CONFIG_CNSS2) += cnss2/
 obj-$(CONFIG_DIAG_IPC_BRIDGE) += diag_ipc_bridge/
-
+obj-$(CONFIG_CNSS_UTILS) += cnss_utils/
 else
 
 KS_BRIDGE_DIR := ks_bridge
@@ -108,6 +112,7 @@ QMI_DIR := qmi
 DIAG_DIR := diag
 CNSS_DIR := cnss2
 DIAG_IPC_BRIDGE_DIR := diag_ipc_bridge
+CNSS_UTILS_DIR := cnss_utils
 
 INIT_OBJS := unified_wlan_cnsscore.o
 INIT_INC := -I$(ROOTDIR)
@@ -197,6 +202,11 @@ ifneq ($(CONFIG_MSM_QMI_INTERFACE), )
 	QMI_INC := -I$(ROOTDIR)/$(QMI_DIR)
 endif
 
+ifneq ($(CONFIG_CNSS_UTILS), )
+	CNSS_UTILS_OBJS := $(CNSS_UTILS_DIR)/cnss_utils.o
+	CNSS_UTILS_INC := -I$(ROOTDIR)/$(CNSS_UTILS_DIR)
+endif
+
 OBJS := $(INIT_OBJS)                      \
 	$(IPC_ROUTER_OBJS)                 \
 	$(QMI_OBJS)                        \
@@ -207,6 +217,7 @@ OBJS := $(INIT_OBJS)                      \
 	$(MHI_OBJS)                        \
 	$(DIAG_OBJS)                       \
 	$(CNSS_OBJS)                       \
+	$(CNSS_UTILS_OBJS)                 \
 
 INCS := $(INIT_INC)                     \
         $(CNSS_INC)                     \
@@ -214,6 +225,7 @@ INCS := $(INIT_INC)                     \
         $(MHI_INC)                      \
         $(DIAG_INC)                     \
         $(QMI_INC)                      \
+        $(CNSS_UTILS_INC)               \
 
 
 cflags-y += $(INCS)

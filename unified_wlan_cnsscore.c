@@ -87,8 +87,17 @@ static int unified_pdrv_init(void)
 		printk("%s: updrv: failed to register diag\n",__func__);
 		goto fail8;
 	}
+
+	/* cnss utils Registration */
+	ret = cnss_utils_init();
+	if (ret){
+		printk("%s: updrv: failed to register diag\n",__func__);
+		goto fail9;
+	}
 	return 0;
 
+fail9:
+	diagchar_exit();
 fail8:
 	cnss_exit();
 fail7:
@@ -119,6 +128,7 @@ fail:
 
 static void unified_pdrv_deinit(void)
 {
+	cnss_utils_exit();
 	diagchar_exit();
 	cnss_exit();
 #ifdef CONFIG_DIAG_IPC_BRIDGE

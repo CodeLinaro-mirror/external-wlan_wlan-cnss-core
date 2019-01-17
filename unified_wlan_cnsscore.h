@@ -27,4 +27,6 @@ int cnss_initialize(void);
 void cnss_exit(void);
 int mhi_init(void);
 void mhi_exit(void);
+int cnss_utils_init(void);
+void cnss_utils_exit(void);
 #endif
