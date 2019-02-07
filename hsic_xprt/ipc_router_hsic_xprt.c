@@ -33,8 +33,13 @@
 
 
 static int msm_ipc_router_hsic_xprt_debug_mask;
+#ifdef CONFIG_WLAN_CNSS_CORE
+module_param_named(debug_mask_hsic_xprt, msm_ipc_router_hsic_xprt_debug_mask,
+		   int, S_IRUGO | S_IWUSR | S_IWGRP);
+#else
 module_param_named(debug_mask, msm_ipc_router_hsic_xprt_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
+#endif
 
 #if defined(DEBUG)
 #define D(x...) do { \

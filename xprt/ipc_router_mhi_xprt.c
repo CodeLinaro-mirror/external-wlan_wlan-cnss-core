@@ -30,9 +30,13 @@
 #include <linux/spinlock.h>
 
 static int ipc_router_mhi_xprt_debug_mask;
+#ifdef CONFIG_WLAN_CNSS_CORE
+module_param_named(debug_mask_mhi_xprt, ipc_router_mhi_xprt_debug_mask,
+		   int, S_IRUGO | S_IWUSR | S_IWGRP);
+#else
 module_param_named(debug_mask, ipc_router_mhi_xprt_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
-
+#endif
 #define D(x...) do { \
 if (ipc_router_mhi_xprt_debug_mask) \
 	pr_info(x); \
