@@ -242,6 +242,8 @@ static void diagchar_exit(void)
 	printk(KERN_INFO "diagchar exiting ..\n");
 	diagfwd_bridge_exit();
 	diag_remote_exit();
+	kfree(driver);
+	driver = NULL;
 	printk(KERN_INFO "done diagchar exit\n");
 }
 

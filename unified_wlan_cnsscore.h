@@ -34,4 +34,8 @@ int cnss_utils_init(void);
 void cnss_utils_exit(void);
 void qti_bridge_exit(void);
 void qcn_sdio_exit(void);
+void qmi_interface_deinit(void);
+void msm_ipc_router_hsic_xprt_deinit(void);
+void ipc_router_mhi_xprt_deinit(void);
+void msm_ipc_router_deinit(void);
 #endif

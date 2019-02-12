@@ -425,6 +425,7 @@ void diag_hsic_exit()
 	int i;
 	struct diag_hsic_info *ch = NULL;
 
+	platform_driver_unregister(&msm_hsic_ch_driver);
 	for (i = 0; i < NUM_HSIC_DEV; i++) {
 		ch = &diag_hsic[i];
 		ch->enabled = 0;
@@ -433,6 +434,5 @@ void diag_hsic_exit()
 		if (ch->hsic_wq)
 			destroy_workqueue(ch->hsic_wq);
 	}
-	platform_driver_unregister(&msm_hsic_ch_driver);
 }
 

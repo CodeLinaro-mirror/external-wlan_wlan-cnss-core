@@ -240,6 +240,20 @@ static int msm_ipc_add_default_rule(void)
 	return 0;
 }
 
+void msm_ipc_remove_default_rule(void)
+{
+	struct security_rule *rule;
+
+	rule = (struct security_rule *)msm_ipc_get_security_rule(ALL_SERVICE, ALL_INSTANCE);
+	if(!rule)
+		return;
+
+	down_write(&security_rules_lock_lha4);
+	list_del(&rule->list);
+	kfree(rule->group_id);
+	kfree(rule);
+	up_write(&security_rules_lock_lha4);
+}
 /**
  * msm_ipc_get_security_rule() - Get the security rule corresponding to a
  *                               service

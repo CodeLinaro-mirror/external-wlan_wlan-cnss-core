@@ -190,7 +190,9 @@ EXPORT_SYMBOL(diag_bridge_close);
 static void ipc_bridge_close(struct platform_device *pdev)
 {
 	WARN_ON(__dev[IPC_BRIDGE]->pdev != pdev);
-	WARN_ON(__dev[IPC_BRIDGE]->udev->state != USB_STATE_NOTATTACHED);
+	/* During rmmod USB State will be USB_STATE_CONFIGURED */
+	WARN_ON(__dev[IPC_BRIDGE]->udev->state != USB_STATE_NOTATTACHED &&
+		__dev[IPC_BRIDGE]->udev->state != USB_STATE_CONFIGURED);
 	diag_bridge_close(IPC_BRIDGE);
 }
 

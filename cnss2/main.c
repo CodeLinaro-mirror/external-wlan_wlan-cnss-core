@@ -2145,6 +2145,8 @@ reset_ctx:
 	platform_set_drvdata(plat_dev, NULL);
 #endif
 	cnss_set_plat_priv(plat_dev, NULL);
+	kfree(plat_dev);
+	plat_dev = NULL;
 out:
 	return ret;
 }
@@ -2176,8 +2178,9 @@ static int cnss_remove(struct platform_device *plat_dev)
 #ifndef CONFIG_NAPIER_X86
 	platform_set_drvdata(plat_dev, NULL);
 #endif
+	if(plat_env)
+		kfree(plat_env);
 	plat_env = NULL;
-
 	return 0;
 }
 

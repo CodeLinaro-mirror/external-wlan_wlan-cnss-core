@@ -54,26 +54,26 @@ static int unified_pdrv_init(void)
         }
 
 #endif
+	/* ipc_router Registration */
+	ret = msm_ipc_router_init();
+	if (ret){
+		printk("%s: updrv: failed to register ipc_router\n",__func__);
+		goto fail4;
+	}
 	/* QMI Registration */
 	ret = qmi_interface_init();
 	if (ret){
 		printk("%s: updrv: failed to register qmi\n",__func__);
-		goto fail4;
+		goto fail5;
 	}
 	/* ipc_brigde Registration */
 #ifdef CONFIG_DIAG_IPC_BRIDGE
 	ret = diag_bridge_init();
 	if (ret){
 		printk("%s: updrv: failed to register ipc_bridge\n",__func__);
-		goto fail5;
-	}
-#endif
-	/* ipc_router Registration */
-	ret = msm_ipc_router_init();
-	if (ret){
-		printk("%s: updrv: failed to register ipc_router\n",__func__);
 		goto fail6;
 	}
+#endif
 	/* ipc_router_mhi_xprt Registration */
 #ifdef CONFIG_MHI_XPRT
 	ret = ipc_router_mhi_xprt_init();
@@ -133,32 +133,41 @@ fail10:
 fail9:
 #endif
 #ifdef CONFIG_HSIC_XPRT
+	msm_ipc_router_hsic_xprt_deinit();
 fail8:
+#endif
+#ifdef CONFIG_MHI_XPRT
+	ipc_router_mhi_xprt_deinit();
 #endif
 #ifdef CONFIG_MHI_XPRT
 fail7:
 #endif
+#ifdef CONFIG_DIAG_IPC_BRIDGE
+	diag_bridge_exit(); /* ipc_bridge  */
+#endif
 fail6:
+	qmi_interface_deinit();
 #ifdef CONFIG_DIAG_IPC_BRIDGE	
 	diag_bridge_exit();
-fail5:
 #endif
+fail5:
+	msm_ipc_router_deinit();
 fail4:
 #ifdef CONFIG_QTI_SDIO_CLIENT
 	qti_bridge_exit();
 fail3:
+#endif
 #ifdef CONFIG_QCN
 	qcn_sdio_exit();
 fail2:
 #endif
-#endif
 #ifdef CONFIG_USB_QTI_KS_BRIDGE
 	ksb_exit();
 fail1:
+#endif
 #ifdef CONFIG_MSM_MHI
 	mhi_exit();
 fail:
-#endif
 #endif
 	return ret;
 }
@@ -173,6 +182,14 @@ static void unified_pdrv_deinit(void)
 #ifdef CONFIG_DIAG_IPC_BRIDGE
 	diag_bridge_exit(); /* ipc_bridge  */
 #endif
+#ifdef CONFIG_HSIC_XPRT
+	msm_ipc_router_hsic_xprt_deinit();
+#endif
+#ifdef CONFIG_MHI_XPRT
+	ipc_router_mhi_xprt_deinit();
+#endif
+	qmi_interface_deinit();
+	msm_ipc_router_deinit();
 #ifdef CONFIG_USB_QTI_KS_BRIDGE
 	ksb_exit();
 #endif

@@ -32,6 +32,7 @@
 #include <linux/sched.h>
 
 
+static struct msm_ipc_router_hsic_xprt *hsic_xprtp;
 static int msm_ipc_router_hsic_xprt_debug_mask;
 #ifdef CONFIG_WLAN_CNSS_CORE
 module_param_named(debug_mask_hsic_xprt, msm_ipc_router_hsic_xprt_debug_mask,
@@ -550,11 +551,12 @@ static int msm_ipc_router_hsic_driver_register(
 
 	hsic_xprtp_item = find_hsic_xprt_list(hsic_xprtp->ch_name);
 
-	mutex_lock(&hsic_remote_xprt_list_lock_lha1);
-	list_add(&hsic_xprtp->list, &hsic_remote_xprt_list);
-	mutex_unlock(&hsic_remote_xprt_list_lock_lha1);
-
 	if (!hsic_xprtp_item) {
+
+		mutex_lock(&hsic_remote_xprt_list_lock_lha1);
+		list_add(&hsic_xprtp->list, &hsic_remote_xprt_list);
+		mutex_unlock(&hsic_remote_xprt_list_lock_lha1);
+
 		hsic_xprtp->driver.driver.name = hsic_xprtp->ch_name;
 		hsic_xprtp->driver.driver.owner = THIS_MODULE;
 		hsic_xprtp->driver.probe = msm_ipc_router_hsic_remote_probe;
@@ -575,6 +577,21 @@ static int msm_ipc_router_hsic_driver_register(
 	return 0;
 }
 
+static void msm_ipc_router_hsic_driver_unregister(
+			struct msm_ipc_router_hsic_xprt *hsic_xprtp)
+{
+	struct msm_ipc_router_hsic_xprt *hsic_xprtp_item;
+
+	hsic_xprtp_item = find_hsic_xprt_list(hsic_xprtp->ch_name);
+
+	if (hsic_xprtp_item){
+		platform_driver_unregister(&hsic_xprtp->driver);
+		mutex_lock(&hsic_remote_xprt_list_lock_lha1);
+		list_del(&hsic_xprtp->list);
+		mutex_unlock(&hsic_remote_xprt_list_lock_lha1);
+	}
+}
+
 /**
  * msm_ipc_router_hsic_config_init() - init HSIC xprt configs
  *
@@ -588,8 +605,6 @@ static int msm_ipc_router_hsic_driver_register(
 static int msm_ipc_router_hsic_config_init(
 		struct msm_ipc_router_hsic_xprt_config *hsic_xprt_config)
 {
-	struct msm_ipc_router_hsic_xprt *hsic_xprtp;
-
 	hsic_xprtp = kzalloc(sizeof(struct msm_ipc_router_hsic_xprt),
 							GFP_KERNEL);
 	if (IS_ERR_OR_NULL(hsic_xprtp)) {
@@ -635,6 +650,13 @@ static int msm_ipc_router_hsic_config_init(
 
 }
 
+static void msm_ipc_router_hsic_config_deinit(
+			struct msm_ipc_router_hsic_xprt *hsic_xprtp)
+{
+	if(hsic_xprtp)
+		kfree(hsic_xprtp);
+	hsic_xprtp = NULL;
+}
 /**
  * ipc_router_hsic_xprt_probe_worker() - probe worker for non DT configurations
  *
@@ -852,8 +874,23 @@ static int __init msm_ipc_router_hsic_xprt_init(void)
 
 	return 0;
 }
+
+#ifdef CONFIG_WLAN_CNSS_CORE
+void msm_ipc_router_hsic_xprt_deinit(void)
+#else
+static void __exit msm_ipc_router_hsic_xprt_deinit(void)
+#endif
+{
+#ifdef CONFIG_NAPIER_X86
+	msm_ipc_router_hsic_driver_unregister(hsic_xprtp);
+
+	msm_ipc_router_hsic_config_deinit(hsic_xprtp);
+	IPC_RTR_ERR("%s: hsic_xprt driver removed \n",__func__);
+#endif
+}
 #ifndef CONFIG_WLAN_CNSS_CORE
 module_init(msm_ipc_router_hsic_xprt_init);
+module_exit(msm_ipc_router_hsic_xprt_deinit);
 MODULE_DESCRIPTION("IPC Router HSIC XPRT");
 MODULE_LICENSE("GPL v2");
 #endif

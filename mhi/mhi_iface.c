@@ -488,6 +488,21 @@ static void __exit mhi_exit(void)
 {
 	pci_unregister_driver(&mhi_pcie_driver);
 	mhi_plat_remove();
+	if(mhi_dev_ctxt){
+		mutex_lock(&mhi_device_drv->lock);
+		list_del(&mhi_dev_ctxt->node);
+		mutex_unlock(&mhi_device_drv->lock);
+		flush_work(&mhi_dev_ctxt->bhi_ctxt.fw_load_work);
+		kfree(mhi_dev_ctxt);
+		mhi_dev_ctxt = NULL;
+	}
+	if(mhi_device_drv){
+		debugfs_remove(mhi_device_drv->parent);
+		mhi_device_drv->parent = NULL;
+		class_destroy(mhi_device_drv->mhi_bhi_class);
+		kfree(mhi_device_drv);
+		mhi_device_drv = NULL;
+	}
 }
 #else
 static int mhi_plat_probe(struct platform_device *pdev)

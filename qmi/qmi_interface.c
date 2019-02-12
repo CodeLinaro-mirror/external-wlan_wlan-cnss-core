@@ -154,6 +154,7 @@ static DEFINE_MUTEX(qmi_svc_event_notifier_lock);
 static struct msm_ipc_port *qmi_svc_event_notifier_port;
 static struct workqueue_struct *qmi_svc_event_notifier_wq;
 static void qmi_svc_event_notifier_init(void);
+static void qmi_svc_event_notifier_deinit(void);
 static void qmi_svc_event_worker(struct work_struct *work);
 static struct svc_event_nb *find_svc_event_nb(uint32_t service_id,
 					      uint32_t instance_id);
@@ -2059,7 +2060,17 @@ int qmi_svc_event_notifier_unregister(uint32_t service_id,
 	spin_lock_irqsave(&temp->nb_lock, flags);
 	ret = raw_notifier_chain_unregister(&temp->svc_event_rcvr_list, nb);
 	spin_unlock_irqrestore(&temp->nb_lock, flags);
+
 	mutex_unlock(&svc_event_nb_list_lock);
+	mutex_lock(&qmi_svc_event_notifier_lock);
+	if (qmi_svc_event_notifier_port && qmi_svc_event_notifier_wq)
+		qmi_svc_event_notifier_deinit();
+	mutex_unlock(&qmi_svc_event_notifier_lock);
+
+	mutex_lock(&svc_event_nb_list_lock);
+	list_del(&temp->list);
+	mutex_unlock(&svc_event_nb_list_lock);
+	kfree(temp);
 
 	return ret;
 }
@@ -2148,6 +2159,18 @@ static void qmi_svc_event_notifier_init(void)
 	return;
 }
 
+static void qmi_svc_event_notifier_deinit(void)
+{
+	if (qmi_svc_event_notifier_wq) {
+		destroy_workqueue(qmi_svc_event_notifier_wq);
+	}
+
+	if (qmi_svc_event_notifier_port){
+		msm_ipc_router_close_port(qmi_svc_event_notifier_port);
+	}
+	return;
+}
+
 /**
  * qmi_log_init() - Init function for IPC Logging
  *
@@ -2167,6 +2190,18 @@ void qmi_log_init(void)
 	if (!qmi_ind_log_ctx)
 		pr_err("%s: Unable to create QMI IPC %s",
 				"logging for Indications", __func__);
+#endif
+}
+
+/**
+ * qmi_log_deinit() - deinit function for IPC Logging
+ *
+ * Deinitialize log contexts for QMI request/response/indications.
+ */
+void qmi_log_deinit(void)
+{
+#ifdef CONFIG_NAPIER_X86
+	return;
 #endif
 }
 
@@ -2274,8 +2309,19 @@ static int __init qmi_interface_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void qmi_interface_deinit(void)
+#else
+static void __exit qmi_interface_deinit(void)
+#endif
+{
+	qmi_log_deinit();
+	return;
+}
+
 #ifndef CONFIG_WLAN_CNSS_CORE
 module_init(qmi_interface_init);
+module_exit(qmi_interface_deinit);
 MODULE_DESCRIPTION("MSM QMI Interface");
 MODULE_LICENSE("GPL v2");
 #endif

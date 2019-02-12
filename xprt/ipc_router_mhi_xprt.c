@@ -29,6 +29,7 @@
 #include <linux/types.h>
 #include <linux/spinlock.h>
 
+static struct ipc_router_mhi_xprt *mhi_xprtp;
 static int ipc_router_mhi_xprt_debug_mask;
 #ifdef CONFIG_WLAN_CNSS_CORE
 module_param_named(debug_mask_mhi_xprt, ipc_router_mhi_xprt_debug_mask,
@@ -768,6 +769,47 @@ static void ipc_router_mhi_xprt_cb(struct mhi_cb_info *cb_info)
 }
 
 /**
+* ipc_router_mhi_driver_deregister() - deregister for MHI channels
+*
+* @mhi_xprtp: pointer to IPC router mhi xprt structure.
+*
+* @return: 0 on success, standard Linux error codes on error.
+*
+* This function is called on deinit.
+*/
+static int ipc_router_mhi_driver_deregister(
+		struct ipc_router_mhi_xprt *mhi_xprtp, struct device *dev)
+{
+	int rc;
+	if (!mhi_is_device_ready(dev, "qcom,mhi"))
+		return -EINVAL;
+
+	rc = mhi_deregister_channel(mhi_xprtp->ch_hndl.in_handle);
+	if (!rc)
+		rc = mhi_deregister_channel(mhi_xprtp->ch_hndl.out_handle);
+	return rc;
+}
+/**
+ * ipc_router_mhi_config_deinit() - deinit MHI xprt configs
+ *
+ * @mhi_xprt_config: pointer to MHI xprt configurations.
+ *
+ * This function is called to deinitialize the MHI XPRT
+ */
+static void ipc_router_mhi_config_deinit(
+			struct ipc_router_mhi_xprt *mhi_xprtp,
+			struct device *dev)
+{
+	mutex_lock(&mhi_xprtp->ch_hndl.state_lock);
+	mhi_xprtp->ch_hndl.out_chan_enabled = false;
+	mhi_xprtp->ch_hndl.in_chan_enabled = false;
+	mutex_unlock(&mhi_xprtp->ch_hndl.state_lock);
+	flush_workqueue(mhi_xprtp->wq);
+	kfree(mhi_xprtp);
+	mhi_xprtp = NULL;
+}
+
+/**
  * ipc_router_mhi_driver_register() - register for MHI channels
  *
  * @mhi_xprtp: pointer to IPC router mhi xprt structure.
@@ -827,7 +869,6 @@ static int ipc_router_mhi_config_init(
 			struct ipc_router_mhi_xprt_config *mhi_xprt_config,
 			struct device *dev)
 {
-	struct ipc_router_mhi_xprt *mhi_xprtp;
 	char wq_name[XPRT_NAME_LEN];
 	int rc;
 
@@ -1075,8 +1116,28 @@ static int __init ipc_router_mhi_xprt_init(void)
 	}
 	return 0;
 }
+
+#ifdef CONFIG_WLAN_CNSS_CORE
+void ipc_router_mhi_xprt_deinit(void)
+#else
+static void __exit ipc_router_mhi_xprt_deinit(void)
+#endif
+{
+#ifdef CONFIG_NAPIER_X86
+	int rc;
+	rc = ipc_router_mhi_driver_deregister(mhi_xprtp, NULL);
+	if (rc)
+		IPC_RTR_ERR("%s: ipc_router_mhi_xprt_driver dereg. failed %d\n",
+			__func__, rc);
+	ipc_router_mhi_config_deinit(mhi_xprtp, NULL);
+	IPC_RTR_ERR("%s: mhi_xprt driver removed %d\n",__func__, rc);
+#endif
+	return;
+}
+
 #ifndef CONFIG_WLAN_CNSS_CORE
 module_init(ipc_router_mhi_xprt_init);
+module_exit(ipc_router_mhi_xprt_deinit);
 MODULE_DESCRIPTION("IPC Router MHI XPRT");
 MODULE_LICENSE("GPL v2");
 #endif

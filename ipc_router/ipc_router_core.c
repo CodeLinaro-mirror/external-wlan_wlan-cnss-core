@@ -222,6 +222,8 @@ struct pil_vote_info {
 	struct work_struct unload_work;
 };
 
+static struct dentry *dent = NULL;
+
 #define PIL_SUBSYSTEM_NAME_LEN 32
 static char default_peripheral[PIL_SUBSYSTEM_NAME_LEN];
 
@@ -3933,8 +3935,6 @@ static void debug_create(const char *name, struct dentry *dent,
 
 static void debugfs_init(void)
 {
-	struct dentry *dent;
-
 	dent = debugfs_create_dir("msm_ipc_router", 0);
 	if (IS_ERR(dent))
 		return;
@@ -3946,9 +3946,14 @@ static void debugfs_init(void)
 	debug_create("dump_xprt_info", dent, dump_xprt_info);
 	debug_create("dump_routing_table", dent, dump_routing_table);
 }
-
+static void debugfs_deinit(void)
+{
+	if(dent)
+		debugfs_remove_recursive(dent);
+}
 #else
 static void debugfs_init(void) {}
+static void debugfs_deinit(void) {}
 #endif
 
 /**
@@ -3993,6 +3998,20 @@ static void ipc_router_log_ctx_init(void)
 	mutex_unlock(&log_ctx_list_lock_lha0);
 }
 
+static void ipc_router_log_ctx_deinit(void)
+{
+	struct ipc_rtr_log_ctx *rtr_log_ctx;
+	mutex_lock(&log_ctx_list_lock_lha0);
+	list_for_each_entry(rtr_log_ctx, &log_ctx_list, list) {
+		if (!strncmp(rtr_log_ctx->log_ctx_name, "local_IPCRTR", strlen("local_IPCRTR"))){
+			list_del(&rtr_log_ctx->list);
+			break;
+		}
+	}
+	kfree(rtr_log_ctx);
+	mutex_unlock(&log_ctx_list_lock_lha0);
+}
+
 /**
  * ipc_router_get_log_ctx() - Retrieves the ipc log context based on subsystem name.
  * @sub_name:	subsystem name
@@ -4006,11 +4025,11 @@ static void *ipc_router_get_log_ctx(char *sub_name)
 
 	mutex_lock(&log_ctx_list_lock_lha0);
 	list_for_each_entry(temp_log_ctx, &log_ctx_list, list)
-		if (!strcmp(temp_log_ctx->log_ctx_name, sub_name)) {
-			log_ctx = temp_log_ctx->log_ctx;
-			mutex_unlock(&log_ctx_list_lock_lha0);
-			return log_ctx;
-		}
+	if (!strcmp(temp_log_ctx->log_ctx_name, sub_name)) {
+		log_ctx = temp_log_ctx->log_ctx;
+		mutex_unlock(&log_ctx_list_lock_lha0);
+		return log_ctx;
+	}
 	log_ctx = ipc_router_create_log_ctx(sub_name);
 	mutex_unlock(&log_ctx_list_lock_lha0);
 
@@ -4383,6 +4402,35 @@ static int ipc_router_core_init(void)
 	return ret;
 }
 
+static int ipc_router_core_deinit(void)
+{
+	struct msm_ipc_routing_table_entry *rt_entry;
+
+	mutex_lock(&ipc_router_init_lock);
+	if (unlikely(!is_ipc_router_inited)) {
+		mutex_unlock(&ipc_router_init_lock);
+		return -EINVAL;
+	}
+	msm_ipc_remove_default_rule();
+
+	flush_workqueue(msm_ipc_router_workqueue);
+	destroy_workqueue(msm_ipc_router_workqueue);
+
+	rt_entry = ipc_router_get_rtentry_ref(IPC_ROUTER_NID_LOCAL);
+	if (!rt_entry) {
+		IPC_RTR_ERR("%s: Node %d is not up\n", __func__, IPC_ROUTER_NID_LOCAL);
+		return -EFAULT;
+	}
+	list_del(&rt_entry->list);
+	kref_put(&rt_entry->ref, ipc_router_release_rtentry); //remove reference from ipc_router_get_rtentry_ref
+	kref_put(&rt_entry->ref, ipc_router_release_rtentry); // remove rt_entry
+
+	rt_entry = NULL;
+	is_ipc_router_inited = false;
+	debugfs_deinit();
+	return 0;
+}
+
 #ifdef CONFIG_WLAN_CNSS_CORE
 int msm_ipc_router_init(void)
 #else
@@ -4407,8 +4455,35 @@ static int msm_ipc_router_init(void)
 	ipc_router_log_ctx_init();
 	return ret;
 }
+
+#ifdef CONFIG_WLAN_CNSS_CORE
+void msm_ipc_router_deinit(void)
+#else
+static void msm_ipc_router_deinit(void)
+#endif
+{
+	int ret;
+
+	ipc_router_log_ctx_deinit();
+
+	msm_ipc_router_exit_sockets();
+
+	platform_driver_unregister(&ipc_router_driver);
+
+	ret = ipc_router_core_deinit();
+	if (ret)
+		IPC_RTR_ERR(
+		"%s: ipc_router_core_deinit failed %d\n", __func__, ret);
+	else
+		IPC_RTR_ERR(
+		"%s: ipc_router_core_deinited successfully  %d\n", __func__, ret);
+
+	return;
+}
+
 #ifndef CONFIG_WLAN_CNSS_CORE
 module_init(msm_ipc_router_init);
+module_exit(msm_ipc_router_deinit);
 MODULE_DESCRIPTION("MSM IPC Router");
 MODULE_LICENSE("GPL v2");
 #endif
