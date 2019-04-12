@@ -1491,6 +1491,8 @@ int cnss_register_subsys(struct cnss_plat_data *plat_priv)
 	case QCN7605_DEVICE_ID:
 	case QCN7605_STANDALONE_DEVICE_ID:
 	case QCN7605_COMPOSITE_DEVICE_ID:
+	case QCN7605_VER20_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_COMPOSITE_DEVICE_ID:
 		subsys_info->subsys_desc.name = "QCN7605";
 		break;
 	default:
@@ -1713,6 +1715,8 @@ int cnss_register_ramdump(struct cnss_plat_data *plat_priv)
 		break;
 	case QCN7605_COMPOSITE_DEVICE_ID:
 	case QCN7605_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_COMPOSITE_DEVICE_ID:
 		break;
 
 	default:
@@ -1736,6 +1740,8 @@ void cnss_unregister_ramdump(struct cnss_plat_data *plat_priv)
 		break;
 	case QCN7605_COMPOSITE_DEVICE_ID:
 	case QCN7605_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_COMPOSITE_DEVICE_ID:
 		break;
 	default:
 		cnss_pr_err("Unknown device ID: 0x%lx\n", plat_priv->device_id);

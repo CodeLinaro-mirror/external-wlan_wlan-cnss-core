@@ -127,6 +127,8 @@ int cnss_usb_dev_shutdown(struct cnss_usb_data *usb_priv)
 	switch (usb_priv->device_id) {
 	case QCN7605_COMPOSITE_DEVICE_ID:
 	case QCN7605_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_COMPOSITE_DEVICE_ID:
 		cnss_usb_call_driver_remove(usb_priv);
 		break;
 	default:
@@ -268,6 +270,8 @@ static int cnss_usb_probe(struct usb_interface *interface,
 	switch (usb_priv->device_id) {
 	case QCN7605_COMPOSITE_DEVICE_ID:
 	case QCN7605_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_COMPOSITE_DEVICE_ID:
 		break;
 	default:
 		cnss_pr_err("Unknown USB device found: 0x%x\n",
@@ -346,6 +350,12 @@ static struct usb_device_id cnss_usb_id_table[] = {
 	{ USB_DEVICE_INTERFACE_NUMBER(QCN7605_USB_VENDOR_ID,
 				      QCN7605_STANDALONE_PRODUCT_ID,
 				      QCN7605_WLAN_STANDALONE_INTERFACE_NUM) },
+	{ USB_DEVICE_INTERFACE_NUMBER(QCN7605_USB_VENDOR_ID,
+				      QCN7605_VER20_STANDALONE_PID,
+				      QCN7605_WLAN_STANDALONE_INTERFACE_NUM) },
+	{ USB_DEVICE_INTERFACE_NUMBER(QCN7605_USB_VENDOR_ID,
+				      QCN7605_VER20_COMPOSITE_PID,
+				      QCN7605_WLAN_COMPOSITE_INTERFACE_NUM) },
 	{}                      /* Terminating entry */
 };
 
