@@ -56,16 +56,6 @@ bool cnss_bus_req_mem_ind_valid(struct cnss_plat_data *plat_priv)
 		return true;
 }
 
-bool cnss_bus_dev_cal_rep_valid(struct cnss_plat_data *plat_priv)
-{
-	bool ret = false;
-
-	if (cnss_get_bus_type(plat_priv->device_id) == CNSS_BUS_USB)
-		ret = true;
-
-	return ret;
-}
-
 void *cnss_bus_dev_to_bus_priv(struct device *dev)
 {
 	if (!dev)

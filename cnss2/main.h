@@ -38,6 +38,7 @@
 #define CNSS_EVENT_UNINTERRUPTIBLE BIT(1)
 #define CNSS_EVENT_SYNC_UNINTERRUPTIBLE (CNSS_EVENT_SYNC | \
 				CNSS_EVENT_UNINTERRUPTIBLE)
+#define QCN7605_CALDB_SIZE 614400
 
 #ifdef CONFIG_NAPIER_X86
 /* Dummy structure to eliminate compiler warning */
@@ -204,6 +205,11 @@ enum cnss_debug_quirks {
 	SKIP_RECOVERY,
 };
 
+struct cnss_cal_data {
+	u32 index;
+	u32 total_size;
+};
+
 struct cnss_plat_data {
 	struct platform_device *plat_dev;
 	void *bus_priv;
@@ -248,6 +254,7 @@ struct cnss_plat_data {
 	u32 diag_reg_read_mem_type;
 	u32 diag_reg_read_len;
 	u8 *diag_reg_read_buf;
+	void *caldb_mem;
 	bool cal_done;
 };
 

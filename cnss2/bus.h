@@ -58,5 +58,4 @@ int cnss_bus_call_driver_modem_status(struct cnss_plat_data *plat_priv,
 				      int modem_current_status);
 int cnss_bus_recovery_update_status(struct cnss_plat_data *plat_priv);
 bool cnss_bus_req_mem_ind_valid(struct cnss_plat_data *plat_priv);
-bool cnss_bus_dev_cal_rep_valid(struct cnss_plat_data *plat_priv);
 #endif /* _CNSS_BUS_H */

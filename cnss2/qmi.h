@@ -37,6 +37,9 @@ int cnss_wlfw_athdiag_write_send_sync(struct cnss_plat_data *plat_priv,
 				      u32 data_len, u8 *data);
 int cnss_wlfw_ini_send_sync(struct cnss_plat_data *plat_priv,
 			    u8 fw_log_mode);
-int cnss_wlfw_cal_report_send_sync(struct cnss_plat_data *plat_priv);
+int cnss_wlfw_cal_update_req_send_sync(struct cnss_plat_data *plat_priv,
+					void *data);
+int cnss_wlfw_cal_download_req_send_sync(struct cnss_plat_data *plat_priv,
+					void *data);
 unsigned int cnss_get_qmi_timeout(void);
 #endif /* _CNSS_QMI_H */
