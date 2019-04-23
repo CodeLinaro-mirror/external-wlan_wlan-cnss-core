@@ -19,6 +19,7 @@
 #include <linux/rwsem.h>
 #include <linux/suspend.h>
 #include <linux/timer.h>
+#include <linux/vmalloc.h>
 #ifndef CONFIG_NAPIER_X86
 #include <soc/qcom/ramdump.h>
 #include <soc/qcom/subsystem_notif.h>
