@@ -25,6 +25,7 @@
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
+#include <linux/of.h>
 #include <linux/rwsem.h>
 #ifdef CONFIG_NAPIER_X86
 #include "ipc_router.h"
