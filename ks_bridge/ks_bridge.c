@@ -30,7 +30,12 @@
 #include <linux/list.h>
 #include <linux/wait.h>
 #include <linux/poll.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
 #include <linux/sched/clock.h>
+#else
+#include <linux/sched.h>
+#endif
 
 #define DRIVER_DESC	"USB host ks bridge driver"
 
