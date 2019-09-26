@@ -163,6 +163,27 @@ static int diagfwd_usb_probe(struct platform_device *pdev)
 }
 #endif
 
+#ifdef CONFIG_DIAG_SDIO
+static int diagfwd_sdio_probe(struct platform_device *pdev)
+{
+        int ret;
+
+        driver->pdev = pdev;
+        ret = diag_remote_init();
+        if (ret) {
+                diag_remote_exit();
+                return ret;
+        }
+        ret = diagfwd_bridge_init();
+        if (ret) {
+                diagfwd_bridge_exit();
+                return ret;
+        }
+        pr_debug("diag: usb device is ready\n");
+        return 0;
+}
+#endif
+
 #ifdef CONFIG_WLAN_CNSS_CORE
 int diagchar_init(void)
 #else
@@ -206,6 +227,9 @@ static int __init diagchar_init(void)
 #endif
 #ifdef CONFIG_DIAG_HSIC
 	diagfwd_usb_probe(NULL);
+#endif
+#ifdef CONFIG_DIAG_SDIO
+        diagfwd_sdio_probe(NULL);
 #endif
 	return 0;
 }

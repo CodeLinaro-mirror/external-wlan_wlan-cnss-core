@@ -26,6 +26,10 @@ ifeq ($(emulation_build), 1)
 KBUILD_OPTIONS += CONFIG_USB_EMULATION=y
 endif
 endif
+ifeq ($(interface_type), sdio)
+KBUILD_OPTIONS += CONFIG_SDIO_XPRT=y CONFIG_QCN=y CONFIG_DIAG_SDIO=y CONFIG_QTI_SDIO_CLIENT=y CONFIG_CNSS2_SDIO=y
+endif
+
 
 else #unified_driver 0
 
@@ -44,6 +48,9 @@ KBUILD_OPTIONS += CONFIG_HSIC_XPRT=m CONFIG_USB_QTI_KS_BRIDGE=m CONFIG_DIAG_HSIC
 ifeq ($(emulation_build), 1)
 KBUILD_OPTIONS += CONFIG_USB_EMULATION=y
 endif
+endif
+ifeq ($(interface_type), sdio)
+KBUILD_OPTIONS += CONFIG_SDIO_XPRT=m CONFIG_QCN=m CONFIG_DIAG_SDIO=y CONFIG_QTI_SDIO_CLIENT=m CONFIG_CNSS2_SDIO=y
 endif
 endif #unified_driver end
 

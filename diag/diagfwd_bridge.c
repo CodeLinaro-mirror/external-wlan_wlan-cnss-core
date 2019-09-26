@@ -29,6 +29,9 @@
 #ifdef CONFIG_DIAG_HSIC
 #include "diagfwd_hsic.h"
 #endif
+#ifdef CONFIG_DIAG_SDIO
+#include "diagfwd_sdio.h"
+#endif
 #include "diag_nl.h"
 
 #define BRIDGE_TO_MUX(x)	(x + DIAG_MUX_BRIDGE_BASE)
@@ -89,6 +92,9 @@ int diagfwd_bridge_init()
 #ifdef CONFIG_DIAG_HSIC
 	err = diag_hsic_init();
 #endif
+#ifdef CONFIG_DIAG_SDIO
+       err = diag_sdio_init();
+#endif
 
 	if (err)
 		goto fail;
@@ -119,6 +125,9 @@ void diagfwd_bridge_exit()
 #endif
 #ifdef CONFIG_DIAG_HSIC
 	diag_hsic_exit();
+#endif
+#ifdef CONFIG_DIAG_SDIO
+       diag_sdio_exit();
 #endif
 
 	/* Destroy NL srv */

@@ -22,6 +22,10 @@ ifneq ($(CONFIG_CNSS2_USB),)
      KBUILD_CPPFLAGS += -DCONFIG_CNSS2_USB
 endif
 
+ifneq ($(CONFIG_CNSS2_SDIO),)
+     KBUILD_CPPFLAGS += -DCONFIG_CNSS2_SDIO
+endif
+
 ifneq ($(CONFIG_DIAG_IPC_BRIDGE),)
      KBUILD_CPPFLAGS += -DCONFIG_DIAG_IPC_BRIDGE
 endif
@@ -30,8 +34,16 @@ ifneq ($(CONFIG_DIAG_MHI),)
      KBUILD_CPPFLAGS += -DCONFIG_DIAG_MHI
 endif
 
+ifneq ($(CONFIG_QCN),)
+     KBUILD_CPPFLAGS += -DCONFIG_QCN
+endif
+
 ifneq ($(CONFIG_DIAG_HSIC),)
      KBUILD_CPPFLAGS += -DCONFIG_DIAG_HSIC
+endif
+
+ifneq ($(CONFIG_DIAG_SDIO),)
+     KBUILD_CPPFLAGS += -DCONFIG_DIAG_SDIO
 endif
 
 ifneq ($(CONFIG_MHI_XPRT),)
@@ -40,6 +52,10 @@ endif
 
 ifneq ($(CONFIG_HSIC_XPRT),)
      KBUILD_CPPFLAGS += -DCONFIG_HSIC_XPRT
+endif
+
+ifneq ($(CONFIG_SDIO_XPRT),)
+     KBUILD_CPPFLAGS += -DCONFIG_SDIO_XPRT
 endif
 
 ifneq ($(CONFIG_IPC_ROUTER_SECURITY),)
@@ -74,6 +90,10 @@ ifneq ($(CONFIG_QMI_ENCDEC_DEBUG),)
      KBUILD_CPPFLAGS += -DCONFIG_QMI_ENCDEC_DEBUG
 endif
 
+ifneq ($(CONFIG_QTI_SDIO_CLIENT),)
+     KBUILD_CPPFLAGS += -DCONFIG_QTI_SDIO_CLIENT
+endif
+
 ifneq ($(CONFIG_NAPIER_X86),)
      KBUILD_CPPFLAGS += -DCONFIG_NAPIER_X86
 endif
@@ -96,10 +116,13 @@ obj-$(CONFIG_MSM_MHI) += mhi/
 obj-$(CONFIG_IPC_ROUTER) += ipc_router/
 obj-$(CONFIG_MHI_XPRT) += xprt/
 obj-$(CONFIG_HSIC_XPRT) += hsic_xprt/
+obj-$(CONFIG_SDIO_XPRT) += sdio_xprt/
 obj-$(CONFIG_MSM_QMI_INTERFACE) += qmi/
 obj-$(CONFIG_MSM_DIAG_INTERFACE) += diag/
 obj-$(CONFIG_CNSS2) += cnss2/
 obj-$(CONFIG_DIAG_IPC_BRIDGE) += diag_ipc_bridge/
+obj-$(CONFIG_QTI_SDIO_CLIENT) += qti_sdio_client/
+obj-$(CONFIG_QCN) += qcn/
 obj-$(CONFIG_CNSS_UTILS) += cnss_utils/
 else
 
@@ -108,10 +131,13 @@ MHI_DIR := mhi
 IPC_ROUTER_DIR := ipc_router
 XPRT_DIR := xprt
 HSIC_XPRT_DIR := hsic_xprt
+SDIO_XPRT_DIR := sdio_xprt
 QMI_DIR := qmi
 DIAG_DIR := diag
 CNSS_DIR := cnss2
 DIAG_IPC_BRIDGE_DIR := diag_ipc_bridge
+QTI_SDIO_CLIENT_DIR := qti_sdio_client
+QCN_DIR := qcn
 CNSS_UTILS_DIR := cnss_utils
 
 INIT_OBJS := unified_wlan_cnsscore.o
@@ -142,6 +168,9 @@ endif
 	MHI_INC := -I$(ROOTDIR)/$(MHI_DIR)
 endif
 
+ifneq ($(CONFIG_QCN),)
+        QCN_OBJS := $(QCN_DIR)/qcn_sdio.o
+
 ifneq ($(CONFIG_CNSS2),)
 	CNSS_OBJS := $(CNSS_DIR)/main.o                           \
 		     $(CNSS_DIR)/bus.o                            \
@@ -156,6 +185,10 @@ endif
 ifeq ($(CONFIG_CNSS2_USB),y)
 	CNSS_OBJS +=  $(CNSS_DIR)/usb.o
 endif
+ifeq ($(CONFIG_CNSS2_SDIO),y)
+	CNSS_OBJS +=  $(CNSS_DIR)/sdio.o
+endif
+
 	CNSS_INC := -I$(ROOTDIR)/$(CNSS_DIR)
 
 endif
@@ -170,6 +203,9 @@ ifneq ($(CONFIG_MSM_DIAG_INTERFACE),)
 ifeq ($(CONFIG_DIAG_HSIC),y)
 	DIAG_OBJS += $(DIAG_DIR)/diagfwd_hsic.o
 endif
+ifeq ($(CONFIG_DIAG_SDIO),y)
+        DIAG_OBJS += $(DIAG_DIR)/diagfwd_sdio.o
+endif
 ifeq ($(CONFIG_DIAG_MHI),y)
 	DIAG_OBJS += $(DIAG_DIR)/diagfwd_mhi.o
 endif
@@ -181,6 +217,10 @@ ifneq ($(CONFIG_DIAG_IPC_BRIDGE), )
 	DIAG_IPC_BRIDGE_OBJS := $(DIAG_IPC_BRIDGE_DIR)/diag_ipc_bridge.o
 endif
 
+ifneq ($(CONFIG_QTI_SDIO_CLIENT), )
+        QTI_SDIO_CLIENT_OBJS := $(QTI_SDIO_CLIENT_DIR)/qti_sdio_client.o
+endif
+
 ifneq ($(CONFIG_IPC_ROUTER), )
 	IPC_ROUTER_OBJS := $(IPC_ROUTER_DIR)/ipc_router_core.o          \
 			   $(IPC_ROUTER_DIR)/ipc_router_socket.o        \
@@ -190,6 +230,10 @@ endif
 
 ifneq ($(CONFIG_HSIC_XPRT), )
 	HSIC_XPERT_OBJS := $(HSIC_XPRT_DIR)/ipc_router_hsic_xprt.o
+endif
+
+ifneq ($(CONFIG_SDIO_XPRT), )
+        SDIO_XPRT_OBJS := $(SDIO_XPRT_DIR)/ipc_router_sdio_xprt.o
 endif
 
 ifneq ($(CONFIG_MHI_XPRT), )
@@ -214,7 +258,10 @@ OBJS := $(INIT_OBJS)                      \
 	$(DIAG_IPC_BRIDGE_OBJS)            \
 	$(XPRT_OBJS)                       \
 	$(HSIC_XPERT_OBJS)                 \
+	$(SDIO_XPRT_OBJS)                  \
 	$(MHI_OBJS)                        \
+	$(QCN_OBJS)                        \
+	$(QTI_SDIO_CLIENT_OBJS)            \
 	$(DIAG_OBJS)                       \
 	$(CNSS_OBJS)                       \
 	$(CNSS_UTILS_OBJS)                 \
@@ -234,4 +281,5 @@ ccflags-y += -Os -I$(src)/inc -I$(src)/mhi
 obj-$(WLAN_CNSSCORE) +=$(MODNAME).o
 $(MODNAME)-y := $(OBJS)
 
+endif
 endif

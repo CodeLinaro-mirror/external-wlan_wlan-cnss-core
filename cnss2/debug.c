@@ -103,6 +103,9 @@ static int cnss_stats_show_state(struct seq_file *s,
 		case CNSS_DRIVER_DEBUG:
 			seq_puts(s, "DRIVER_DEBUG");
 			continue;
+		case CNSS_DEV_REMOVED:
+			seq_puts(s, "DEV_REMOVED");
+			continue;
 		}
 
 		seq_printf(s, "UNKNOWN-%d", i);

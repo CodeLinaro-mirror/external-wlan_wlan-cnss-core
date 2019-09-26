@@ -17,7 +17,7 @@
 #include <linux/slab.h>
 #include <linux/etherdevice.h>
 #include <linux/debugfs.h>
-#include <net/cnss_utils.h>
+#include "cnss_utils.h"
 
 #define CNSS_MAX_CH_NUM 45
 struct cnss_unsafe_channel_list {

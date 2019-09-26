@@ -16,11 +16,11 @@
 #include <linux/etherdevice.h>
 #include <linux/pm_qos.h>
 #ifdef CONFIG_NAPIER_X86
-#include <net/cnss2.h>
+#include "cnss2.h"
 #else
 #include <linux/esoc_client.h>
 #include <linux/msm-bus.h>
-#include <net/cnss2.h>
+#include "cnss2.h"
 #include <soc/qcom/memory_dump.h>
 #include <soc/qcom/subsystem_restart.h>
 #endif
@@ -52,6 +52,7 @@ enum cnss_dev_bus_type {
 	CNSS_BUS_NONE = -1,
 	CNSS_BUS_PCI,
 	CNSS_BUS_USB,
+	CNSS_BUS_SDIO,
 };
 
 struct cnss_vreg_info {
@@ -174,6 +175,7 @@ enum cnss_driver_state {
 	CNSS_FW_BOOT_RECOVERY,
 	CNSS_DEV_ERR_NOTIFY,
 	CNSS_DRIVER_DEBUG,
+	CNSS_DEV_REMOVED,
 };
 
 struct cnss_recovery_data {

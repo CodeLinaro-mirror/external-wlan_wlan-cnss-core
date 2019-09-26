@@ -306,7 +306,7 @@ int cnss_wlan_enable(struct device *dev,
 		     enum cnss_driver_mode mode,
 		     const char *host_version)
 {
-#ifdef CONFIG_CNSS2_USB
+#if defined(CONFIG_CNSS2_USB) || defined(CONFIG_CNSS2_SDIO)
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(NULL);
 #else
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
@@ -314,6 +314,7 @@ int cnss_wlan_enable(struct device *dev,
 	struct wlfw_wlan_cfg_req_msg_v01 req;
 	int ret = 0;
 	u32 i;
+	enum cnss_dev_bus_type bus_type;
 
 	if (plat_priv->device_id == QCA6174_DEVICE_ID)
 		return 0;
@@ -321,7 +322,8 @@ int cnss_wlan_enable(struct device *dev,
 	if (qmi_bypass)
 		return 0;
 
-	if (cnss_get_bus_type(plat_priv->device_id) == CNSS_BUS_USB)
+	bus_type = cnss_get_bus_type(plat_priv->device_id);
+	if (bus_type == CNSS_BUS_USB || bus_type == CNSS_BUS_SDIO)
 		goto skip_cfg;
 
 	if (!config || !host_version) {
@@ -1820,7 +1822,7 @@ static void cnss_unregister_bus_scale(struct cnss_plat_data *plat_priv)
 }
 #endif
 
-#ifndef CONFIG_CNSS2_USB
+#if !defined(CONFIG_CNSS2_USB) && !defined(CONFIG_CNSS2_SDIO)
 static ssize_t cnss_fs_ready_store(struct device *dev,
 				   struct device_attribute *attr,
 				   const char *buf,
@@ -1949,6 +1951,7 @@ static const struct platform_device_id cnss_platform_id_table[] = {
 	{ .name = "qca6174", .driver_data = QCA6174_DEVICE_ID, },
 	{ .name = "qca6290", .driver_data = QCA6290_DEVICE_ID, },
 	{ .name = "qcn7605", .driver_data = QCN7605_DEVICE_ID, },
+	{ .name = "qcn7605_sdio", .driver_data = QCN7605_SDIO_DEVICE_ID, },
 };
 
 static const struct of_device_id cnss_of_match_table[] = {
@@ -2014,6 +2017,9 @@ static int cnss_probe(struct platform_device *plat_dev)
 
 #ifdef CONFIG_CNSS2_USB
 	plat_priv->device_id = QCN7605_COMPOSITE_DEVICE_ID;
+#endif
+#ifdef CONFIG_CNSS2_SDIO
+	plat_priv->device_id = QCN7605_SDIO_DEVICE_ID;
 #else
 	plat_priv->device_id = device_id->driver_data;
 #endif
@@ -2036,6 +2042,8 @@ static int cnss_probe(struct platform_device *plat_dev)
 
 #ifdef CONFIG_CNSS2_USB
 	plat_priv->device_id = QCN7605_COMPOSITE_DEVICE_ID;
+#elif defined(CONFIG_CNSS2_SDIO)
+	plat_priv->device_id = QCN7605_SDIO_DEVICE_ID;
 #else
 	plat_priv->device_id = QCA6290_DEVICE_ID;
 #endif
@@ -2219,6 +2227,7 @@ static void __exit cnss_exit(void)
 
 	cnss_pr_info("Platform driver exit\n");
 }
+
 #ifndef CONFIG_WLAN_CNSS_CORE
 module_init(cnss_initialize);
 module_exit(cnss_exit);

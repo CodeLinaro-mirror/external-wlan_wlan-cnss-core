@@ -38,32 +38,48 @@ static int unified_pdrv_init(void)
 		goto fail1;
 	}
 #endif
+#ifdef CONFIG_QCN
+	ret = qcn_sdio_init();
+	if (ret){
+                printk("%s: updrv: failed to register qcn_sdio\n",__func__);
+                goto fail2;
+        }
+
+#endif
+#ifdef CONFIG_QTI_SDIO_CLIENT
+	ret = qti_bridge_init();
+	if (ret){
+                printk("%s: updrv: failed to register qti_bridge\n",__func__);
+                goto fail3;
+        }
+
+#endif
 	/* QMI Registration */
 	ret = qmi_interface_init();
 	if (ret){
 		printk("%s: updrv: failed to register qmi\n",__func__);
-		goto fail2;
+		goto fail4;
 	}
 	/* ipc_brigde Registration */
 #ifdef CONFIG_DIAG_IPC_BRIDGE
 	ret = diag_bridge_init();
 	if (ret){
 		printk("%s: updrv: failed to register ipc_bridge\n",__func__);
-		goto fail3;
+		goto fail5;
 	}
 #endif
 	/* ipc_router Registration */
 	ret = msm_ipc_router_init();
 	if (ret){
 		printk("%s: updrv: failed to register ipc_router\n",__func__);
-		goto fail4;
+		goto fail6;
 	}
 	/* ipc_router_mhi_xprt Registration */
 #ifdef CONFIG_MHI_XPRT
 	ret = ipc_router_mhi_xprt_init();
 	if (ret){
 		printk("%s: updrv: failed to register ipc_router_mhi_xprt (ipc_xprt)\n",__func__);
-		goto fail5;
+		goto fail7;
 	}
 #endif
 	/* ipc_router_hsic_xprt Registration */
@@ -71,57 +87,74 @@ static int unified_pdrv_init(void)
 	ret = msm_ipc_router_hsic_xprt_init();
 	if (ret){
 		printk("%s: updrv: failed to register ipc_router_hsic_xprt\n",__func__);
-		goto fail6;
+		goto fail8;
 	}
+#endif
+#ifdef CONFIG_SDIO_XPRT
+	ret = msm_ipc_router_sdio_xprt_init();
+	if (ret){
+                printk("%s: updrv: failed to register ipc_router_sdio_xprt\n",__func__);
+                goto fail9;
+        }
+
 #endif
 	/* cnss Registration */
 	ret = cnss_initialize();
 	if (ret){
 		printk("%s: updrv: failed to register cnss\n",__func__);
-		goto fail7;
+		goto fail10;
 	}
 
 	/* diag Registration */
 	ret = diagchar_init();
 	if (ret){
 		printk("%s: updrv: failed to register diag\n",__func__);
-		goto fail8;
+		goto fail11;
 	}
 
 	/* cnss utils Registration */
 	ret = cnss_utils_init();
 	if (ret){
 		printk("%s: updrv: failed to register diag\n",__func__);
-		goto fail9;
+		goto fail12;
 	}
 	return 0;
 
-fail9:
+fail12:
 	diagchar_exit();
-fail8:
+fail11:
 	cnss_exit();
-fail7:
+fail10:
+#ifdef CONFIG_SDIO_XPRT
+fail9:
+#endif
 #ifdef CONFIG_HSIC_XPRT
-fail6:
+fail8:
 #endif
 #ifdef CONFIG_MHI_XPRT
+fail7:
+#endif
+fail6:
+#ifdef CONFIG_DIAG_IPC_BRIDGE	
+	diag_bridge_exit();
 fail5:
 #endif
-#ifdef CONFIG_DIAG_IPC_BRIDGE
-	diag_bridge_exit(); /* ipc_bridge  */
-#endif
 fail4:
-#ifdef CONFIG_DIAG_IPC_BRIDGE
+#ifdef CONFIG_QTI_SDIO_CLIENT
+	qti_bridge_exit();
 fail3:
-#endif
+#ifdef CONFIG_QCN
+	qcn_sdio_exit();
 fail2:
+#endif
+#endif
 #ifdef CONFIG_USB_QTI_KS_BRIDGE
 	ksb_exit();
 fail1:
-#endif
 #ifdef CONFIG_MSM_MHI
 	mhi_exit();
 fail:
+#endif
 #endif
 	return ret;
 }

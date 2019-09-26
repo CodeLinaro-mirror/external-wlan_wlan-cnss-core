@@ -21,6 +21,8 @@
 
 #include <linux/pci.h>
 #include <linux/usb.h>
+#include <linux/mmc/sdio_func.h>
+#include "qcn_sdio_al.h"
 
 #define CNSS_MAX_FILE_NAME		20
 #define CNSS_MAX_TIMESTAMP_LEN		32
@@ -115,6 +117,19 @@ struct cnss_usb_wlan_driver {
 	int  (*reset_resume)(struct usb_interface *pintf);
 	void (*update_status)(struct usb_interface *pintf, uint32_t status);
 	const struct usb_device_id *id_table;
+};
+
+struct cnss_sdio_wlan_driver {
+	const char *name;
+	const struct sdio_device_id *id_table;
+	int (*probe)(struct sdio_func *, const struct sdio_device_id *);
+	void (*remove)(struct sdio_func *);
+	int (*reinit)(struct sdio_func *, const struct sdio_device_id *);
+	void (*shutdown)(struct sdio_func *);
+	void (*crash_shutdown)(struct sdio_func *);
+	int (*suspend)(struct device *);
+	int (*resume)(struct device *);
+	void (*update_status)(struct sdio_func *, uint32_t status);
 };
 
 enum cnss_driver_status {
@@ -235,7 +250,7 @@ extern int cnss_wlan_enable(struct device *dev,
 			    enum cnss_driver_mode mode,
 			    const char *host_version);
 extern int cnss_wlan_disable(struct device *dev, enum cnss_driver_mode mode);
-extern unsigned int cnss_get_boot_timeout(struct device *dev);
+extern unsigned int cnss_get_qmi_timeout(void);
 extern int cnss_athdiag_read(struct device *dev, uint32_t offset,
 			     uint32_t mem_type, uint32_t data_len,
 			     uint8_t *output);
@@ -247,5 +262,16 @@ extern int cnss_usb_wlan_register_driver(struct cnss_usb_wlan_driver *driver);
 extern void cnss_usb_wlan_unregister_driver(struct cnss_usb_wlan_driver *
 					    driver);
 extern int cnss_usb_is_device_down(struct device *dev);
+extern int cnss_sdio_wlan_register_driver(struct cnss_sdio_wlan_driver *
+					  driver_ops);
+extern void cnss_sdio_wlan_unregister_driver(struct cnss_sdio_wlan_driver *
+					     driver_ops);
+extern struct sdio_al_client_handle *cnss_sdio_wlan_get_sdio_al_client_handle(
+						       struct sdio_func *func);
+extern struct sdio_al_channel_handle *cnss_sdio_wlan_register_sdio_al_channel(
+				    struct sdio_al_channel_data *channel_data);
+extern void cnss_sdio_wlan_unregister_sdio_al_channel(
+	     struct sdio_al_channel_handle *ch_handle);
+
 
 #endif /* _NET_CNSS2_H */
