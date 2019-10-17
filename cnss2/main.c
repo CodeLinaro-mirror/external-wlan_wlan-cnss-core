@@ -2083,6 +2083,8 @@ static int cnss_probe(struct platform_device *plat_dev)
 	if (ret)
 		goto remove_sysfs;
 
+	init_completion(&plat_priv->power_up_complete);
+
 	ret = cnss_qmi_init(plat_priv);
 	if (ret)
 		goto deinit_event_work;
@@ -2111,7 +2113,6 @@ static int cnss_probe(struct platform_device *plat_dev)
 		cnss_pr_err("Failed to init platform device wakeup source, err = %d\n",
 			    ret);
 #endif
-	init_completion(&plat_priv->power_up_complete);
 	init_completion(&plat_priv->rddm_complete);
 	mutex_init(&plat_priv->dev_lock);
 
