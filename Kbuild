@@ -170,6 +170,7 @@ endif
 
 ifneq ($(CONFIG_QCN),)
         QCN_OBJS := $(QCN_DIR)/qcn_sdio.o
+endif
 
 ifneq ($(CONFIG_CNSS2),)
 	CNSS_OBJS := $(CNSS_DIR)/main.o                           \
@@ -281,5 +282,4 @@ ccflags-y += -Os -I$(src)/inc -I$(src)/mhi
 obj-$(WLAN_CNSSCORE) +=$(MODNAME).o
 $(MODNAME)-y := $(OBJS)
 
-endif
 endif
