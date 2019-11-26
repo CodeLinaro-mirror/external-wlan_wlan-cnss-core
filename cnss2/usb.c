@@ -340,10 +340,10 @@ static void cnss_usb_remove(struct usb_interface *interface)
 
 	clear_bit(CNSS_FW_READY, &plat_priv->driver_state);
 	set_bit(CNSS_DEV_REMOVED, &plat_priv->driver_state);
-	set_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state);
 	if (usb_priv->driver_ops) {
 		cnss_pr_dbg("driver_ops remove state %lu\n",
 			    plat_priv->driver_state);
+		set_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state);
 		usb_priv->driver_ops->update_status(usb_priv->usb_intf,
 						    CNSS_FW_DOWN);
 		usb_priv->driver_ops->remove(usb_priv->usb_intf);
@@ -388,11 +388,6 @@ static int cnss_usb_resume(struct usb_interface *interface)
 	return ret;
 }
 
-static int cnss_usb_reset_resume(struct usb_interface *interface)
-{
-	return 0;
-}
-
 static struct usb_device_id cnss_usb_id_table[] = {
 	{ USB_DEVICE_INTERFACE_NUMBER(QCN7605_USB_VENDOR_ID,
 				      QCN7605_COMPOSITE_PRODUCT_ID,
@@ -416,7 +411,7 @@ static struct usb_driver cnss_usb_driver = {
 	.disconnect = cnss_usb_remove,
 	.suspend    = cnss_usb_suspend,
 	.resume     = cnss_usb_resume,
-	.reset_resume = cnss_usb_reset_resume,
+	.reset_resume = cnss_usb_resume,
 	.supports_autosuspend = true,
 };
 
@@ -431,6 +426,8 @@ int cnss_usb_init(struct cnss_plat_data *plat_priv)
 		goto out;
 	}
 
+	usb_priv = plat_priv->bus_priv;
+	usb_priv->plat_priv = plat_priv;
 	ret = usb_register(&cnss_usb_driver);
 	if (ret) {
 		cnss_pr_err("Failed to register to Linux USB framework, err = %d\n",
