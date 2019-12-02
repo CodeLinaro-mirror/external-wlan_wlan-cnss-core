@@ -105,12 +105,14 @@ static int unified_pdrv_init(void)
 		goto fail10;
 	}
 
+#ifdef CONFIG_MSM_DIAG_INTERFACE
 	/* diag Registration */
 	ret = diagchar_init();
 	if (ret){
 		printk("%s: updrv: failed to register diag\n",__func__);
 		goto fail11;
 	}
+#endif
 
 	/* cnss utils Registration */
 	ret = cnss_utils_init();
@@ -121,8 +123,10 @@ static int unified_pdrv_init(void)
 	return 0;
 
 fail12:
+#ifdef CONFIG_MSM_DIAG_INTERFACE
 	diagchar_exit();
 fail11:
+#endif
 	cnss_exit();
 fail10:
 #ifdef CONFIG_SDIO_XPRT
@@ -162,7 +166,9 @@ fail:
 static void unified_pdrv_deinit(void)
 {
 	cnss_utils_exit();
+#ifdef CONFIG_MSM_DIAG_INTERFACE
 	diagchar_exit();
+#endif
 	cnss_exit();
 #ifdef CONFIG_DIAG_IPC_BRIDGE
 	diag_bridge_exit(); /* ipc_bridge  */
