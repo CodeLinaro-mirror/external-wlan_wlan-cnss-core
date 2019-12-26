@@ -882,6 +882,8 @@ static void __exit msm_ipc_router_hsic_xprt_deinit(void)
 #endif
 {
 #ifdef CONFIG_NAPIER_X86
+	flush_delayed_work(&ipc_router_hsic_xprt_probe_work);
+
 	msm_ipc_router_hsic_driver_unregister(hsic_xprtp);
 
 	msm_ipc_router_hsic_config_deinit(hsic_xprtp);
