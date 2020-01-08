@@ -280,4 +280,12 @@ u32 cnss_get_wake_msi(struct cnss_plat_data *plat_priv);
 bool *cnss_get_qmi_bypass(void);
 bool is_qcn7605_device(u16 device_id);
 
+void cnss_set_driver_status(enum cnss_driver_status driver_status);
+u8 *cnss_common_get_wlan_mac_address(struct device *dev, u32 *num);
+
+int cnss_set_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 ch_count);
+int cnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list,
+				 u16 *ch_count, u16 buf_len);
+int cnss_wlan_set_dfs_nol(const void *info, u16 info_len);
+int cnss_wlan_get_dfs_nol(void *info, u16 info_len);
 #endif /* _CNSS_MAIN_H */

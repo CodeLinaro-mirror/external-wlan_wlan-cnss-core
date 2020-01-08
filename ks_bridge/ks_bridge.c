@@ -37,6 +37,10 @@
 #include <linux/sched.h>
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+#include "unified_wlan_cnsscore.h"
+#endif
+
 #define DRIVER_DESC	"USB host ks bridge driver"
 
 enum bus_id {

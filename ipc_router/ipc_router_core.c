@@ -49,6 +49,10 @@
 #include "ipc_router_private.h"
 #include "ipc_router_security.h"
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+#include "unified_wlan_cnsscore.h"
+#endif
+
 enum {
 	SMEM_LOG = 1U << 0,
 	RTR_DBG = 1U << 1,
@@ -523,7 +527,7 @@ static struct msm_ipc_routing_table_entry *ipc_router_get_rtentry_ref(
  * This function is called when all references to the routing table entry are
  * released.
  */
-void ipc_router_release_rtentry(struct kref *ref)
+static void ipc_router_release_rtentry(struct kref *ref)
 {
 	struct msm_ipc_routing_table_entry *rt_entry =
 		container_of(ref, struct msm_ipc_routing_table_entry, ref);
@@ -536,7 +540,7 @@ void ipc_router_release_rtentry(struct kref *ref)
 	kfree(rt_entry);
 }
 
-struct rr_packet *rr_read(struct msm_ipc_router_xprt_info *xprt_info)
+static struct rr_packet *rr_read(struct msm_ipc_router_xprt_info *xprt_info)
 {
 	struct rr_packet *temp_pkt;
 
@@ -1294,7 +1298,7 @@ static uint32_t allocate_port_id(void)
 	return port_id;
 }
 
-void msm_ipc_router_add_local_port(struct msm_ipc_port *port_ptr)
+static void msm_ipc_router_add_local_port(struct msm_ipc_port *port_ptr)
 {
 	uint32_t key;
 
@@ -1398,7 +1402,7 @@ static struct msm_ipc_port *ipc_router_get_port_ref(uint32_t port_id)
  *
  * This function is called when all references to the port are released.
  */
-void ipc_router_release_port(struct kref *ref)
+static void ipc_router_release_port(struct kref *ref)
 {
 	struct rr_packet *pkt, *temp_pkt;
 	struct msm_ipc_port *port_ptr =
@@ -3664,6 +3668,7 @@ int msm_ipc_router_lookup_server_name(struct msm_ipc_port_name *srv_name,
 	return i;
 }
 
+#if 0
 int msm_ipc_router_close(void)
 {
 	struct msm_ipc_router_xprt_info *xprt_info, *tmp_xprt_info;
@@ -3678,6 +3683,7 @@ int msm_ipc_router_close(void)
 	up_write(&xprt_info_list_lock_lha5);
 	return 0;
 }
+#endif
 
 /**
  * pil_vote_load_worker() - Process vote to load the modem

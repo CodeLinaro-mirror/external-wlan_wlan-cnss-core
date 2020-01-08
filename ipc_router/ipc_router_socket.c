@@ -227,7 +227,7 @@ static int msm_ipc_router_create(struct net *net,
 	return 0;
 }
 
-int msm_ipc_router_bind(struct socket *sock, struct sockaddr *uaddr,
+static int msm_ipc_router_bind(struct socket *sock, struct sockaddr *uaddr,
 			       int uaddr_len)
 {
 	struct sockaddr_msm_ipc *addr = (struct sockaddr_msm_ipc *)uaddr;

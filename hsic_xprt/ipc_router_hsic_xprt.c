@@ -31,6 +31,9 @@
 #include <linux/delay.h>
 #include <linux/sched.h>
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+#include "unified_wlan_cnsscore.h"
+#endif
 
 static struct msm_ipc_router_hsic_xprt *hsic_xprtp;
 static int msm_ipc_router_hsic_xprt_debug_mask;

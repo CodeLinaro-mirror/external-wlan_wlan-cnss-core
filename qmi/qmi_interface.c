@@ -41,6 +41,10 @@
 
 #include "qmi_interface_priv.h"
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+#include "unified_wlan_cnsscore.h"
+#endif
+
 #define BUILD_INSTANCE_ID(vers, ins) (((vers) & 0xFF) | (((ins) & 0xFF) << 8))
 #define LOOKUP_MASK 0xFFFFFFFF
 #define MAX_WQ_NAME_LEN 20
@@ -2176,7 +2180,7 @@ static void qmi_svc_event_notifier_deinit(void)
  *
  * Initialize log contexts for QMI request/response/indications.
  */
-void qmi_log_init(void)
+static void qmi_log_init(void)
 {
 #ifndef CONFIG_NAPIER_X86
 	qmi_req_resp_log_ctx =
@@ -2198,7 +2202,7 @@ void qmi_log_init(void)
  *
  * Deinitialize log contexts for QMI request/response/indications.
  */
-void qmi_log_deinit(void)
+static void qmi_log_deinit(void)
 {
 #ifdef CONFIG_NAPIER_X86
 	return;

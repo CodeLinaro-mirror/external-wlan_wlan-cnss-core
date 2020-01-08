@@ -14,6 +14,7 @@
 
 #include <linux/module.h>
 #include <linux/slab.h>
+#include "main.h"
 
 static DEFINE_MUTEX(unsafe_channel_list_lock);
 static DEFINE_MUTEX(dfs_nol_info_lock);

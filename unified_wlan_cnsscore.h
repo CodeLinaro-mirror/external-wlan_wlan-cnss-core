@@ -38,4 +38,10 @@ void qmi_interface_deinit(void);
 void msm_ipc_router_hsic_xprt_deinit(void);
 void ipc_router_mhi_xprt_deinit(void);
 void msm_ipc_router_deinit(void);
+
+#ifdef CONFIG_SINGLE_KO_FEATURE
+int hdd_module_init(void);
+void hdd_module_exit(void);
+#endif
+
 #endif

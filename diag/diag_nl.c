@@ -11,6 +11,7 @@
  */
 
 #include "diag_mux.h"
+#include "diag_nl.h"
 
 #include <net/sock.h>
 #include <net/netlink.h>
