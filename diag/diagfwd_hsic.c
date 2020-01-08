@@ -70,7 +70,8 @@ static void diag_hsic_read_complete(void *ctxt, char *buf, int len,
 
 fail:
 	diagmem_free(driver, buf, ch->mempool);
-	queue_work(ch->hsic_wq, &ch->read_work);
+	if ( !ch->suspended )
+		queue_work(ch->hsic_wq, &ch->read_work);
 	return;
 }
 
@@ -107,6 +108,7 @@ static int diag_hsic_suspend(void *ctxt)
 	spin_lock_irqsave(&ch->lock, flags);
 	ch->suspended = 1;
 	spin_unlock_irqrestore(&ch->lock, flags);
+	cancel_work_sync(&(ch->read_work));
 	return 0;
 }
 
@@ -224,7 +226,7 @@ static void hsic_read_work_fn(struct work_struct *work)
 	unsigned char *buf = NULL;
 	struct diag_hsic_info *ch = container_of(work, struct diag_hsic_info,
 						 read_work);
-	if (!ch || !ch->enabled || !ch->opened)
+	if (!ch || !ch->enabled || !ch->opened || ch->suspended )
 		return;
 
 	do {
@@ -286,6 +288,7 @@ static int diag_hsic_remove(struct platform_device *pdev)
 	}
 
 	ch = &diag_hsic[pdev->id];
+	cancel_work_sync(&(ch->read_work));
 	queue_work(ch->hsic_wq, &(ch->close_work));
 	return 0;
 }
@@ -324,7 +327,8 @@ static int hsic_queue_read(int id)
 				   __func__, id);
 		return -EINVAL;
 	}
-	queue_work(diag_hsic[id].hsic_wq, &(diag_hsic[id].read_work));
+	if ( !diag_hsic[id].suspended )
+		queue_work(diag_hsic[id].hsic_wq, &(diag_hsic[id].read_work));
 	return 0;
 }
 
@@ -369,7 +373,9 @@ static int hsic_fwd_complete(int id, unsigned char *buf, int len, int ctxt)
 	if (!buf)
 		return -EIO;
 	diagmem_free(driver, buf, diag_hsic[id].mempool);
-	queue_work(diag_hsic[id].hsic_wq, &(diag_hsic[id].read_work));
+	if ( !diag_hsic[id].suspended )
+		queue_work(diag_hsic[id].hsic_wq, &(diag_hsic[id].read_work));
+
 	return 0;
 }
 
