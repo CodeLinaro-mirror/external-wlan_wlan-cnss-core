@@ -167,8 +167,8 @@ fail7:
 #endif
 #ifdef CONFIG_DIAG_IPC_BRIDGE
 	diag_bridge_exit(); /* ipc_bridge  */
-#endif
 fail6:
+#endif
 	qmi_interface_deinit();
 #ifdef CONFIG_DIAG_IPC_BRIDGE	
 	diag_bridge_exit();

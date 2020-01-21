@@ -2110,9 +2110,14 @@ static int cnss_probe(struct platform_device *plat_dev)
 		if (ret)
 			goto remove_debugfs;
 	}
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+	timer_setup(&plat_priv->fw_boot_timer,
+		    cnss_bus_fw_boot_timeout_hdlr, 0);
+#else
 	setup_timer(&plat_priv->fw_boot_timer,
 		    cnss_bus_fw_boot_timeout_hdlr, (unsigned long)plat_priv);
 
+#endif
 	register_pm_notifier(&cnss_pm_notifier);
 
 #ifndef CONFIG_NAPIER_X86

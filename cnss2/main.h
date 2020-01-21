@@ -13,6 +13,7 @@
 #ifndef _CNSS_MAIN_H
 #define _CNSS_MAIN_H
 
+#include <linux/version.h>
 #include <linux/etherdevice.h>
 #include <linux/pm_qos.h>
 #ifdef CONFIG_NAPIER_X86

@@ -51,7 +51,11 @@ int cnss_bus_load_m3(struct cnss_plat_data *plat_priv);
 int cnss_bus_alloc_fw_mem(struct cnss_plat_data *plat_priv);
 int cnss_bus_get_wake_irq(struct cnss_plat_data *plat_priv);
 int cnss_bus_force_fw_assert_hdlr(struct cnss_plat_data *plat_priv);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+void cnss_bus_fw_boot_timeout_hdlr(struct timer_list *t);
+#else
 void cnss_bus_fw_boot_timeout_hdlr(unsigned long data);
+#endif
 void cnss_bus_collect_dump_info(struct cnss_plat_data *plat_priv);
 int cnss_bus_call_driver_probe(struct cnss_plat_data *plat_priv);
 int cnss_bus_call_driver_remove(struct cnss_plat_data *plat_priv);
