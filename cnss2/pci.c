@@ -1791,6 +1791,7 @@ int cnss_smmu_map(struct device *dev,
 }
 EXPORT_SYMBOL(cnss_smmu_map);
 
+#ifndef CONFIG_ONE_MSI_VECTOR
 static struct cnss_msi_config msi_config = {
 	.total_vectors = 32,
 	.total_users = 4,
@@ -1801,6 +1802,18 @@ static struct cnss_msi_config msi_config = {
 		{ .name = "DP", .num_vectors = 18, .base_vector = 14 },
 	},
 };
+#else
+static struct cnss_msi_config msi_config = {
+	.total_vectors = 1,
+	.total_users = 4,
+	.users = (struct cnss_msi_user[]) {
+		{ .name = "MHI", .num_vectors = 1, .base_vector = 0 },
+		{ .name = "CE", .num_vectors = 1, .base_vector = 0 },
+		{ .name = "WAKE", .num_vectors = 1, .base_vector = 0 },
+		{ .name = "DP", .num_vectors = 1, .base_vector = 0 },
+	},
+};
+#endif
 
 static int cnss_pci_get_msi_assignment(struct cnss_pci_data *pci_priv)
 {
@@ -2232,7 +2245,11 @@ static int cnss_pci_register_mhi(struct cnss_pci_data *pci_priv)
 
 	if (!mhi_dev->resources[1].start) {
 		mhi_dev->resources[1].start = pci_dev->irq;
+#ifndef CONFIG_ONE_MSI_VECTOR
 		mhi_dev->resources[1].end = pci_dev->irq + 1;
+#else
+		mhi_dev->resources[1].end = pci_dev->irq;
+#endif
 		mhi_dev->resources[1].flags = IORESOURCE_IRQ;
 		mhi_dev->resources[1].name = "IRQ";
 	}

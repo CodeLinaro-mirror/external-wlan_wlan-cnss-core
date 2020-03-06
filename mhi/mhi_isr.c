@@ -315,7 +315,11 @@ void mhi_ev_task(unsigned long data)
 		}
 	}
 
+#ifndef CONFIG_ONE_MSI_VECTOR
 	enable_irq(MSI_TO_IRQ(mhi_dev_ctxt, ev_index));
+#else
+	enable_irq(MSI_TO_IRQ(mhi_dev_ctxt, 0));
+#endif
 	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "Exit\n");
 }
 
@@ -376,6 +380,7 @@ void mhi_unmask_irq(struct mhi_client_handle *client_handle)
 	enable_irq(MSI_TO_IRQ(mhi_dev_ctxt, client_config->msi_vec));
 }
 
+#ifndef CONFIG_ONE_MSI_VECTOR
 irqreturn_t mhi_msi_handlr(int irq_number, void *dev_id)
 {
 	struct mhi_device_ctxt *mhi_dev_ctxt = dev_id;
@@ -410,6 +415,29 @@ irqreturn_t mhi_msi_handlr(int irq_number, void *dev_id)
 
 	return IRQ_HANDLED;
 }
+#else /* CONFIG_ONE_MSI_VECTOR */
+irqreturn_t mhi_msi_handlr(int irq_number, void *dev_id)
+{
+	struct mhi_ring *mhi_ring = dev_id;
+	int er_index = mhi_ring->index;
+	struct mhi_device_ctxt *mhi_dev_ctxt = mhi_ring->mhi_dev_ctxt;
+	struct mhi_event_ring_cfg *ring_props =
+		&mhi_dev_ctxt->ev_ring_props[er_index];
+	int msi = IRQ_TO_MSI(mhi_dev_ctxt, irq_number);
+
+	mhi_dev_ctxt->counters.msi_counter[er_index]++;
+	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "Got MSI 0x%x for ring %u\n",
+		msi, er_index);
+	trace_mhi_msi(msi);
+	disable_irq_nosync(irq_number);
+	if (ring_props->priority <= MHI_EV_PRIORITY_TASKLET)
+		tasklet_schedule(&mhi_ring->ev_task);
+	else
+		schedule_work(&mhi_ring->ev_worker);
+
+	return IRQ_HANDLED;
+}
+#endif
 
 irqreturn_t mhi_msi_ipa_handlr(int irq_number, void *dev_id)
 {

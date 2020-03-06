@@ -160,6 +160,10 @@ endif
 ifneq ($(CONFIG_CNSS_UTILS),)
     KBUILD_CPPFLAGS += -DCONFIG_CNSS_UTILS
 endif
+ 
+ifneq ($(CONFIG_ONE_MSI_VECTOR),)
+     KBUILD_CPPFLAGS += -DCONFIG_ONE_MSI_VECTOR
+endif
 
 CDEFINES :=	-Wall\
 		-Werror

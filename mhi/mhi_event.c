@@ -25,8 +25,14 @@ int mhi_populate_event_cfg(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
 #ifdef CONFIG_NAPIER_X86
 	int i;
-	u32 evt_cfgs[2][6] = {{0xa, 0x0, 0x1, 0, 1, 0x31},
-			     {0x80, 0x1, 0x1, 0, 1, 0x31}};
+	u32 evt_cfgs[2][6] = {
+				{0xa, 0x0, 0x1, 0, 1, 0x31},
+#ifndef CONFIG_ONE_MSI_VECTOR
+				{0x80, 0x1, 0x1, 0, 1, 0x31}
+#else
+				{0x80, 0x0, 0x1, 0, 1, 0x31}
+#endif
+			     };
 
 	mhi_dev_ctxt->mmio_info.nr_event_rings = 2;
 #else

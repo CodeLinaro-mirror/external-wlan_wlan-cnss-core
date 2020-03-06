@@ -107,9 +107,17 @@ int mhi_ctxt_init(struct mhi_device_ctxt *mhi_dev_ctxt)
 		ret_val = request_irq(mhi_dev_ctxt->core.irq_base +
 				mhi_dev_ctxt->ev_ring_props[j].msi_vec,
 				mhi_dev_ctxt->ev_ring_props[j].mhi_handler_ptr,
+#ifdef CONFIG_ONE_MSI_VECTOR
+				IRQF_SHARED |
+#endif
 				IRQF_NO_SUSPEND,
 				"mhi_drv",
-				(void *)mhi_dev_ctxt);
+#ifndef CONFIG_ONE_MSI_VECTOR
+				(void *)mhi_dev_ctxt
+#else
+				(void *)&mhi_dev_ctxt->mhi_local_event_ctxt[j]
+#endif
+				);
 		if (ret_val) {
 			mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
 				"Failed to register handler for MSI ret_val = %d\n",
