@@ -154,6 +154,7 @@ int cnss_usb_unregister_driver_hdlr(struct cnss_usb_data *usb_priv)
 	cnss_usb_dev_shutdown(usb_priv);
 	usb_priv->driver_ops = NULL;
 	usb_priv->plat_priv = NULL;
+	cnss_wlfw_wlan_mode_send_sync(plat_priv, QMI_WLFW_OFF_V01);
 	return 0;
 }
 
