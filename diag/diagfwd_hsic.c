@@ -70,7 +70,7 @@ static void diag_hsic_read_complete(void *ctxt, char *buf, int len,
 
 fail:
 	diagmem_free(driver, buf, ch->mempool);
-	if ( !ch->suspended )
+	if (!ch->suspended && ch->hsic_wq)
 		queue_work(ch->hsic_wq, &ch->read_work);
 	return;
 }
@@ -226,7 +226,7 @@ static void hsic_read_work_fn(struct work_struct *work)
 	unsigned char *buf = NULL;
 	struct diag_hsic_info *ch = container_of(work, struct diag_hsic_info,
 						 read_work);
-	if (!ch || !ch->enabled || !ch->opened || ch->suspended )
+	if (!ch || !ch->enabled || !ch->opened || ch->suspended)
 		return;
 
 	do {
@@ -327,7 +327,7 @@ static int hsic_queue_read(int id)
 				   __func__, id);
 		return -EINVAL;
 	}
-	if ( !diag_hsic[id].suspended )
+	if (!diag_hsic[id].suspended && diag_hsic[id].hsic_wq)
 		queue_work(diag_hsic[id].hsic_wq, &(diag_hsic[id].read_work));
 	return 0;
 }
@@ -373,7 +373,7 @@ static int hsic_fwd_complete(int id, unsigned char *buf, int len, int ctxt)
 	if (!buf)
 		return -EIO;
 	diagmem_free(driver, buf, diag_hsic[id].mempool);
-	if ( !diag_hsic[id].suspended )
+	if (!diag_hsic[id].suspended && diag_hsic[id].hsic_wq)
 		queue_work(diag_hsic[id].hsic_wq, &(diag_hsic[id].read_work));
 
 	return 0;
@@ -439,6 +439,7 @@ void diag_hsic_exit()
 		ch->suspended = 0;
 		if (ch->hsic_wq)
 			destroy_workqueue(ch->hsic_wq);
+		ch->hsic_wq = NULL;
 	}
 }
 
