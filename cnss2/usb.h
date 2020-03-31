@@ -47,8 +47,6 @@ static inline struct cnss_plat_data *cnss_usb_priv_to_plat_priv(void *bus_priv)
 void cnss_usb_collect_dump_info(struct cnss_usb_data *usb_priv, bool in_panic);
 void cnss_usb_clear_dump_info(struct cnss_usb_data *usb_priv);
 int cnss_usb_force_fw_assert_hdlr(struct cnss_usb_data *usb_priv);
-void cnss_usb_fw_boot_timeout_hdlr(struct cnss_usb_data *usb_priv);
-int cnss_usb_dev_powerup(struct cnss_plat_data *plat_priv);
 int cnss_usb_dev_shutdown(struct cnss_usb_data *usb_priv);
 int cnss_usb_dev_crash_shutdown(struct cnss_usb_data *usb_priv);
 int cnss_usb_dev_ramdump(struct cnss_usb_data *usb_priv);
@@ -62,6 +60,8 @@ int cnss_usb_call_driver_remove(struct cnss_usb_data *usb_priv);
 void cnss_usb_deinit(struct cnss_plat_data *plat_priv);
 int cnss_usb_register_driver_hdlr(struct cnss_usb_data *usb_priv, void *data);
 int cnss_usb_unregister_driver_hdlr(struct cnss_usb_data *usb_priv);
+void cnss_usb_fw_boot_timeout_hdlr(struct cnss_usb_data *usb_priv);
+int cnss_usb_dev_powerup(struct cnss_plat_data *plat_priv);
 #else
 static inline int cnss_usb_init(struct cnss_plat_data *plat_priv)
 {
@@ -75,8 +75,7 @@ static inline int cnss_usb_call_driver_remove(struct cnss_usb_data *usb_priv)
 {
 	return 0;
 }
-static inline void cnss_usb_deinit(struct cnss_plat_data *plat_priv)
-{ }
+static inline void cnss_usb_deinit(struct cnss_plat_data *plat_priv) {}
 static inline int cnss_usb_register_driver_hdlr(struct cnss_usb_data *usb_priv, void *data)
 {
 	return 0;
@@ -85,6 +84,12 @@ static inline int cnss_usb_unregister_driver_hdlr(struct cnss_usb_data *usb_priv
 {
 	return 0;
 }
+static inline void cnss_usb_fw_boot_timeout_hdlr(struct cnss_usb_data *usb_priv) {}
+static inline int cnss_usb_dev_powerup(struct cnss_plat_data *plat_priv)
+{
+	return 0;
+}
+
 #endif
 
 #endif /* _CNSS_USB_H */
