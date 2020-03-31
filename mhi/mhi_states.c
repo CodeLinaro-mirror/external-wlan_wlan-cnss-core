@@ -127,64 +127,112 @@ void mhi_set_m_state(struct mhi_device_ctxt *mhi_dev_ctxt,
 	mhi_reg_read(mhi_dev_ctxt->mmio_info.mmio_addr, MHICTRL);
 }
 
+static inline void mhi_mdelay(u32 delay)
+{
+	if (in_interrupt() || irqs_disabled() || in_atomic())
+		mdelay(delay);
+	else
+		msleep(delay);
+}
+
 void mhi_set_wlaon_sw_entry(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
-	mhi_reg_write_remap(mhi_dev_ctxt->mmio_info.mmio_addr,
-			WLAON_WARM_SW_ENTRY, 0);
+	u32 val;
+
+	val = mhi_reg_read_remap(mhi_dev_ctxt,
+				 mhi_dev_ctxt->mmio_info.mmio_addr,
+				 WLAON_WARM_SW_ENTRY);
+	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "WLAON_WARM_SW_ENTRY 0x%x\n", val);
+
+	mhi_reg_write_remap(mhi_dev_ctxt,
+			    mhi_dev_ctxt->mmio_info.mmio_addr,
+			    WLAON_WARM_SW_ENTRY, 0);
+
+#ifdef CONFIG_CNSS_QCA6390
+	mhi_mdelay(10);
+#endif
+
+	val = mhi_reg_read_remap(mhi_dev_ctxt,
+				 mhi_dev_ctxt->mmio_info.mmio_addr,
+				 WLAON_WARM_SW_ENTRY);
+	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "WLAON_WARM_SW_ENTRY 0x%x\n", val);
 }
+
+#ifdef CONFIG_CNSS_QCA6390
+void mhi_set_pcie_mhictrl_reset(struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	u32 val;
+
+	val = mhi_reg_read_remap(mhi_dev_ctxt,
+				 mhi_dev_ctxt->mmio_info.mmio_addr,
+				 MHISTATUS);
+	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "MHISTATUS 0x%x\n", val);
+
+	/*
+	 * Observed on Hastings that after SOC_GLOBAL_RESET, MHISTATUS
+	 * has SYSERR bit set and thus need to set MHICTRL_RESET
+	 * to clear SYSERR.
+	 */
+	mhi_reg_write_remap(mhi_dev_ctxt,
+			    mhi_dev_ctxt->mmio_info.mmio_addr,
+			    MHICTRL, MHICTRL_RESET_MASK);
+
+	mhi_mdelay(10);
+}
+#endif
 
 void mhi_set_pcie_soc_global_reset(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
 	u32 val;
 	u32 delay;
 
-	val = mhi_reg_read_remap(mhi_dev_ctxt->mmio_info.mmio_addr,
-			PCIE_SOC_GLOBAL_RESET);
+	val = mhi_reg_read_remap(mhi_dev_ctxt,
+				 mhi_dev_ctxt->mmio_info.mmio_addr,
+				 PCIE_SOC_GLOBAL_RESET);
 	val |= PCIE_SOC_GLOBAL_RESET_V;
-	mhi_reg_write_remap(mhi_dev_ctxt->mmio_info.mmio_addr,
-			PCIE_SOC_GLOBAL_RESET, val);
+	mhi_reg_write_remap(mhi_dev_ctxt,
+			    mhi_dev_ctxt->mmio_info.mmio_addr,
+			    PCIE_SOC_GLOBAL_RESET, val);
 
 	/* TODO: exact time to sleep is uncertain */
 	delay = 10;
-
-	if (in_interrupt() || irqs_disabled() || in_atomic())
-		mdelay(delay);
-	else
-		msleep(delay);
+	mhi_mdelay(delay);
 
 	/* Need to toggle V bit back otherwise stuck in reset status */
 	val &= ~PCIE_SOC_GLOBAL_RESET_V;
-	mhi_reg_write_remap(mhi_dev_ctxt->mmio_info.mmio_addr,
-			PCIE_SOC_GLOBAL_RESET, val);
+	mhi_reg_write_remap(mhi_dev_ctxt,
+			    mhi_dev_ctxt->mmio_info.mmio_addr,
+			    PCIE_SOC_GLOBAL_RESET, val);
 
-	if (in_interrupt() || irqs_disabled() || in_atomic())
-		mdelay(delay);
-	else
-		msleep(delay);
+	mhi_mdelay(delay);
 }
 
 void mhi_reset_pcie_txvecdb(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
-	mhi_reg_write_remap(mhi_dev_ctxt->mmio_info.mmio_addr,
-			PCIE_TXVECDB, 0);
+	mhi_reg_write_remap(mhi_dev_ctxt,
+			    mhi_dev_ctxt->mmio_info.mmio_addr,
+			    PCIE_TXVECDB, 0);
 }
 
 void mhi_reset_pcie_txvecstatus(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
-	mhi_reg_write_remap(mhi_dev_ctxt->mmio_info.mmio_addr,
-			PCIE_TXVECSTATUS, 0);
+	mhi_reg_write_remap(mhi_dev_ctxt,
+			    mhi_dev_ctxt->mmio_info.mmio_addr,
+			    PCIE_TXVECSTATUS, 0);
 }
 
 void mhi_reset_pcie_rxvecdb(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
-	mhi_reg_write_remap(mhi_dev_ctxt->mmio_info.mmio_addr,
-			PCIE_RXVECDB, 0);
+	mhi_reg_write_remap(mhi_dev_ctxt,
+			    mhi_dev_ctxt->mmio_info.mmio_addr,
+			    PCIE_RXVECDB, 0);
 }
 
 void mhi_reset_pcie_rxvecstatus(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
-	mhi_reg_write_remap(mhi_dev_ctxt->mmio_info.mmio_addr,
-			PCIE_RXVECSTATUS, 0);
+	mhi_reg_write_remap(mhi_dev_ctxt,
+			    mhi_dev_ctxt->mmio_info.mmio_addr,
+			    PCIE_RXVECSTATUS, 0);
 }
 
 /*
@@ -751,16 +799,21 @@ void process_stt_work_item(
 		mhi_dev_ctxt->dev_exec_env = MHI_EXEC_ENV_SBL;
 		write_unlock_irq(&mhi_dev_ctxt->pm_xfer_lock);
 		enable_clients(mhi_dev_ctxt, mhi_dev_ctxt->dev_exec_env);
+#ifdef CONFIG_CNSS_QCA6390
+		wake_up(mhi_dev_ctxt->mhi_ev_wq.bhi_event);
+#endif
 		break;
 	case STATE_TRANSITION_AMSS:
 		r = process_amss_transition(mhi_dev_ctxt, cur_work_item);
 		break;
+#ifndef CONFIG_CNSS_QCA6390
 	case STATE_TRANSITION_BHIE:
 		write_lock_irq(&mhi_dev_ctxt->pm_xfer_lock);
 		mhi_dev_ctxt->dev_exec_env = MHI_EXEC_ENV_BHIE;
 		write_unlock_irq(&mhi_dev_ctxt->pm_xfer_lock);
 		wake_up(mhi_dev_ctxt->mhi_ev_wq.bhi_event);
 		break;
+#endif
 	case STATE_TRANSITION_RDDM:
 		write_lock_irq(&mhi_dev_ctxt->pm_xfer_lock);
 		mhi_dev_ctxt->dev_exec_env = MHI_EXEC_ENV_RDDM;

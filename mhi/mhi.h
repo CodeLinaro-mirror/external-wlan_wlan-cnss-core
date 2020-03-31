@@ -426,8 +426,12 @@ enum MHI_EXEC_ENV {
 	MHI_EXEC_ENV_PBL = 0x0,
 	MHI_EXEC_ENV_SBL = 0x1,
 	MHI_EXEC_ENV_AMSS = 0x2,
+#ifndef CONFIG_CNSS_QCA6390
 	MHI_EXEC_ENV_BHIE = 0x3,
 	MHI_EXEC_ENV_RDDM = 0x4,
+#else
+	MHI_EXEC_ENV_RDDM = 0x3,
+#endif
 	MHI_EXEC_ENV_DISABLE_TRANSITION, /* local EE, not related to mhi spec */
 };
 
@@ -768,8 +772,13 @@ void mhi_reg_write(struct mhi_device_ctxt *mhi_dev_ctxt,
 u32 mhi_reg_read(void __iomem *io_addr, uintptr_t io_offset);
 u32 mhi_reg_read_field(void __iomem *io_addr, uintptr_t io_offset,
 			 u32 mask, u32 shift);
-u32 mhi_reg_read_remap(void __iomem *io_addr, uintptr_t io_offset);
-void mhi_reg_write_remap(void __iomem *io_addr, uintptr_t io_offset, u32 val);
+u32 mhi_reg_read_remap(struct mhi_device_ctxt *mhi_dev_ctxt,
+		       void __iomem *io_addr,
+		       uintptr_t io_offset);
+void mhi_reg_write_remap(struct mhi_device_ctxt *mhi_dev_ctxt,
+			 void __iomem *io_addr,
+			 uintptr_t io_offset,
+			 u32 val);
 void mhi_exit_m2(struct mhi_device_ctxt *mhi_dev_ctxt);
 int mhi_runtime_suspend(struct device *dev);
 int get_chan_props(struct mhi_device_ctxt *mhi_dev_ctxt, int chan,
@@ -808,5 +817,8 @@ void mhi_reset_pcie_txvecdb(struct mhi_device_ctxt *mhi_dev_ctxt);
 void mhi_reset_pcie_txvecstatus(struct mhi_device_ctxt *mhi_dev_ctxt);
 void mhi_reset_pcie_rxvecdb(struct mhi_device_ctxt *mhi_dev_ctxt);
 void mhi_reset_pcie_rxvecstatus(struct mhi_device_ctxt *mhi_dev_ctxt);
+#ifdef CONFIG_CNSS_QCA6390
+void mhi_set_pcie_mhictrl_reset(struct mhi_device_ctxt *mhi_dev_ctxt);
+#endif
 
 #endif

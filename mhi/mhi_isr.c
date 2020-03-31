@@ -14,6 +14,7 @@
 
 #include "mhi_sys.h"
 #include "mhi_trace.h"
+#include "mhi_bhi.h"
 
 static int mhi_process_event_ring(
 		struct mhi_device_ctxt *mhi_dev_ctxt,
@@ -158,6 +159,10 @@ static int mhi_process_event_ring(
 				break;
 			case STATE_TRANSITION_SYS_ERR:
 			{
+#ifdef CONFIG_CNSS_QCA6490
+				mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
+					"MHI System Error Detected, skip\n");
+#else
 				enum MHI_PM_STATE new_state;
 				unsigned long flags;
 
@@ -166,12 +171,13 @@ static int mhi_process_event_ring(
 				write_lock_irqsave(&mhi_dev_ctxt->pm_xfer_lock,
 						   flags);
 				new_state = mhi_tryset_pm_state
-					(mhi_dev_ctxt, MHI_PM_SYS_ERR_DETECT);
+					    (mhi_dev_ctxt, MHI_PM_SYS_ERR_DETECT);
 				write_unlock_irqrestore
-					(&mhi_dev_ctxt->pm_xfer_lock, flags);
+					    (&mhi_dev_ctxt->pm_xfer_lock, flags);
 				if (new_state == MHI_PM_SYS_ERR_DETECT)
 					schedule_work(&mhi_dev_ctxt->
 						      process_sys_err_worker);
+#endif
 				break;
 			}
 			default:
@@ -187,6 +193,9 @@ static int mhi_process_event_ring(
 			enum STATE_TRANSITION new_state = 0;
 			enum MHI_EXEC_ENV event =
 				MHI_READ_EXEC_ENV(&event_to_process);
+#ifdef CONFIG_CNSS_QCA6490
+			u32 cur_exec = mhi_dev_ctxt->dev_exec_env;
+#endif
 
 			mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
 				"MHI EE received ring 0x%x event:0x%x\n",
@@ -200,11 +209,17 @@ static int mhi_process_event_ring(
 			case MHI_EXEC_ENV_AMSS:
 				new_state = STATE_TRANSITION_AMSS;
 				break;
+#ifndef CONFIG_CNSS_QCA6390
 			case MHI_EXEC_ENV_BHIE:
 				new_state = STATE_TRANSITION_BHIE;
 				break;
+#endif
 			case MHI_EXEC_ENV_RDDM:
 				new_state = STATE_TRANSITION_RDDM;
+#ifdef CONFIG_CNSS_QCA6490
+				if (cur_exec != MHI_EXEC_ENV_DISABLE_TRANSITION && cur_exec != MHI_EXEC_ENV_RDDM)
+					schedule_work(&mhi_dev_ctxt->process_sys_err_worker);
+#endif
 				break;
 			default:
 				mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
@@ -256,6 +271,17 @@ void mhi_ev_task(unsigned long data)
 
 	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "Enter\n");
 
+#ifdef CONFIG_CNSS_QCA6390
+	/* Patch from MSM as gerrit#2559252 */
+	/*
+	 * we can check pm_state w/o a lock here because there is no way
+	 * pm_state can change from reg access valid to no access while this
+	 * therad being executed.
+	 */
+	if (!MHI_REG_ACCESS_VALID(mhi_dev_ctxt->mhi_pm_state))
+		return;
+#endif
+
 	/* Process event ring */
 	ret = mhi_process_event_ring(mhi_dev_ctxt, ev_index, U32_MAX);
 	/*
@@ -268,7 +294,10 @@ void mhi_ev_task(unsigned long data)
 		enum MHI_PM_STATE new_state;
 
 		read_lock_bh(&mhi_dev_ctxt->pm_xfer_lock);
+#ifndef CONFIG_CNSS_QCA6390
+		/* Patch from MSM as gerrit#2559252 */
 		if (MHI_REG_ACCESS_VALID(mhi_dev_ctxt->mhi_pm_state))
+#endif
 			in_sys_err = mhi_in_sys_err(mhi_dev_ctxt);
 		read_unlock_bh(&mhi_dev_ctxt->pm_xfer_lock);
 
@@ -354,6 +383,20 @@ irqreturn_t mhi_msi_handlr(int irq_number, void *dev_id)
 	struct mhi_ring *mhi_ring = &mhi_dev_ctxt->mhi_local_event_ctxt[msi];
 	struct mhi_event_ring_cfg *ring_props =
 		&mhi_dev_ctxt->ev_ring_props[msi];
+
+#ifdef CONFIG_CNSS_QCA6490
+	u32 cur_exec;
+	u32 prev_exec = mhi_dev_ctxt->dev_exec_env;
+	struct bhi_ctxt_t *bhi_ctxt = &mhi_dev_ctxt->bhi_ctxt;
+
+	cur_exec = mhi_reg_read(bhi_ctxt->bhi_base, BHI_EXECENV);
+
+	if (cur_exec != prev_exec && prev_exec != MHI_EXEC_ENV_DISABLE_TRANSITION && cur_exec == MHI_EXEC_ENV_RDDM) {
+		mhi_dev_ctxt->dev_exec_env = MHI_EXEC_ENV_RDDM;
+		mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "mhi_msi_handlr scheduler sys err cur_exec %x prev_exec %x\n", cur_exec, prev_exec);
+		schedule_work(&mhi_dev_ctxt->process_sys_err_worker);
+	}
+#endif
 
 	mhi_dev_ctxt->counters.msi_counter[
 			IRQ_TO_MSI(mhi_dev_ctxt, irq_number)]++;

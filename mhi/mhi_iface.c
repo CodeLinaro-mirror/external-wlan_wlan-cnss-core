@@ -82,6 +82,7 @@ int mhi_ctxt_init(struct mhi_device_ctxt *mhi_dev_ctxt)
 			"Failed to initialize main MHI ctxt ret %d\n", ret_val);
 		return ret_val;
 	}
+
 	for (j = 0; j < mhi_dev_ctxt->mmio_info.nr_event_rings; j++) {
 		mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE,
 			"MSI_number = %d, event ring number = %d\n",
@@ -437,19 +438,18 @@ static int mhi_plat_probe(void)
 	mhi_dev_ctxt = kzalloc(sizeof(*mhi_dev_ctxt), GFP_KERNEL);
 	if (!mhi_dev_ctxt)
 		return -ENOMEM;
-
 	address_window[0] = 0x0;
 	address_window[1] = 0xFFFFFFFFF;
 
 	core = &mhi_dev_ctxt->core;
 	core->dev_id = PCI_ANY_ID;
-	mhi_dev_ctxt->poll_reset_timeout_ms = BHI_POLL_TIMEOUT_MS << 5;
+	mhi_dev_ctxt->poll_reset_timeout_ms = BHI_POLL_TIMEOUT_MS << 4;
 
 	mhi_dev_ctxt->dev_space.start_win_addr = address_window[0];
 	mhi_dev_ctxt->dev_space.end_win_addr = address_window[1];
 
 	mhi_dev_ctxt->bhi_ctxt.alignment = BHI_DEFAULT_ALIGNMENT;
-	mhi_dev_ctxt->bhi_ctxt.poll_timeout = BHI_POLL_TIMEOUT_MS << 8;
+	mhi_dev_ctxt->bhi_ctxt.poll_timeout = BHI_POLL_TIMEOUT_MS << 4;
 
 	mhi_dev_ctxt->bhi_ctxt.manage_boot = true;
 	if (mhi_dev_ctxt->bhi_ctxt.manage_boot) {

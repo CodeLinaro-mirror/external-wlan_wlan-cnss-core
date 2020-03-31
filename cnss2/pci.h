@@ -33,6 +33,8 @@
 #define QCA6174_REV3_2_VERSION		0x5030000
 #define QCA6290_VENDOR_ID		0x17CB
 #define QCA6290_DEVICE_ID		0x1100
+#define QCA6390_DEVICE_ID		0x1101
+#define QCA6490_DEVICE_ID		0x1103
 #define QCA6290_EMULATION_VENDOR_ID	0x168C
 #define QCA6290_EMULATION_DEVICE_ID	0xABCD
 
@@ -72,10 +74,12 @@ struct cnss_pci_data {
 	bool pci_link_state;
 	bool pci_link_down_ind;
 	struct pci_saved_state *saved_state;
+	struct pci_saved_state *default_state;
 #ifndef CONFIG_NAPIER_X86
 	struct msm_pcie_register_event msm_pci_event;
 #endif
 	atomic_t auto_suspended;
+	u8 drv_connected_last;
 	bool monitor_wake_intr;
 	struct dma_iommu_mapping *smmu_mapping;
 	dma_addr_t smmu_iova_start;
@@ -140,6 +144,7 @@ void cnss_pci_stop_mhi(struct cnss_pci_data *pci_priv);
 void cnss_pci_clear_dump_info(struct cnss_pci_data *pci_priv);
 int cnss_pm_request_resume(struct cnss_pci_data *pci_priv);
 int cnss_pci_dev_ramdump(struct cnss_pci_data *pci_priv);
+void cnss_pci_dump_qdss_reg(struct cnss_pci_data *pci_priv);
 
 #ifdef CONFIG_CNSS2_PCIE
 int cnss_suspend_pci_link(struct cnss_pci_data *pci_priv);

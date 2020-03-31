@@ -282,6 +282,11 @@ int cnss_sdio_dev_shutdown(struct cnss_sdio_data *cnss_info)
 	return 0;
 }
 
+void cnss_sdio_fw_boot_timeout_hdlr(void *bus_priv)
+{
+    cnss_pr_err("Timeout waiting for FW ready indication\n");
+}
+
 static int cnss_sdio_probe(struct sdio_al_client_handle *pal_cli_handle)
 {
 	struct cnss_sdio_data *sdio_info = pal_cli_handle->client_priv;

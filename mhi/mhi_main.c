@@ -61,7 +61,7 @@ static int enable_bb_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
 #endif
 
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-			"Creating pool %s for chan:%d payload: 0x%zu\n",
+			"Creating pool %s for chan:%d payload: 0x%lx\n",
 			pool_name, chan, max_payload);
 
 		bb_ctxt->dma_pool = dma_pool_create(pool_name,
@@ -238,8 +238,13 @@ struct mhi_chan_info mhi_chan[] =
  {0x1, 0x80, 0x1, 0xa2},
  {0x4, 0x80, 0x1, 0x92},
  {0x5, 0x80, 0x1, 0xa2},
+#ifndef CONFIG_CNSS_QCA6390
  {0x10, 0x40, 0x1, 0x92},
  {0x11, 0x40, 0x1, 0xa2},
+#else
+ {0x14, 0x40, 0x1, 0x92},
+ {0x15, 0x40, 0x1, 0xa2},
+#endif
 };
 
 int get_chan_props(struct mhi_device_ctxt *mhi_dev_ctxt, int chan,
@@ -985,7 +990,7 @@ int mhi_queue_xfer(struct mhi_client_handle *client_handle,
 {
 	int r;
 	enum dma_data_direction dma_dir;
-	struct mhi_buf_info *bb = NULL;
+	struct mhi_buf_info *bb;
 	struct mhi_device_ctxt *mhi_dev_ctxt;
 	u32 chan;
 	unsigned long flags;
@@ -1821,6 +1826,18 @@ void mhi_assert_device_wake(struct mhi_device_ctxt *mhi_dev_ctxt,
 	}
 }
 
+void mhi_force_wake_request(struct mhi_device *mhi_dev)
+{
+	struct mhi_device_ctxt *mhi_dev_ctxt = mhi_dev->mhi_dev_ctxt;
+
+	if (mhi_dev_ctxt) {
+		mutex_lock(&mhi_dev_ctxt->pm_lock);
+		mhi_assert_device_wake(mhi_dev_ctxt, true);
+		mutex_unlock(&mhi_dev_ctxt->pm_lock);
+	}
+}
+EXPORT_SYMBOL(mhi_force_wake_request);
+
 void mhi_deassert_device_wake(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
 	unsigned long flags;
@@ -1840,6 +1857,28 @@ void mhi_deassert_device_wake(struct mhi_device_ctxt *mhi_dev_ctxt)
 			     0);
 	spin_unlock_irqrestore(&mhi_dev_ctxt->dev_wake_lock, flags);
 }
+
+void mhi_force_wake_release(struct mhi_device *mhi_dev)
+{
+	struct mhi_device_ctxt *mhi_dev_ctxt = mhi_dev->mhi_dev_ctxt;
+
+	if (mhi_dev_ctxt) {
+		mutex_lock(&mhi_dev_ctxt->pm_lock);
+		mhi_deassert_device_wake(mhi_dev_ctxt);
+		mutex_unlock(&mhi_dev_ctxt->pm_lock);
+	}
+}
+EXPORT_SYMBOL(mhi_force_wake_release);
+
+bool mhi_is_device_awake(struct mhi_device *mhi_dev)
+{
+	if (mhi_dev->mhi_dev_ctxt)
+		return mhi_dev->mhi_dev_ctxt->mhi_state == MHI_STATE_M0 ?
+			true : false;
+
+	return true;
+}
+EXPORT_SYMBOL(mhi_is_device_awake);
 
 int mhi_set_lpm(struct mhi_client_handle *client_handle, bool enable_lpm)
 {
@@ -1919,7 +1958,7 @@ int mhi_register_device(struct mhi_device *mhi_device,
 	u32 slot = PCI_SLOT(pci_dev->devfn);
 	int ret, i;
 	char node[32];
-	struct pcie_core_info *core = NULL;
+	struct pcie_core_info *core;
 
 	/* Traverse thru the list */
 	mutex_lock(&mhi_device_drv->lock);
@@ -1970,8 +2009,8 @@ int mhi_register_device(struct mhi_device *mhi_device,
 		switch (resource_type(res)) {
 		case IORESOURCE_MEM:
 			/* bus master already mapped it */
-			core_info->bar0_base = (void __iomem *)(uintptr_t)res->start;
-			core_info->bar0_end = (void __iomem *)(uintptr_t)res->end;
+			core_info->bar0_base = (void __iomem *)res->start;
+			core_info->bar0_end = (void __iomem *)res->end;
 			mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
 				"bar mapped to:0x%llx - 0x%llx (virtual)\n",
 				res->start, res->end);
@@ -2022,7 +2061,7 @@ int mhi_register_device(struct mhi_device *mhi_device,
 		mhi_dev_ctxt->bhi_ctxt.rddm_table.sequence = 1;
 
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-			"Device support rddm of size:0x%zu bytes\n",
+			"Device support rddm of size:0x%lx bytes\n",
 			mhi_dev_ctxt->bhi_ctxt.rddm_size);
 	}
 
@@ -2047,7 +2086,7 @@ void mhi_deregister_device(struct mhi_device *mhi_device)
 	struct pci_dev *pci_dev = mhi_device->pci_dev;
 	struct mhi_device_ctxt *mhi_ctxt = NULL;
 	struct mhi_device_ctxt *entry;
-	struct pcie_core_info *core = NULL;
+	struct pcie_core_info *core;
 
 	if (!mhi_device)
 		return;
@@ -2219,11 +2258,41 @@ u32 mhi_reg_read(void __iomem *io_addr, uintptr_t io_offset)
 }
 
 #define MAX_UNWINDOWED_ADDRESS 0x80000
+#ifndef CONFIG_CNSS_QCA6390
 #define WINDOW_ENABLE_BIT 0x80000000
+#else
+#define WINDOW_ENABLE_BIT 0x40000000
+#endif
 #define WINDOW_SHIFT 19
 #define WINDOW_VALUE_MASK 0x3F
 #define WINDOW_START MAX_UNWINDOWED_ADDRESS
 #define WINDOW_RANGE_MASK 0x7FFFF
+
+#ifdef CONFIG_CNSS_QCA6390
+/* 4k - 32bytes */
+#define MAPPED_REF_OFF (4096 - 32 -1)
+void mhi_check_assert_wake(struct mhi_device_ctxt *mhi_dev_ctxt,
+			   uintptr_t offset)
+{
+	if (offset > MAPPED_REF_OFF) {
+		mutex_lock(&mhi_dev_ctxt->pm_lock);
+		mhi_assert_device_wake(mhi_dev_ctxt, true);
+		mutex_unlock(&mhi_dev_ctxt->pm_lock);
+	}
+}
+void mhi_check_deassert_wake(struct mhi_device_ctxt *mhi_dev_ctxt,
+			     uintptr_t offset)
+{
+	if (offset > MAPPED_REF_OFF) {
+		mutex_lock(&mhi_dev_ctxt->pm_lock);
+		mhi_deassert_device_wake(mhi_dev_ctxt);
+		mutex_unlock(&mhi_dev_ctxt->pm_lock);
+	}
+}
+#else
+#define mhi_check_assert_wake(mhi_dev_ctxt, offset) /* nop */
+#define mhi_check_deassert_wake(mhi_dev_ctxt, offset) /* nop */
+#endif
 
 static inline void mhi_reg_select_window(void __iomem *io_addr, u32 offset)
 {
@@ -2234,8 +2303,12 @@ static inline void mhi_reg_select_window(void __iomem *io_addr, u32 offset)
 	wmb();
 }
 
-u32 mhi_reg_read_remap(void __iomem *io_addr, uintptr_t io_offset)
+u32 mhi_reg_read_remap(struct mhi_device_ctxt *mhi_dev_ctxt,
+		       void __iomem *io_addr,
+		       uintptr_t io_offset)
 {
+	mhi_check_assert_wake(mhi_dev_ctxt, io_offset);
+
 	if (io_offset < MAX_UNWINDOWED_ADDRESS) {
 		return ioread32(io_addr + io_offset);
 	} else {
@@ -2243,10 +2316,16 @@ u32 mhi_reg_read_remap(void __iomem *io_addr, uintptr_t io_offset)
 		return ioread32(io_addr + WINDOW_START +
 				(io_offset & WINDOW_RANGE_MASK));
 	}
+
+	mhi_check_deassert_wake(mhi_dev_ctxt, io_offset);
 }
 
-void mhi_reg_write_remap(void __iomem *io_addr, uintptr_t io_offset, u32 val)
+void mhi_reg_write_remap(struct mhi_device_ctxt *mhi_dev_ctxt,
+			 void __iomem *io_addr,
+			 uintptr_t io_offset, u32 val)
 {
+	mhi_check_assert_wake(mhi_dev_ctxt, io_offset);
+
 	if (io_offset < MAX_UNWINDOWED_ADDRESS) {
 		iowrite32(val, io_addr + io_offset);
 	} else {
@@ -2255,5 +2334,7 @@ void mhi_reg_write_remap(void __iomem *io_addr, uintptr_t io_offset, u32 val)
 				(io_offset & WINDOW_RANGE_MASK));
 	}
 	wmb();
+
+	mhi_check_deassert_wake(mhi_dev_ctxt, io_offset);
 }
 

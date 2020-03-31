@@ -350,5 +350,9 @@ void mhi_sys_err_worker(struct work_struct *work)
 		mhi_dev_ctxt->mhi_pm_state,
 		TO_MHI_STATE_STR(mhi_dev_ctxt->mhi_state));
 
+#ifdef CONFIG_CNSS_QCA6490
+	mhi_dev_ctxt->status_cb(MHI_CB_RDDM, mhi_dev_ctxt->priv_data);
+#else
 	process_disable_transition(MHI_PM_SYS_ERR_PROCESS, mhi_dev_ctxt);
+#endif
 }

@@ -868,6 +868,19 @@ int cnss_power_down(struct device *dev)
 }
 EXPORT_SYMBOL(cnss_power_down);
 
+int cnss_idle_restart(struct device *dev)
+{
+	return 0;
+}
+EXPORT_SYMBOL(cnss_idle_restart);
+
+int cnss_idle_shutdown(struct device *dev)
+{
+	return 0;
+}
+EXPORT_SYMBOL(cnss_idle_shutdown);
+
+
 #ifdef CONFIG_NAPIER_X86
 static int cnss_get_resources(struct cnss_plat_data *plat_priv) {return 0;}
 static void cnss_put_resources(struct cnss_plat_data *plat_priv) {}
@@ -1290,6 +1303,27 @@ int cnss_force_collect_rddm(struct device *dev)
 }
 EXPORT_SYMBOL(cnss_force_collect_rddm);
 
+
+int cnss_qmi_send_get(struct device *dev)
+{
+	return 0;
+}
+EXPORT_SYMBOL(cnss_qmi_send_get);
+
+int cnss_qmi_send_put(struct device *dev)
+{
+	return 0;
+}
+EXPORT_SYMBOL(cnss_qmi_send_put);
+
+int cnss_qmi_send(struct device *dev, int type, void *cmd,
+		  int cmd_len, void *cb_ctx,
+		  int (*cb)(void *ctx, void *event, int event_len))
+{
+	return -EINVAL;
+}
+EXPORT_SYMBOL(cnss_qmi_send);
+
 static int cnss_cold_boot_cal_start_hdlr(struct cnss_plat_data *plat_priv)
 {
 	int ret = 0;
@@ -1321,8 +1355,9 @@ static int cnss_cold_boot_cal_done_hdlr(struct cnss_plat_data *plat_priv)
 #ifndef FW_FPGA_ONLY_TEST_BYPASS
 	cnss_wlfw_wlan_mode_send_sync(plat_priv, QMI_WLFW_OFF_V01);
 #endif
-	if ((plat_priv->device_id == QCN7605_STANDALONE_DEVICE_ID) || \
-	    (plat_priv->device_id == QCN7605_COMPOSITE_DEVICE_ID))
+	if (plat_priv->device_id == QCN7605_DEVICE_ID ||
+	    plat_priv->device_id == QCN7605_STANDALONE_DEVICE_ID ||
+	    plat_priv->device_id == QCN7605_COMPOSITE_DEVICE_ID)
 		goto skip_shutdown;
 
 	cnss_bus_dev_shutdown(plat_priv);
@@ -1531,6 +1566,8 @@ int cnss_register_subsys(struct cnss_plat_data *plat_priv)
 		break;
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
+	case QCA6390_DEVICE_ID:
+	case QCA6490_DEVICE_ID:
 		subsys_info->subsys_desc.name = "QCA6290";
 		break;
 	case QCN7605_DEVICE_ID:
@@ -1538,6 +1575,7 @@ int cnss_register_subsys(struct cnss_plat_data *plat_priv)
 	case QCN7605_COMPOSITE_DEVICE_ID:
 	case QCN7605_VER20_STANDALONE_DEVICE_ID:
 	case QCN7605_VER20_COMPOSITE_DEVICE_ID:
+	case QCN7605_SDIO_DEVICE_ID:
 		subsys_info->subsys_desc.name = "QCN7605";
 		break;
 	default:
@@ -1755,6 +1793,8 @@ int cnss_register_ramdump(struct cnss_plat_data *plat_priv)
 		break;
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
+	case QCA6390_DEVICE_ID:
+	case QCA6490_DEVICE_ID:
 	case QCN7605_DEVICE_ID:
 		ret = cnss_qca6290_register_ramdump(plat_priv);
 		break;
@@ -1780,6 +1820,8 @@ void cnss_unregister_ramdump(struct cnss_plat_data *plat_priv)
 		break;
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
+	case QCA6390_DEVICE_ID:
+	case QCA6490_DEVICE_ID:
 	case QCN7605_DEVICE_ID:
 		cnss_qca6290_unregister_ramdump(plat_priv);
 		break;
@@ -1859,7 +1901,13 @@ static ssize_t cnss_fs_ready_store(struct device *dev,
 	switch (pci_priv->device_id) {
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
+	case QCA6390_DEVICE_ID:
+	case QCA6490_DEVICE_ID:
 	case QCN7605_DEVICE_ID:
+	case QCN7605_COMPOSITE_DEVICE_ID:
+	case QCN7605_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_STANDALONE_DEVICE_ID:
+	case QCN7605_VER20_COMPOSITE_DEVICE_ID:
 		break;
 	default:
 		cnss_pr_err("Not supported for device ID 0x%x\n",
