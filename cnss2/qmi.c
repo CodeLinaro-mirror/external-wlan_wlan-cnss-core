@@ -202,6 +202,10 @@ static int cnss_wlfw_host_cap_send_sync(struct cnss_plat_data *plat_priv)
 	req.cal_done = plat_priv->cal_done;
 	cnss_pr_dbg("Calibration done is %d\n", plat_priv->cal_done);
 
+	req.nm_modem_valid = 1;
+	req.nm_modem |= WLFW_HOST_CAP_INTERNAL_SLEEPCLOCK_MASK;
+	cnss_pr_dbg("nm_modem is %d\n", req.nm_modem);
+
 	req_desc.max_msg_len = WLFW_HOST_CAP_REQ_MSG_V01_MAX_MSG_LEN;
 	req_desc.msg_id = QMI_WLFW_HOST_CAP_REQ_V01;
 	req_desc.ei_array = wlfw_host_cap_req_msg_v01_ei;

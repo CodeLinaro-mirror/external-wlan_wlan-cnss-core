@@ -633,6 +633,7 @@ struct wlfw_mac_addr_resp_msg_v01 {
 #define WLFW_MAC_ADDR_RESP_MSG_V01_MAX_MSG_LEN 7
 extern struct elem_info wlfw_mac_addr_resp_msg_v01_ei[];
 
+#define WLFW_HOST_CAP_INTERNAL_SLEEPCLOCK_MASK 0x02
 struct wlfw_host_cap_req_msg_v01 {
 	u8 num_clients_valid;
 	u32 num_clients;
