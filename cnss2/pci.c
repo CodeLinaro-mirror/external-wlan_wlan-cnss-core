@@ -42,6 +42,8 @@
 #define PCI_DMA_MASK			32
 #endif
 
+#define FW_MEM_DEFAULT_ALIGNMENT (0x4000)
+
 #define MHI_NODE_NAME			"qcom,mhi"
 #define MHI_MSI_NAME			"MHI"
 
@@ -1391,19 +1393,29 @@ int cnss_pci_alloc_fw_mem(struct cnss_pci_data *pci_priv)
 	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	struct cnss_fw_mem *fw_mem = plat_priv->fw_mem;
 	int i;
+	size_t alloc_size;
+	const uint32_t align = FW_MEM_DEFAULT_ALIGNMENT - 1;
 
 	for (i = 0; i < plat_priv->fw_mem_seg_len; i++) {
 		if (!fw_mem[i].va && fw_mem[i].size) {
-			fw_mem[i].va =
+			alloc_size = fw_mem[i].size + align;
+			fw_mem[i].pre_aligned=
 				dma_alloc_coherent(&pci_priv->pci_dev->dev,
-						   fw_mem[i].size,
-						   &fw_mem[i].pa, GFP_KERNEL);
-			if (!fw_mem[i].va) {
+						   alloc_size,
+						   &fw_mem[i].phys_addr, GFP_KERNEL);
+			if (!fw_mem[i].pre_aligned) {
 				cnss_pr_err("Failed to allocate memory for FW, size: 0x%zx, type: %u\n",
 					    fw_mem[i].size, fw_mem[i].type);
 
 				return -ENOMEM;
 			}
+
+			cnss_pr_dbg("pre_aligned %p, phys_addr %llx\n", fw_mem[i].pre_aligned, fw_mem[i].phys_addr);
+			fw_mem[i].pa = (fw_mem[i].phys_addr + align) & ~align;
+			cnss_pr_dbg("pa %llx\n", fw_mem[i].pa);
+
+			fw_mem[i].va = fw_mem[i].pre_aligned + (fw_mem[i].pa - fw_mem[i].phys_addr);
+
 #ifdef CONFIG_NAPIER_X86
 			/*
 			 * This needs to be revisited if FW requests multiple
@@ -1426,19 +1438,24 @@ static void cnss_pci_free_fw_mem(struct cnss_pci_data *pci_priv)
 	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	struct cnss_fw_mem *fw_mem = plat_priv->fw_mem;
 	int i;
+	size_t alloc_size;
+	const uint32_t align = FW_MEM_DEFAULT_ALIGNMENT - 1;
 
 	for (i = 0; i < plat_priv->fw_mem_seg_len; i++) {
-		if (fw_mem[i].va && fw_mem[i].size) {
+		if (fw_mem[i].pre_aligned && fw_mem[i].size) {
 			cnss_pr_dbg("Freeing memory for FW, va: 0x%pK, pa: %pa, size: 0x%zx, type: %u\n",
 				    fw_mem[i].va, &fw_mem[i].pa,
 				    fw_mem[i].size, fw_mem[i].type);
+			alloc_size = fw_mem[i].size + align;
 			dma_free_coherent(&pci_priv->pci_dev->dev,
-					  fw_mem[i].size, fw_mem[i].va,
-					  fw_mem[i].pa);
+					  alloc_size, fw_mem[i].pre_aligned,
+					  fw_mem[i].phys_addr);
 			fw_mem[i].va = NULL;
 			fw_mem[i].pa = 0;
 			fw_mem[i].size = 0;
 			fw_mem[i].type = 0;
+			fw_mem[i].pre_aligned = NULL;
+			fw_mem[i].phys_addr = 0;
 		}
 	}
 

@@ -143,6 +143,8 @@ struct cnss_fw_mem {
 	phys_addr_t pa;
 	bool valid;
 	int type;
+	phys_addr_t phys_addr;
+	void *pre_aligned;
 };
 
 enum cnss_driver_event_type {
