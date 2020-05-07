@@ -2307,17 +2307,21 @@ u32 mhi_reg_read_remap(struct mhi_device_ctxt *mhi_dev_ctxt,
 		       void __iomem *io_addr,
 		       uintptr_t io_offset)
 {
+	u32 val;
+
 	mhi_check_assert_wake(mhi_dev_ctxt, io_offset);
 
 	if (io_offset < MAX_UNWINDOWED_ADDRESS) {
-		return ioread32(io_addr + io_offset);
+		val = ioread32(io_addr + io_offset);
 	} else {
 		mhi_reg_select_window(io_addr, io_offset);
-		return ioread32(io_addr + WINDOW_START +
+		val = ioread32(io_addr + WINDOW_START +
 				(io_offset & WINDOW_RANGE_MASK));
 	}
 
 	mhi_check_deassert_wake(mhi_dev_ctxt, io_offset);
+
+	return val;
 }
 
 void mhi_reg_write_remap(struct mhi_device_ctxt *mhi_dev_ctxt,

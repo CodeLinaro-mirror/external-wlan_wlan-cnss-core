@@ -780,6 +780,7 @@ int cnss_pci_dev_powerup(struct cnss_pci_data *pci_priv)
 		break;
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
+	case QCA6390_DEVICE_ID:
 	case QCN7605_DEVICE_ID:
 		ret = cnss_qca6290_powerup(pci_priv);
 		break;
@@ -807,6 +808,7 @@ int cnss_pci_dev_shutdown(struct cnss_pci_data *pci_priv)
 		break;
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
+	case QCA6390_DEVICE_ID:
 	case QCN7605_DEVICE_ID:
 		ret = cnss_qca6290_shutdown(pci_priv);
 		break;
@@ -834,6 +836,7 @@ int cnss_pci_dev_crash_shutdown(struct cnss_pci_data *pci_priv)
 		break;
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
+	case QCA6390_DEVICE_ID:
 	case QCN7605_DEVICE_ID:
 		cnss_qca6290_crash_shutdown(pci_priv);
 		break;
@@ -862,6 +865,7 @@ int cnss_pci_dev_ramdump(struct cnss_pci_data *pci_priv)
 		break;
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
+	case QCA6390_DEVICE_ID:
 	case QCN7605_DEVICE_ID:
 		ret = cnss_qca6290_ramdump(pci_priv);
 		break;
@@ -1791,8 +1795,8 @@ static struct cnss_msi_config msi_config = {
 	.total_vectors = 32,
 	.total_users = 4,
 	.users = (struct cnss_msi_user[]) {
-		{ .name = "MHI", .num_vectors = 3, .base_vector = 0 },
-		{ .name = "CE", .num_vectors = 10, .base_vector = 3 },
+		{ .name = "MHI", .num_vectors = 2, .base_vector = 0 },
+		{ .name = "CE", .num_vectors = 11, .base_vector = 2 },
 		{ .name = "WAKE", .num_vectors = 1, .base_vector = 13 },
 		{ .name = "DP", .num_vectors = 18, .base_vector = 14 },
 	},
@@ -2618,14 +2622,6 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 				    ret);
 		cnss_power_off_device(plat_priv);
 #endif
-		/* Disable L1SS for QCA6390 */
-		pci_read_config_byte(pci_dev, 0x1F4, &aspm_state);
-		cnss_pr_err("Current L1SS status: 0x%x", aspm_state);
-		if (aspm_state & 0xF) {
-			pci_write_config_byte(pci_dev, 0x1F4, aspm_state & ~0xF);
-			pci_read_config_byte(pci_dev, 0x1F4, &aspm_state);
-			cnss_pr_err("L1SS status changed to: 0x%x", aspm_state);
-		}
 		break;
 	default:
 		cnss_pr_err("Unknown PCI device found: 0x%x\n",
@@ -2707,8 +2703,8 @@ static const struct pci_device_id cnss_pci_id_table[] = {
 	{ QCA6290_EMULATION_VENDOR_ID, QCA6290_EMULATION_DEVICE_ID,
 	  PCI_ANY_ID, PCI_ANY_ID },
 	{ QCA6290_VENDOR_ID, QCA6290_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
-	{ QCA6290_VENDOR_ID, QCA6390_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
-	{ QCA6290_VENDOR_ID, QCA6490_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
+	{ QCA6390_VENDOR_ID, QCA6390_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
+	{ QCA6490_VENDOR_ID, QCA6490_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
 	{ QCN7605_VENDOR_ID, QCN7605_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
 	{ 0 }
 };

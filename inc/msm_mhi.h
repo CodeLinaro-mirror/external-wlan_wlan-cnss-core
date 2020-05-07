@@ -240,6 +240,9 @@ void mhi_set_fw_remote_mem(struct mhi_device *mhi_device,
 			   size_t size);
 
 void mhi_pcie_sw_soc_reset(struct mhi_device *mhi_device);
+void mhi_force_wake_request(struct mhi_device *mhi_dev);
+void mhi_force_wake_release(struct mhi_device *mhi_dev);
+bool mhi_is_device_awake(struct mhi_device *mhi_dev);
 #endif
 
 /**

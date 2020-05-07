@@ -945,11 +945,19 @@ static int mhi_xprt_update_config(struct ipc_router_mhi_xprt_config *mhi_xprt_co
 	uint32_t link_id;
 	uint32_t version;
 
+#ifndef CONFIG_CNSS_QCA6390
 	out_chan_id = 16;
 	mhi_xprt_config->out_chan_id = out_chan_id;
 
 	in_chan_id = 17;
 	mhi_xprt_config->in_chan_id = in_chan_id;
+#else
+	out_chan_id = 20;
+	mhi_xprt_config->out_chan_id = out_chan_id;
+
+	in_chan_id = 21;
+	mhi_xprt_config->in_chan_id = in_chan_id;
+#endif
 
 	link_id = 1;
 	mhi_xprt_config->link_id = link_id;

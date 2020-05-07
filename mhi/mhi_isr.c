@@ -159,7 +159,7 @@ static int mhi_process_event_ring(
 				break;
 			case STATE_TRANSITION_SYS_ERR:
 			{
-#ifdef CONFIG_CNSS_QCA6490
+#if defined(CONFIG_CNSS_QCA6490) || defined(CONFIG_CNSS_QCA6390)
 				mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
 					"MHI System Error Detected, skip\n");
 #else
@@ -193,7 +193,7 @@ static int mhi_process_event_ring(
 			enum STATE_TRANSITION new_state = 0;
 			enum MHI_EXEC_ENV event =
 				MHI_READ_EXEC_ENV(&event_to_process);
-#ifdef CONFIG_CNSS_QCA6490
+#if defined(CONFIG_CNSS_QCA6490) || defined(CONFIG_CNSS_QCA6390)
 			u32 cur_exec = mhi_dev_ctxt->dev_exec_env;
 #endif
 
@@ -216,7 +216,7 @@ static int mhi_process_event_ring(
 #endif
 			case MHI_EXEC_ENV_RDDM:
 				new_state = STATE_TRANSITION_RDDM;
-#ifdef CONFIG_CNSS_QCA6490
+#if defined(CONFIG_CNSS_QCA6490) || defined(CONFIG_CNSS_QCA6390)
 				if (cur_exec != MHI_EXEC_ENV_DISABLE_TRANSITION && cur_exec != MHI_EXEC_ENV_RDDM)
 					schedule_work(&mhi_dev_ctxt->process_sys_err_worker);
 #endif
@@ -384,7 +384,7 @@ irqreturn_t mhi_msi_handlr(int irq_number, void *dev_id)
 	struct mhi_event_ring_cfg *ring_props =
 		&mhi_dev_ctxt->ev_ring_props[msi];
 
-#ifdef CONFIG_CNSS_QCA6490
+#if defined(CONFIG_CNSS_QCA6490) || defined(CONFIG_CNSS_QCA6390)
 	u32 cur_exec;
 	u32 prev_exec = mhi_dev_ctxt->dev_exec_env;
 	struct bhi_ctxt_t *bhi_ctxt = &mhi_dev_ctxt->bhi_ctxt;

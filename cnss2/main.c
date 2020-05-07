@@ -2006,6 +2006,7 @@ static void cnss_free_caldb_mem(struct cnss_plat_data *plat_priv)
 static const struct platform_device_id cnss_platform_id_table[] = {
 	{ .name = "qca6174", .driver_data = QCA6174_DEVICE_ID, },
 	{ .name = "qca6290", .driver_data = QCA6290_DEVICE_ID, },
+	{ .name = "qca6390", .driver_data = QCA6390_DEVICE_ID, },
 	{ .name = "qcn7605", .driver_data = QCN7605_DEVICE_ID, },
 	{ .name = "qcn7605_sdio", .driver_data = QCN7605_SDIO_DEVICE_ID, },
 };
@@ -2017,6 +2018,15 @@ static const struct of_device_id cnss_of_match_table[] = {
 	{
 		.compatible = "qcom,cnss-qca6290",
 		.data = (void *)&cnss_platform_id_table[1]},
+	{
+		.compatible = "qcom,cnss",
+		.data = (void *)&cnss_platform_id_table[2]},
+	{
+		.compatible = "qcom,cnss-qca6390",
+		.data = (void *)&cnss_platform_id_table[3]},
+	{
+		.compatible = "qcom,cnss-sdio",
+		.data = (void *)&cnss_platform_id_table[4]},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, cnss_of_match_table);
