@@ -222,11 +222,18 @@ extern struct dma_iommu_mapping *cnss_smmu_get_mapping(struct device *dev);
 extern int cnss_smmu_map(struct device *dev,
 			 phys_addr_t paddr, uint32_t *iova_addr, size_t size);
 extern int cnss_get_soc_info(struct device *dev, struct cnss_soc_info *info);
+extern void cnss_set_driver_status(enum cnss_driver_status driver_status);
 extern int cnss_request_bus_bandwidth(struct device *dev, int bandwidth);
+extern int cnss_set_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 ch_count);
+extern int cnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 *ch_count,
+					u16 buf_len);
+extern int cnss_wlan_set_dfs_nol(const void *info, u16 info_len);
+extern int cnss_wlan_get_dfs_nol(void *info, u16 info_len);
 extern int cnss_power_up(struct device *dev);
 extern int cnss_power_down(struct device *dev);
 extern int cnss_idle_restart(struct device *dev);
 extern int cnss_idle_shutdown(struct device *dev);
+extern u8 *cnss_common_get_wlan_mac_address(struct device *dev, uint32_t *num);
 extern void cnss_request_pm_qos(struct device *dev, u32 qos_val);
 extern void cnss_remove_pm_qos(struct device *dev);
 extern void cnss_lock_pm_sem(struct device *dev);
@@ -273,5 +280,17 @@ extern struct sdio_al_channel_handle *cnss_sdio_wlan_register_sdio_al_channel(
 extern void cnss_sdio_wlan_unregister_sdio_al_channel(
 	     struct sdio_al_channel_handle *ch_handle);
 
+extern void cnss_pci_lock_reg_window(struct device *dev, unsigned long *flags);
+extern void cnss_pci_unlock_reg_window(struct device *dev, unsigned long *flags);
+
+extern int cnss_qmi_send(struct device *dev, int type, void *cmd,
+						int cmd_len, void *cb_ctx,
+						int (*cb)(void *ctx, void *event, int event_len));
+
+extern int cnss_qmi_send_get(struct device *dev);
+extern int cnss_qmi_send_put(struct device *dev);
+
+extern int cnss_pci_prevent_l1(struct device *dev);
+extern void cnss_pci_allow_l1(struct device *dev);
 
 #endif /* _NET_CNSS2_H */
