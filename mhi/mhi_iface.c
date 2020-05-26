@@ -24,6 +24,7 @@
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include <linux/version.h>
 
 #define CREATE_TRACE_POINTS
 #include "mhi_trace.h"
@@ -45,6 +46,11 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 		const struct pci_device_id *mhi_device_id);
 #ifndef CONFIG_NAPIER_X86
 static int __exit mhi_plat_remove(struct platform_device *pdev);
+#endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
+#define DEFINE_PCI_DEVICE_TABLE(_table) \
+	const struct pci_device_id _table[]
 #endif
 
 static DEFINE_PCI_DEVICE_TABLE(mhi_pcie_device_id) = {
@@ -322,7 +328,11 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 		msi_requested <<= 1;
 
 	ret_val = pci_enable_msi_range(pcie_device, 1, msi_requested);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
+	if (IS_ERR_VALUE((unsigned long)ret_val) || (ret_val < msi_requested)) {
+#else
 	if (IS_ERR_VALUE(ret_val) || (ret_val < msi_requested)) {
+#endif
 		mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
 			"Failed to enable MSIs for pcie dev ret_val %d.\n",
 			ret_val);
