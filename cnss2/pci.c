@@ -2080,7 +2080,7 @@ static void *cnss_pci_collect_dump_seg(struct cnss_pci_data *pci_priv,
 	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	struct cnss_dump_data *dump_data =
 		&plat_priv->ramdump_info_v2.dump_data;
-	struct cnss_dump_seg *dump_seg = start_addr, header_seg;
+	struct cnss_dump_seg *dump_seg = start_addr, header_seg = {0};
 	int index = 0;
 
 	count = mhi_xfer_rddm(&pci_priv->mhi_dev, type, &sg_list);
