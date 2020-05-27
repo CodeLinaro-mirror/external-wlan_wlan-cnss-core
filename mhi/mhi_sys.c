@@ -18,7 +18,7 @@
 
 #include "mhi_sys.h"
 
-enum MHI_DEBUG_LEVEL mhi_msg_lvl = MHI_MSG_VERBOSE;
+enum MHI_DEBUG_LEVEL mhi_msg_lvl = MHI_MSG_ERROR;
 
 #ifdef CONFIG_MSM_MHI_DEBUG
 enum MHI_DEBUG_LEVEL mhi_ipc_log_lvl = MHI_MSG_VERBOSE;
