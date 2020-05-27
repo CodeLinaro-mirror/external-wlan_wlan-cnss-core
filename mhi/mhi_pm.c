@@ -194,7 +194,7 @@ static int mhi_pm_initiate_m0(struct mhi_device_ctxt *mhi_dev_ctxt)
 		 * process it due to low power mode, force a check
 		 */
 		{
-				enum MHI_PM_STATE new_state;
+				enum MHI_PM_STATE new_state = MHI_PM_DISABLE;
 				unsigned long flags;
 				enum MHI_STATE state = MHI_STATE_LIMIT;
 
