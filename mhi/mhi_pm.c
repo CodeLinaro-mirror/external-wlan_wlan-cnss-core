@@ -643,6 +643,7 @@ int mhi_pm_control_device(struct mhi_device *mhi_device, enum mhi_dev_ctrl ctrl)
 
 	switch (ctrl) {
 	case MHI_DEV_CTRL_INIT:
+		mhi_pcie_sw_reset(mhi_dev_ctxt);
 		return bhi_probe(mhi_dev_ctxt);
 	case MHI_DEV_CTRL_POWER_ON:
 		return mhi_pm_slave_mode_power_on(mhi_dev_ctxt);
