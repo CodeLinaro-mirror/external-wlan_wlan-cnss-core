@@ -138,6 +138,10 @@ void cnss_pci_dump_qdss_reg(struct cnss_pci_data *pci_priv);
 int cnss_suspend_pci_link(struct cnss_pci_data *pci_priv);
 int cnss_resume_pci_link(struct cnss_pci_data *pci_priv);
 void cnss_pci_collect_dump_info(struct cnss_pci_data *pci_priv);
+int cnss_pci_fw_sram_dump_to_file(struct cnss_pci_data *pci_priv,
+		uint32_t fw_sram_start,
+		uint32_t fw_sram_end,
+		const char *fw_sram_dump_path);
 u32 cnss_pci_get_wake_msi(struct cnss_pci_data *pci_priv);
 int cnss_pci_dev_crash_shutdown(struct cnss_pci_data *pci_priv);
 int cnss_pci_call_driver_probe(struct cnss_pci_data *pci_priv);
@@ -170,6 +174,15 @@ static inline int cnss_resume_pci_link(struct cnss_pci_data *pci_priv)
 }
 static inline void cnss_pci_collect_dump_info(struct cnss_pci_data *pci_priv)
 { }
+
+static inline int cnss_pci_fw_sram_dump_to_file(struct cnss_pci_data *pci_priv,
+		uint32_t fw_sram_start,
+		uint32_t fw_sram_end,
+		const char *fw_sram_dump_path)
+{
+	return 0;
+}
+
 static inline u32 cnss_pci_get_wake_msi(struct cnss_pci_data *pci_priv)
 {
 	return 0;

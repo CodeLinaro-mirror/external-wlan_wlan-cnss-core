@@ -48,6 +48,10 @@
 #define CNSS_EVENT_PENDING		2989
 #define CE_MSI_NAME			"CE"
 
+#define FW_SRAM_DUMP_PATH			"/var/crash/fw_sram_dump.bin"
+#define FW_SRAM_START_QCA6390		0x01400000
+#define FW_SRAM_END_QCA6390			0x0171ffff
+
 static struct cnss_plat_data *plat_env;
 
 static DECLARE_RWSEM(cnss_pm_sem);
@@ -1247,6 +1251,42 @@ int cnss_force_fw_assert(struct device *dev)
 	return 0;
 }
 EXPORT_SYMBOL(cnss_force_fw_assert);
+
+int cnss_dump_fw_sram_to_file(struct device *dev)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+	uint32_t fw_sram_start;
+	uint32_t fw_sram_end;
+	int ret;
+
+	if (!plat_priv) {
+		cnss_pr_err("plat_priv is NULL\n");
+		return -ENODEV;
+	}
+
+	switch(plat_priv->device_id) {
+		case QCA6390_DEVICE_ID:
+			fw_sram_start = FW_SRAM_START_QCA6390;
+			fw_sram_end = FW_SRAM_END_QCA6390;
+			break;
+		default:
+			cnss_pr_err("FW sram dump not support: device %04lx\n",
+				plat_priv->device_id);
+			return -ENOTSUPP;
+	}
+
+	cnss_pr_info("FW sram dump start %s ...\n", FW_SRAM_DUMP_PATH);
+
+	ret = cnss_bus_fw_sram_dump_to_file(plat_priv,
+			fw_sram_start,
+			fw_sram_end,
+			FW_SRAM_DUMP_PATH);
+
+	cnss_pr_info("FW sram dump end, status %d\n", ret);
+
+	return ret;
+}
+EXPORT_SYMBOL(cnss_dump_fw_sram_to_file);
 
 static int cnss_wlfw_server_arrive_hdlr(struct cnss_plat_data *plat_priv)
 {

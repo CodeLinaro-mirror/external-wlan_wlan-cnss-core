@@ -23,6 +23,7 @@
 #include "bus.h"
 #include "debug.h"
 #include "pci.h"
+#include "mhi.h"
 
 #define PCI_LINK_UP			1
 #define PCI_LINK_DOWN			0
@@ -2196,6 +2197,67 @@ void cnss_pci_clear_dump_info(struct cnss_pci_data *pci_priv)
 
 	plat_priv->ramdump_info_v2.dump_data.nentries = 0;
 	plat_priv->ramdump_info_v2.dump_data_valid = false;
+}
+
+int cnss_pci_fw_sram_dump_to_file(struct cnss_pci_data *pci_priv,
+		uint32_t fw_sram_start,
+		uint32_t fw_sram_end,
+		const char *fw_sram_dump_path)
+{
+	struct mhi_device_ctxt *mhi_dev_ctxt;
+	struct file *fp = NULL;
+	mm_segment_t fs;
+	uint32_t offset;
+	loff_t pos = 0;
+	int status;
+
+	if (!pci_priv) {
+		cnss_pr_err("FW sram dump pci_priv is NULL\n");
+		return -ENODEV;
+	}
+
+	mhi_dev_ctxt = pci_priv->mhi_dev.mhi_dev_ctxt;
+	if (!mhi_dev_ctxt) {
+		cnss_pr_err("FW sram dump pci_priv is NULL\n");
+		return -ENODEV;
+	}
+
+	fp = filp_open(fw_sram_dump_path, O_RDWR | O_CREAT, 0644);
+	if (IS_ERR(fp)) {
+		cnss_pr_err("FW sram dump create file %s failed\n",
+				fw_sram_dump_path);
+		return -EACCES;
+	}
+
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+
+	for (offset = fw_sram_start; offset < fw_sram_end; offset += 4) {
+		uint32_t val = mhi_reg_read_remap(mhi_dev_ctxt,
+				mhi_dev_ctxt->mmio_info.mmio_addr, offset);
+
+		status = vfs_write(fp, (char *)&val, sizeof(uint32_t), &pos);
+		if (status < 0) {
+			cnss_pr_err("FW sram dump write file %s failed: %d\n",
+					fw_sram_dump_path, status);
+			goto out;
+		}
+	}
+
+	vfs_fsync(fp, 0);
+
+out:
+	status = filp_close(fp, NULL);
+	if (status < 0) {
+		cnss_pr_err("FW sram dump close file %s failed: %d\n",
+				fw_sram_dump_path, status);
+		return status;
+	}
+
+	set_fs(fs);
+
+	return status;
 }
 
 static void cnss_mhi_notify_status(enum MHI_CB_REASON reason, void *priv)

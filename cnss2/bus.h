@@ -73,4 +73,8 @@ int cnss_bus_call_driver_modem_status(struct cnss_plat_data *plat_priv,
 				      int modem_current_status);
 int cnss_bus_recovery_update_status(struct cnss_plat_data *plat_priv);
 bool cnss_bus_req_mem_ind_valid(struct cnss_plat_data *plat_priv);
+int cnss_bus_fw_sram_dump_to_file(struct cnss_plat_data *plat_priv,
+		uint32_t fw_sram_start,
+		uint32_t fw_sram_end,
+		const char *fw_sram_dump_path);
 #endif /* _CNSS_BUS_H */

@@ -435,4 +435,32 @@ int cnss_bus_recovery_update_status(struct cnss_plat_data *plat_priv)
 	}
 }
 
+int cnss_bus_fw_sram_dump_to_file(struct cnss_plat_data *plat_priv,
+		uint32_t fw_sram_start,
+		uint32_t fw_sram_end,
+		const char *fw_sram_dump_path)
+{
+	int ret = 0;
 
+	if (!plat_priv) {
+		cnss_pr_err("plat_priv is NULL\n");
+		return -ENODEV;
+	}
+
+	switch (cnss_get_bus_type(plat_priv->device_id)) {
+		case CNSS_BUS_PCI:
+			ret = cnss_pci_fw_sram_dump_to_file(
+					plat_priv->bus_priv,
+					fw_sram_start,
+					fw_sram_end,
+					fw_sram_dump_path);
+			break;
+		case CNSS_BUS_SDIO:
+		case CNSS_BUS_USB:
+		default:
+			ret = -ENOTSUPP;
+			break;
+	}
+
+	return ret;
+}
