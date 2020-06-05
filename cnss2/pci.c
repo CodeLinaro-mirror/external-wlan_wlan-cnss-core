@@ -1552,9 +1552,9 @@ int cnss_pci_alloc_fw_mem(struct cnss_pci_data *pci_priv)
 				return -ENOMEM;
 			}
 
-			cnss_pr_dbg("pre_aligned %p, phys_addr %llx\n", fw_mem[i].pre_aligned, fw_mem[i].phys_addr);
+			cnss_pr_dbg("pre_aligned %p, phys_addr %llx\n", fw_mem[i].pre_aligned, (u64)fw_mem[i].phys_addr);
 			fw_mem[i].pa = (fw_mem[i].phys_addr + align) & ~align;
-			cnss_pr_dbg("pa %llx\n", fw_mem[i].pa);
+			cnss_pr_dbg("pa %llx\n", (u64)fw_mem[i].pa);
 
 			fw_mem[i].va = fw_mem[i].pre_aligned + (fw_mem[i].pa - fw_mem[i].phys_addr);
 
@@ -2268,7 +2268,7 @@ static int cnss_pci_register_mhi(struct cnss_pci_data *pci_priv)
 	else
 		mhi_dev->rddm_size = 0x400000;
 #endif
-	pr_err("rddm size %lx",mhi_dev->rddm_size);
+	pr_err("rddm size %zx", mhi_dev->rddm_size);
 #else
 	mhi_dev->rddm_size = pci_priv->plat_priv->ramdump_info_v2.ramdump_size;
 #endif

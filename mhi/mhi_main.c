@@ -61,7 +61,7 @@ static int enable_bb_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
 #endif
 
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-			"Creating pool %s for chan:%d payload: 0x%lx\n",
+			"Creating pool %s for chan:%d payload: 0x%zx\n",
 			pool_name, chan, max_payload);
 
 		bb_ctxt->dma_pool = dma_pool_create(pool_name,
@@ -107,7 +107,7 @@ static void mhi_write_db(struct mhi_device_ctxt *mhi_dev_ctxt,
 	uintptr_t io_offset = chan * sizeof(u64);
 	void __iomem *io_addr_upper =
 		(void __iomem *)((uintptr_t)io_addr_lower + 4);
-	mhi_reg_write(mhi_dev_ctxt, io_addr_upper, io_offset, val >> 32);
+	mhi_reg_write(mhi_dev_ctxt, io_addr_upper, io_offset, ((u64)val) >> 32);
 	mhi_reg_write(mhi_dev_ctxt, io_addr_lower, io_offset, (u32)val);
 }
 
@@ -780,7 +780,7 @@ void mhi_update_chan_db(struct mhi_device_ctxt *mhi_dev_ctxt,
 	chan_ctxt->db_mode.process_db(mhi_dev_ctxt,
 				      mhi_dev_ctxt->mmio_info.chan_db_addr,
 				      chan,
-				      db_value);
+				      (dma_addr_t)db_value);
 
 }
 
@@ -815,7 +815,7 @@ static inline int mhi_queue_tre(struct mhi_device_ctxt
 			(mhi_dev_ctxt,
 			 mhi_dev_ctxt->mmio_info.cmd_db_addr,
 			 0,
-			 db_value);
+			 (dma_addr_t)db_value);
 	}
 	return 0;
 }
@@ -1409,7 +1409,7 @@ int parse_xfer_event(struct mhi_device_ctxt *mhi_dev_ctxt,
 
 			if (!VALID_BUF(trb_data_loc, xfer_len, mhi_dev_ctxt)) {
 				mhi_log(mhi_dev_ctxt, MHI_MSG_CRITICAL,
-					"Bad buf ptr: %llx.\n", trb_data_loc);
+					"Bad buf ptr: %llx.\n", (u64)trb_data_loc);
 				return -EINVAL;
 			}
 			if (local_chan_ctxt->dir == MHI_IN) {
@@ -1449,7 +1449,7 @@ int parse_xfer_event(struct mhi_device_ctxt *mhi_dev_ctxt,
 					(uintptr_t) local_chan_ctxt->wp);
 			local_chan_ctxt->db_mode.process_db(mhi_dev_ctxt,
 				     mhi_dev_ctxt->mmio_info.chan_db_addr, chan,
-				     db_value);
+				     (dma_addr_t)db_value);
 		}
 		break;
 	}
@@ -2013,7 +2013,7 @@ int mhi_register_device(struct mhi_device *mhi_device,
 			core_info->bar0_end = (void __iomem *)res->end;
 			mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
 				"bar mapped to:0x%llx - 0x%llx (virtual)\n",
-				res->start, res->end);
+				(u64)res->start, (u64)res->end);
 			break;
 		case IORESOURCE_IRQ:
 			core_info->irq_base = (u32)res->start;
@@ -2061,7 +2061,7 @@ int mhi_register_device(struct mhi_device *mhi_device,
 		mhi_dev_ctxt->bhi_ctxt.rddm_table.sequence = 1;
 
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-			"Device support rddm of size:0x%lx bytes\n",
+			"Device support rddm of size:0x%zx bytes\n",
 			mhi_dev_ctxt->bhi_ctxt.rddm_size);
 	}
 
@@ -2155,7 +2155,7 @@ void mhi_process_db_brstmode(struct mhi_device_ctxt *mhi_dev_ctxt,
 
 	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE,
 		"db.set addr: %p io_offset %u val:0x%llx\n",
-		io_addr, chan, val);
+		io_addr, chan, (u64)val);
 
 	mhi_update_ctxt(mhi_dev_ctxt, io_addr, chan, val);
 
@@ -2177,7 +2177,7 @@ void mhi_process_db_brstmode_disable(struct mhi_device_ctxt *mhi_dev_ctxt,
 {
 	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE,
 		"db.set addr: %p io_offset %u val:0x%llx\n",
-		io_addr, chan, val);
+		io_addr, chan, (u64)val);
 	mhi_update_ctxt(mhi_dev_ctxt, io_addr, chan, val);
 	mhi_write_db(mhi_dev_ctxt, io_addr, chan, val);
 }
@@ -2190,7 +2190,7 @@ void mhi_process_db(struct mhi_device_ctxt *mhi_dev_ctxt,
 
 	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE,
 		"db.set addr: %p io_offset %u val:0x%llx\n",
-		io_addr, chan, val);
+		io_addr, chan, (u64)val);
 
 	mhi_update_ctxt(mhi_dev_ctxt, io_addr, chan, val);
 
