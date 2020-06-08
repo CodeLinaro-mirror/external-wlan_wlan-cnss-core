@@ -226,8 +226,6 @@ struct pil_vote_info {
 	struct work_struct unload_work;
 };
 
-static struct dentry *dent = NULL;
-
 #define PIL_SUBSYSTEM_NAME_LEN 32
 static char default_peripheral[PIL_SUBSYSTEM_NAME_LEN];
 
@@ -3779,6 +3777,8 @@ void msm_ipc_unload_default_node(void *pil_vote)
 }
 
 #if defined(CONFIG_DEBUG_FS)
+static struct dentry *dent = NULL;
+
 static void dump_routing_table(struct seq_file *s)
 {
 	int j;

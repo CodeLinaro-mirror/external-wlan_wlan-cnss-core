@@ -2159,9 +2159,7 @@ static int cnss_probe(struct platform_device *plat_dev)
 
 	ret = cnss_debugfs_create(plat_priv);
 	if (ret)
-		goto deinit_qmi;
-
-	cnss_pr_dbg("cnss debugfs create success");
+		cnss_pr_warn("cnss debugfs create failed");
 
 	if (plat_priv->bus_type == CNSS_BUS_USB) {
 		ret = cnss_alloc_caldb_mem(plat_priv);
@@ -2193,7 +2191,6 @@ static int cnss_probe(struct platform_device *plat_dev)
 
 remove_debugfs:
 	cnss_debugfs_destroy(plat_priv);
-deinit_qmi:
 	cnss_qmi_deinit(plat_priv);
 deinit_event_work:
 	cnss_event_work_deinit(plat_priv);
