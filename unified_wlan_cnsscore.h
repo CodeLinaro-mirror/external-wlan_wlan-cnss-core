@@ -44,4 +44,7 @@ int hdd_module_init(void);
 void hdd_module_exit(void);
 #endif
 
+int wcnss_pre_alloc_init(void);
+void wcnss_pre_alloc_exit(void);
+
 #endif

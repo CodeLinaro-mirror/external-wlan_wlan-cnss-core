@@ -131,8 +131,20 @@ static int unified_pdrv_init(void)
 	}
 #endif
 
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+	/* cnss prealloc initialise */
+	ret = wcnss_pre_alloc_init();
+	if (ret){
+		printk("%s: updrv: failed to pre alloc memory\n",__func__);
+		goto fail14;
+	}
+#endif
 	return 0;
 
+fail14:
+#ifdef CONFIG_SINGLE_KO_FEATURE
+	hdd_module_exit();
+#endif
 #ifdef CONFIG_SINGLE_KO_FEATURE
 fail13:
 #ifdef CONFIG_CNSS_UTILS
@@ -197,6 +209,9 @@ fail:
 
 static void unified_pdrv_deinit(void)
 {
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+	wcnss_pre_alloc_exit();
+#endif
 #ifdef CONFIG_SINGLE_KO_FEATURE
 	hdd_module_exit();
 #endif

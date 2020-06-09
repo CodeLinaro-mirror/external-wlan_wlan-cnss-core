@@ -160,7 +160,16 @@ endif
 ifneq ($(CONFIG_CNSS_UTILS),)
     KBUILD_CPPFLAGS += -DCONFIG_CNSS_UTILS
 endif
- 
+
+ifneq ($(CONFIG_WCNSS_SKB_PRE_ALLOC),)
+    KBUILD_CPPFLAGS += -DCONFIG_WCNSS_MEM_PRE_ALLOC
+	KBUILD_CPPFLAGS += -DCONFIG_WCNSS_SKB_PRE_ALLOC
+else
+	ifneq ($(CONFIG_WCNSS_MEM_PRE_ALLOC),)
+		KBUILD_CPPFLAGS += -DCONFIG_WCNSS_MEM_PRE_ALLOC
+	endif
+endif
+
 ifneq ($(CONFIG_ONE_MSI_VECTOR),)
      KBUILD_CPPFLAGS += -DCONFIG_ONE_MSI_VECTOR
 endif
@@ -183,6 +192,7 @@ obj-$(CONFIG_DIAG_IPC_BRIDGE) += diag_ipc_bridge/
 obj-$(CONFIG_QTI_SDIO_CLIENT) += qti_sdio_client/
 obj-$(CONFIG_QCN) += qcn/
 obj-$(CONFIG_CNSS_UTILS) += cnss_utils/
+obj-$(CONFIG_WCNSS_MEM_PRE_ALLOC) += cnss_prealloc/
 else
 
 ifneq ($(CONFIG_SINGLE_KO_FEATURE),)
@@ -205,6 +215,7 @@ DIAG_IPC_BRIDGE_DIR := $(CNSS_CORE_BASE)/diag_ipc_bridge
 QTI_SDIO_CLIENT_DIR := $(CNSS_CORE_BASE)/qti_sdio_client
 QCN_DIR := $(CNSS_CORE_BASE)/qcn
 CNSS_UTILS_DIR := $(CNSS_CORE_BASE)/cnss_utils
+CNSS_PREALLOC_DIR := $(CNSS_CORE_BASE)/cnss_prealloc
 
 INIT_OBJS := $(CNSS_CORE_BASE)/unified_wlan_cnsscore.o
 INIT_INC := -I$(ROOTDIR)
@@ -316,6 +327,11 @@ ifneq ($(CONFIG_CNSS_UTILS), )
 	CNSS_UTILS_INC := -I$(CNSS_UTILS_DIR)
 endif
 
+ifneq ($(CONFIG_WCNSS_MEM_PRE_ALLOC), )
+	CNSS_PREALLOC_OBJS := $(CNSS_PREALLOC_DIR)/cnss_prealloc.o
+	CNSS_PREALLOC_INC := $(CNSS_PREALLOC_DIR)
+endif
+
 ifneq ($(CONFIG_SINGLE_KO_FEATURE),)
 OBJS += $(INIT_OBJS)
 else
@@ -335,6 +351,7 @@ OBJS += $(IPC_ROUTER_OBJS)                 \
 	$(DIAG_OBJS)                       \
 	$(CNSS_OBJS)                       \
 	$(CNSS_UTILS_OBJS)                 \
+	$(CNSS_PREALLOC_OBJS)
 
 ifneq ($(CONFIG_SINGLE_KO_FEATURE),)
 INCS += $(INIT_INC)
@@ -348,6 +365,7 @@ INCS += $(CNSS_INC)                     \
         $(DIAG_INC)                     \
         $(QMI_INC)                      \
         $(CNSS_UTILS_INC)               \
+        $(CNSS_PREALLOC_INC)
 
 
 cflags-y += $(INCS)

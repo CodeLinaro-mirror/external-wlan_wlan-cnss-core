@@ -3,6 +3,7 @@ KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 interface_type ?= pcie
 emulation_build ?= 0
 unified_driver ?= 0
+unified_prealloc ?= 0
 
 ifeq ($(unified_driver), 1)
 M?= $(shell pwd)
@@ -53,6 +54,12 @@ ifeq ($(interface_type), sdio)
 KBUILD_OPTIONS += CONFIG_SDIO_XPRT=m CONFIG_QCN=m CONFIG_DIAG_SDIO=y CONFIG_QTI_SDIO_CLIENT=m CONFIG_CNSS2_SDIO=y
 endif
 endif #unified_driver end
+
+ifeq ($(unified_prealloc), 1)
+KBUILD_OPTIONS += CONFIG_WCNSS_MEM_PRE_ALLOC=y
+else
+KBUILD_OPTIONS += CONFIG_WCNSS_MEM_PRE_ALLOC=m
+endif
 
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(shell pwd) modules $(KBUILD_OPTIONS)
