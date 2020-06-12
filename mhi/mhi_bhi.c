@@ -23,6 +23,8 @@
 #include "mhi_hwio.h"
 #include "mhi_bhi.h"
 
+static struct mhi_device_ctxt *s_mhi_dev_ctxt;
+
 static int bhi_open(struct inode *mhi_inode, struct file *file_handle)
 {
 	struct mhi_device_ctxt *mhi_dev_ctxt;
@@ -592,6 +594,8 @@ void bhi_firmware_download(struct work_struct *work)
 
 	mhi_log(mhi_dev_ctxt, MHI_MSG_INFO, "Enter\n");
 
+	mhi_enable_irq();
+
 	ret = wait_event_interruptible_timeout(
 		*mhi_dev_ctxt->mhi_ev_wq.bhi_event,
 		mhi_dev_ctxt->mhi_state == MHI_STATE_BHI ||
@@ -656,6 +660,9 @@ int bhi_probe(struct mhi_device_ctxt *mhi_dev_ctxt)
 	int ret, i;
 	size_t remainder;
 	const u8 *image;
+
+	// Save mhi_dev_ctxt
+	s_mhi_dev_ctxt = mhi_dev_ctxt;
 
 	/* expose dev node to userspace */
 	if (bhi_ctxt->manage_boot == false)
@@ -831,4 +838,19 @@ void bhi_exit(struct mhi_device_ctxt *mhi_dev_ctxt)
 	kfree(rddm_table->bhie_mem_info);
 	rddm_table->bhie_mem_info = NULL;
 	rddm_table->bhi_vec_entry = NULL;
+
+	// Clear s_mhi_dev_ctxt
+	s_mhi_dev_ctxt = NULL;
 }
+
+void mhi_enable_irq(void)
+{
+	if (s_mhi_dev_ctxt == NULL)
+		return;
+
+	disable_irq(MSI_TO_IRQ(s_mhi_dev_ctxt, 0));
+	enable_irq(MSI_TO_IRQ(s_mhi_dev_ctxt, 0));
+	disable_irq(MSI_TO_IRQ(s_mhi_dev_ctxt, 1));
+	enable_irq(MSI_TO_IRQ(s_mhi_dev_ctxt, 1));
+}
+EXPORT_SYMBOL(mhi_enable_irq);

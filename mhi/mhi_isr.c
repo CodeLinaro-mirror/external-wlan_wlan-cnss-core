@@ -279,7 +279,14 @@ void mhi_ev_task(unsigned long data)
 	 * therad being executed.
 	 */
 	if (!MHI_REG_ACCESS_VALID(mhi_dev_ctxt->mhi_pm_state))
+	{
+#ifndef CONFIG_ONE_MSI_VECTOR
+		enable_irq(MSI_TO_IRQ(mhi_dev_ctxt, ev_index));
+#else
+		enable_irq(MSI_TO_IRQ(mhi_dev_ctxt, 0));
+#endif
 		return;
+	}
 #endif
 
 	/* Process event ring */

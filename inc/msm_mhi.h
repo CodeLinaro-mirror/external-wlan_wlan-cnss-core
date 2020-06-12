@@ -341,6 +341,8 @@ struct mhi_result *mhi_poll(struct mhi_client_handle *client_handle);
 void mhi_mask_irq(struct mhi_client_handle *client_handle);
 void mhi_unmask_irq(struct mhi_client_handle *client_handle);
 
+void mhi_enable_irq(void);
+
 #else
 static inline bool mhi_is_device_ready(const struct device * const dev,
 				       const char *node_name)

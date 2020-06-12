@@ -25,6 +25,7 @@
 #include "main.h"
 #include "debug.h"
 #include "qmi.h"
+#include "msm_mhi.h"
 
 #define WLFW_SERVICE_INS_ID_V01		1
 #define WLFW_CLIENT_ID			0x4b4e454c
@@ -1010,6 +1011,9 @@ int cnss_wlfw_wlan_mode_send_sync(struct cnss_plat_data *plat_priv,
 		cnss_pr_dbg("Recovery is in progress, ignore mode off request.\n");
 		return 0;
 	}
+
+	if (mode == QMI_WLFW_OFF_V01)
+		mhi_enable_irq();
 
 	memset(&req, 0, sizeof(req));
 	memset(&resp, 0, sizeof(resp));
