@@ -21,6 +21,14 @@
 #include "mhi_macros.h"
 #include "mhi_sys.h"
 
+void mhi_destroy_event_cfg(struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	if (mhi_dev_ctxt && mhi_dev_ctxt->ev_ring_props) {
+		kfree(mhi_dev_ctxt->ev_ring_props);
+		mhi_dev_ctxt->ev_ring_props = NULL;
+	}
+}
+
 int mhi_populate_event_cfg(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
 #ifdef CONFIG_NAPIER_X86
@@ -127,6 +135,29 @@ dt_error:
 #endif
 }
 
+void delete_local_ev_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	int i;
+
+	if(!mhi_dev_ctxt)
+		return;
+
+	if (mhi_dev_ctxt->mhi_local_event_ctxt) {
+		for (i = 0; i < mhi_dev_ctxt->mmio_info.nr_event_rings; i++) {
+			tasklet_kill(
+			    &mhi_dev_ctxt->mhi_local_event_ctxt[i].ev_task);
+			cancel_work_sync(
+			    &mhi_dev_ctxt->mhi_local_event_ctxt[i].ev_worker);
+		}
+		kfree(mhi_dev_ctxt->mhi_local_event_ctxt);
+		mhi_dev_ctxt->mhi_local_event_ctxt = NULL;
+	}
+	if (mhi_dev_ctxt->counters.msi_counter) {
+		kfree(mhi_dev_ctxt->counters.msi_counter);
+		mhi_dev_ctxt->counters.msi_counter = NULL;
+	}
+}
+
 int create_local_ev_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
 	int r = 0;
@@ -160,6 +191,7 @@ int create_local_ev_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt)
 
 free_local_ec_list:
 	kfree(mhi_dev_ctxt->mhi_local_event_ctxt);
+	mhi_dev_ctxt->mhi_local_event_ctxt = NULL;
 	return r;
 }
 void ring_ev_db(struct mhi_device_ctxt *mhi_dev_ctxt, u32 event_ring_index)

@@ -136,6 +136,42 @@ static int mhi_cmd_ring_init(struct mhi_cmd_ctxt *cmd_ctxt,
 	return 0;
 }
 
+static void deinit_mhi_dev_mem(struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	int i;
+
+	for (i = 0; i < mhi_dev_ctxt->mmio_info.nr_event_rings; ++i) {
+		struct mhi_event_ctxt *dev_ev_ctxt = NULL;
+		struct mhi_ring *ev_ctxt = NULL;
+
+		dev_ev_ctxt = &mhi_dev_ctxt->dev_space.ring_ctxt.ec_list[i];
+		ev_ctxt = &mhi_dev_ctxt->mhi_local_event_ctxt[i];
+
+		if(!ev_ctxt->base)
+			continue;
+#ifdef CONFIG_NAPIER_X86
+		dma_free_coherent(&mhi_dev_ctxt->pcie_device->dev,
+#else
+		dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev,
+#endif
+				  ev_ctxt->len,
+				  ev_ctxt->base,
+				  dev_ev_ctxt->mhi_event_ring_base_addr);
+		ev_ctxt->base = NULL;
+	}
+	if (mhi_dev_ctxt->dev_space.dev_mem_start) {
+#ifdef CONFIG_NAPIER_X86
+		dma_free_coherent(&mhi_dev_ctxt->pcie_device->dev,
+#else
+		dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev,
+#endif
+			   mhi_dev_ctxt->dev_space.dev_mem_len,
+			   mhi_dev_ctxt->dev_space.dev_mem_start,
+			   mhi_dev_ctxt->dev_space.dma_dev_mem_start);
+		mhi_dev_ctxt->dev_space.dev_mem_start = NULL;
+	}
+}
+
 int init_mhi_dev_mem(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
 	size_t mhi_mem_index = 0, ring_len;
@@ -251,6 +287,7 @@ err_ev_alloc:
 				  ev_ctxt->len,
 				  ev_ctxt->base,
 				  dev_ev_ctxt->mhi_event_ring_base_addr);
+		ev_ctxt->base = NULL;
 	}
 #ifdef CONFIG_NAPIER_X86
 	dma_free_coherent(&mhi_dev_ctxt->pcie_device->dev,
@@ -260,7 +297,25 @@ err_ev_alloc:
 			   mhi_dev_ctxt->dev_space.dev_mem_len,
 			   mhi_dev_ctxt->dev_space.dev_mem_start,
 			   mhi_dev_ctxt->dev_space.dma_dev_mem_start);
+	mhi_dev_ctxt->dev_space.dev_mem_start = NULL;
+
 	return -EFAULT;
+}
+
+static void mhi_deinit_events(struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	if (mhi_dev_ctxt->mhi_ev_wq.m0_event) {
+		kfree(mhi_dev_ctxt->mhi_ev_wq.m0_event);
+		mhi_dev_ctxt->mhi_ev_wq.m0_event = NULL;
+	}
+	if (mhi_dev_ctxt->mhi_ev_wq.m3_event) {
+		kfree(mhi_dev_ctxt->mhi_ev_wq.m3_event);
+		mhi_dev_ctxt->mhi_ev_wq.m3_event = NULL;
+	}
+	if (mhi_dev_ctxt->mhi_ev_wq.bhi_event) {
+		kfree(mhi_dev_ctxt->mhi_ev_wq.bhi_event);
+		mhi_dev_ctxt->mhi_ev_wq.bhi_event = NULL;
+	}
 }
 
 static int mhi_init_events(struct mhi_device_ctxt *mhi_dev_ctxt)
@@ -297,10 +352,21 @@ static int mhi_init_events(struct mhi_device_ctxt *mhi_dev_ctxt)
 	return 0;
 error_bhi_event:
 	kfree(mhi_dev_ctxt->mhi_ev_wq.m3_event);
+	mhi_dev_ctxt->mhi_ev_wq.m3_event = NULL;
 error_m0_event:
 	kfree(mhi_dev_ctxt->mhi_ev_wq.m0_event);
+	mhi_dev_ctxt->mhi_ev_wq.m0_event = NULL;
 error_state_change_event_handle:
 	return -ENOMEM;
+}
+
+static void mhi_destroy_all_thread_queues_lock(
+		struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	if (mhi_dev_ctxt->state_change_work_item_list.q_lock) {
+		kfree(mhi_dev_ctxt->state_change_work_item_list.q_lock);
+		mhi_dev_ctxt->state_change_work_item_list.q_lock = NULL;
+	}
 }
 
 static int mhi_init_state_change_thread_work_queue(
@@ -331,9 +397,28 @@ static int mhi_init_state_change_thread_work_queue(
 	return 0;
 }
 
+static void mhi_deinit_wakelock(struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	wakeup_source_trash(&mhi_dev_ctxt->w_lock);
+}
+
 static void mhi_init_wakelock(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
 	wakeup_source_init(&mhi_dev_ctxt->w_lock, "mhi_wakeup_source");
+}
+
+void mhi_deinit_device_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	if(!mhi_dev_ctxt)
+		return;
+	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "Entered\n");
+	mhi_deinit_wakelock(mhi_dev_ctxt);
+	mhi_deinit_all_thread_queues(mhi_dev_ctxt);
+	mhi_deinit_events(mhi_dev_ctxt);
+	deinit_mhi_dev_mem(mhi_dev_ctxt);
+	delete_local_ev_ctxt(mhi_dev_ctxt);
+	mhi_destroy_event_cfg(mhi_dev_ctxt);
+	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "Exit\n");
 }
 
 /**
@@ -396,8 +481,11 @@ int mhi_init_device_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt)
 
 error_during_thread_init:
 	kfree(mhi_dev_ctxt->mhi_ev_wq.m0_event);
+	mhi_dev_ctxt->mhi_ev_wq.m0_event = NULL;
 	kfree(mhi_dev_ctxt->mhi_ev_wq.m3_event);
+	mhi_dev_ctxt->mhi_ev_wq.m3_event = NULL;
 	kfree(mhi_dev_ctxt->mhi_ev_wq.bhi_event);
+	mhi_dev_ctxt->mhi_ev_wq.bhi_event = NULL;
 error_wq_init:
 #ifdef CONFIG_NAPIER_X86
 	dma_free_coherent(&mhi_dev_ctxt->pcie_device->dev,
@@ -407,10 +495,12 @@ error_wq_init:
 		   mhi_dev_ctxt->dev_space.dev_mem_len,
 		   mhi_dev_ctxt->dev_space.dev_mem_start,
 		   mhi_dev_ctxt->dev_space.dma_dev_mem_start);
+	mhi_dev_ctxt->dev_space.dev_mem_start = NULL;
 error_during_dev_mem_init:
 error_during_local_ev_ctxt:
 error_during_sync:
 	kfree(mhi_dev_ctxt->ev_ring_props);
+	mhi_dev_ctxt->ev_ring_props = NULL;
 error_during_props:
 	return r;
 }
@@ -473,6 +563,12 @@ int mhi_init_chan_ctxt(struct mhi_chan_ctxt *cc_list,
 	/* Flush writes to MMIO */
 	wmb();
 	return 0;
+}
+
+void mhi_deinit_all_thread_queues(
+		struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	mhi_destroy_all_thread_queues_lock(mhi_dev_ctxt);
 }
 
 int mhi_reset_all_thread_queues(
