@@ -239,8 +239,9 @@ static void hsic_read_work_fn(struct work_struct *work)
 		err = diag_bridge_read(ch->id, buf, DIAG_MDM_BUF_SIZE);
 		if (err) {
 			diagmem_free(driver, buf, ch->mempool);
-			pr_err_ratelimited("diag: Unable to read from HSIC channel %d, err: %d\n",
-					   ch->id, err);
+			if (err != -ENODEV)
+				pr_err_ratelimited("diag: Unable to read from HSIC channel %d, err: %d\n",
+						   ch->id, err);
 			break;
 		}
 	} while (buf);

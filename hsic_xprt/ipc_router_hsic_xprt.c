@@ -389,8 +389,9 @@ static void hsic_xprt_read_data(struct work_struct *work)
 			bytes_read = pdata->read(hsic_xprtp->pdev, skb->data,
 						 pdata->max_read_size);
 			if (bytes_read < 0) {
-				IPC_RTR_ERR("%s: Error %d @ read operation\n",
-					    __func__, bytes_read);
+				if (bytes_read != -ENODEV)
+					pr_err("%s: Error %d @ read operation\n",
+					    	__func__, bytes_read);
 				kfree_skb(skb);
 				goto out_read_data;
 			}
@@ -890,7 +891,7 @@ static void __exit msm_ipc_router_hsic_xprt_deinit(void)
 	msm_ipc_router_hsic_driver_unregister(hsic_xprtp);
 
 	msm_ipc_router_hsic_config_deinit(hsic_xprtp);
-	IPC_RTR_ERR("%s: hsic_xprt driver removed \n",__func__);
+	pr_debug("%s: hsic_xprt driver removed \n",__func__);
 #endif
 }
 #ifndef CONFIG_WLAN_CNSS_CORE

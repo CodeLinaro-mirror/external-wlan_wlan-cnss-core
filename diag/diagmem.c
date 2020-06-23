@@ -196,8 +196,8 @@ void diagmem_exit(struct diagchar_dev *driver, int index)
 		mempool_destroy(mempool->pool);
 		mempool->pool = NULL;
 	} else {
-		pr_err("diag: Unable to destory %s pool, count: %d\n",
-		       mempool->name, mempool->count);
+		pr_notice("diag: Unable to destory %s pool, count: %d\n",
+			   mempool->name, mempool->count);
 	}
 	spin_unlock_irqrestore(&mempool->lock, flags);
 }

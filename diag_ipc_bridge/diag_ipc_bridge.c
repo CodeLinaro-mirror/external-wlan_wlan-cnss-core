@@ -262,13 +262,11 @@ int diag_bridge_read(int id, char *data, int size)
 
 	mutex_lock(&dev->read_mutex);
 	if (!dev->ifc) {
-		pr_err("%s: device is disconnected\n", __func__);
 		ret = -ENODEV;
 		goto error;
 	}
 
 	if (id == DIAG_BRIDGE && !dev->ops) {
-		pr_err("%s: bridge is not open\n", __func__);
 		ret = -ENODEV;
 		goto error;
 	}
@@ -282,8 +280,6 @@ int diag_bridge_read(int id, char *data, int size)
 
 	/* if there was a previous unrecoverable error, just quit */
 	if (id == DIAG_BRIDGE && dev->err) {
-		pr_err("%s: EPROTO error occurred, or device disconnected\n",
-								__func__);
 		ret = -ENODEV;
 		goto error;
 	}
@@ -297,8 +293,6 @@ int diag_bridge_read(int id, char *data, int size)
 
 	ret = usb_autopm_get_interface(dev->ifc);
 	if (ret < 0 && ret != -EAGAIN && ret != -EACCES) {
-		pr_err_ratelimited("%s: read: autopm_get failed:%d\n",
-							__func__, ret);
 		goto free_error;
 	}
 
@@ -317,8 +311,6 @@ int diag_bridge_read(int id, char *data, int size)
 
 	ret = usb_submit_urb(urb, GFP_KERNEL);
 	if (ret) {
-		pr_err_ratelimited("%s: submitting urb failed err:%d\n",
-							__func__, ret);
 		dev->pending_reads--;
 		usb_unanchor_urb(urb);
 		usb_autopm_put_interface(dev->ifc);
@@ -414,13 +406,11 @@ int diag_bridge_write(int id, char *data, int size)
 
 	mutex_lock(&dev->write_mutex);
 	if (!dev->ifc) {
-		pr_err("%s: device is disconnected\n", __func__);
 		ret = -ENODEV;
 		goto error;
 	}
 
 	if (id == DIAG_BRIDGE && !dev->ops) {
-		pr_err("%s: bridge is not open\n", __func__);
 		ret = -ENODEV;
 		goto error;
 	}
@@ -433,8 +423,6 @@ int diag_bridge_write(int id, char *data, int size)
 
 	/* if there was a previous unrecoverable error, just quit */
 	if (id == DIAG_BRIDGE && dev->err) {
-		pr_err("%s: EPROTO error occurred, or device disconnected\n",
-								__func__);
 		ret = -ENODEV;
 		goto error;
 	}
@@ -448,8 +436,6 @@ int diag_bridge_write(int id, char *data, int size)
 
 	ret = usb_autopm_get_interface(dev->ifc);
 	if (ret < 0 && ret != -EAGAIN && ret != -EACCES) {
-		pr_err_ratelimited("%s: write: autopm_get failed:%d\n",
-							__func__, ret);
 		goto free_error;
 	}
 
@@ -462,8 +448,6 @@ int diag_bridge_write(int id, char *data, int size)
 
 	ret = usb_submit_urb(urb, GFP_KERNEL);
 	if (ret) {
-		pr_err_ratelimited("%s: submitting urb failed err:%d\n",
-							__func__, ret);
 		dev->pending_writes--;
 		usb_unanchor_urb(urb);
 		usb_autopm_put_interface(dev->ifc);

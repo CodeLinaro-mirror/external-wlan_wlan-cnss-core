@@ -4481,7 +4481,7 @@ static void msm_ipc_router_deinit(void)
 		IPC_RTR_ERR(
 		"%s: ipc_router_core_deinit failed %d\n", __func__, ret);
 	else
-		IPC_RTR_ERR(
+		pr_debug(
 		"%s: ipc_router_core_deinited successfully  %d\n", __func__, ret);
 
 	return;

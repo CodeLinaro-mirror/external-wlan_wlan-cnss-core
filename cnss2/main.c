@@ -1433,7 +1433,7 @@ static void cnss_driver_event_work(struct work_struct *work)
 		return;
 	}
 
-	cnss_pr_err("cnss_driver_event_work\n");
+	cnss_pr_dbg("cnss_driver_event_work\n");
 	cnss_pm_stay_awake(plat_priv);
 
 	spin_lock_irqsave(&plat_priv->event_lock, flags);
