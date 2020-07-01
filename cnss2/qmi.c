@@ -1012,8 +1012,10 @@ int cnss_wlfw_wlan_mode_send_sync(struct cnss_plat_data *plat_priv,
 		return 0;
 	}
 
+#ifdef	CONFIG_MSM_MHI
 	if (mode == QMI_WLFW_OFF_V01)
 		mhi_enable_irq();
+#endif
 
 	memset(&req, 0, sizeof(req));
 	memset(&resp, 0, sizeof(resp));

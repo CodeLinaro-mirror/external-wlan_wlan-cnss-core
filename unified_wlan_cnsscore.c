@@ -141,7 +141,9 @@ static int unified_pdrv_init(void)
 #endif
 	return 0;
 
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 fail14:
+#endif
 #ifdef CONFIG_SINGLE_KO_FEATURE
 	hdd_module_exit();
 #endif
