@@ -432,6 +432,19 @@ irqreturn_t mhi_msi_handlr(int irq_number, void *dev_id)
 		&mhi_dev_ctxt->ev_ring_props[er_index];
 	int msi = IRQ_TO_MSI(mhi_dev_ctxt, irq_number);
 
+#if defined(CONFIG_CNSS_QCA6490) || defined(CONFIG_CNSS_QCA6390)
+	u32 cur_exec;
+	u32 prev_exec = mhi_dev_ctxt->dev_exec_env;
+	struct bhi_ctxt_t *bhi_ctxt = &mhi_dev_ctxt->bhi_ctxt;
+
+	cur_exec = mhi_reg_read(bhi_ctxt->bhi_base, BHI_EXECENV);
+
+	if (cur_exec != prev_exec && prev_exec != MHI_EXEC_ENV_DISABLE_TRANSITION && cur_exec == MHI_EXEC_ENV_RDDM) {
+		mhi_dev_ctxt->dev_exec_env = MHI_EXEC_ENV_RDDM;
+		mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "mhi_msi_handlr scheduler sys err cur_exec %x prev_exec %x\n", cur_exec, prev_exec);
+		schedule_work(&mhi_dev_ctxt->process_sys_err_worker);
+	}
+#endif
 	mhi_dev_ctxt->counters.msi_counter[er_index]++;
 	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE, "Got MSI 0x%x for ring %u\n",
 		msi, er_index);
