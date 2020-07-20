@@ -48,6 +48,9 @@ if (ipc_router_mhi_xprt_debug_mask) \
 #define IPC_ROUTER_MHI_XPRT_MAX_PKT_SIZE 0x1000
 #define IPC_ROUTER_MHI_XPRT_NUM_TRBS 10
 
+#define IPC_OUT_CHN_MAX_PAYLOAD_SIZE 0x1000
+#define IPC_IN_CHN_MAX_PAYLOAD_SIZE 0x1000
+
 /**
  * ipc_router_mhi_addr_map - Struct for virtual address to IPC Router
  *				packet mapping.
@@ -833,6 +836,7 @@ static int ipc_router_mhi_driver_register(
 	mhi_info->dev = dev;
 	mhi_info->node_name = node_name;
 	mhi_info->user_data = mhi_xprtp;
+	mhi_info->max_payload = IPC_OUT_CHN_MAX_PAYLOAD_SIZE;
 	rc = mhi_register_channel(&mhi_xprtp->ch_hndl.out_handle, mhi_info);
 	if (rc) {
 		IPC_RTR_ERR("%s: Error %d registering out_chan for %s\n",
@@ -845,6 +849,7 @@ static int ipc_router_mhi_driver_register(
 	mhi_info->dev = dev;
 	mhi_info->node_name = node_name;
 	mhi_info->user_data = mhi_xprtp;
+	mhi_info->max_payload = IPC_IN_CHN_MAX_PAYLOAD_SIZE;
 	rc = mhi_register_channel(&mhi_xprtp->ch_hndl.in_handle, mhi_info);
 	if (rc) {
 		mhi_deregister_channel(mhi_xprtp->ch_hndl.out_handle);

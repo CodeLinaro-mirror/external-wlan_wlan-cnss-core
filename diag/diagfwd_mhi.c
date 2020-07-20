@@ -51,6 +51,8 @@ static void mhi_enabled_notifier(void)
 
 #define DIAG_MHI_STRING_SZ		11
 
+#define MHI_DIAG_MAX_SIZE	0X800
+
 struct diag_mhi_info diag_mhi[NUM_MHI_DEV] = {
 	{
 		.id = MHI_1,
@@ -672,6 +674,7 @@ static int diag_mhi_register_ch(int id, struct diag_mhi_ch_t *ch)
 	ch->client_info.dev = &driver->pdev->dev;
 	ch->client_info.node_name = "qcom,mhi";
 	ch->client_info.user_data = (void *)(uintptr_t)ctxt;
+	ch->client_info.max_payload = MHI_DIAG_MAX_SIZE;
 	return mhi_register_channel(&ch->hdl, &ch->client_info);
 }
 

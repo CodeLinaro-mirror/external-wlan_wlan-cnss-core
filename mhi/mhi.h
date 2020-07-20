@@ -373,6 +373,8 @@ struct mhi_ring {
 	u32 msi_enable_cntr;
 	spinlock_t ring_lock;
 	struct dma_pool *dma_pool;
+	bool dma_pool_initialized;
+	u32 max_payload;
 	struct tasklet_struct ev_task;
 	struct work_struct ev_worker;
 	struct mhi_device_ctxt *mhi_dev_ctxt;

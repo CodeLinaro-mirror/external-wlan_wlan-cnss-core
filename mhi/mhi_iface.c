@@ -444,6 +444,17 @@ deregister_pcie:
 }
 
 #ifdef CONFIG_NAPIER_X86
+
+#ifdef CONFIG_USE_CUSTOMIZED_DMA_MEM
+static ulong pmem_start = 0x60000000;
+module_param(pmem_start, ulong, 0600);
+MODULE_PARM_DESC(pmem_start, "start of physical memoryfor PCI transaction");
+
+static ulong pmem_end = 0x6e000000;
+module_param(pmem_end, ulong, 0600);
+MODULE_PARM_DESC(pmem_end, "end of physical memoryfor PCI transaction");
+#endif
+
 static int mhi_plat_probe(void)
 {
 	struct pcie_core_info *core;
@@ -452,9 +463,13 @@ static int mhi_plat_probe(void)
 	mhi_dev_ctxt = kzalloc(sizeof(*mhi_dev_ctxt), GFP_KERNEL);
 	if (!mhi_dev_ctxt)
 		return -ENOMEM;
+#ifdef CONFIG_USE_CUSTOMIZED_DMA_MEM
+	address_window[0] = pmem_start;
+	address_window[1] = pmem_end;
+#else
 	address_window[0] = 0x0;
 	address_window[1] = 0xFFFFFFFFF;
-
+#endif
 	core = &mhi_dev_ctxt->core;
 	core->dev_id = PCI_ANY_ID;
 	mhi_dev_ctxt->poll_reset_timeout_ms = BHI_POLL_TIMEOUT_MS << 4;
@@ -478,8 +493,11 @@ static int mhi_plat_probe(void)
 
 		INIT_WORK(&bhi_ctxt->fw_load_work, bhi_firmware_download);
 	}
-
+#ifdef CONFIG_USE_CUSTOMIZED_DMA_MEM
+	mhi_dev_ctxt->flags.bb_required = true;
+#else
 	mhi_dev_ctxt->flags.bb_required = false;
+#endif
 	mhi_dev_ctxt->parent = mhi_device_drv->parent;
 	mhi_dev_ctxt->ready = true;
 	mutex_lock(&mhi_device_drv->lock);

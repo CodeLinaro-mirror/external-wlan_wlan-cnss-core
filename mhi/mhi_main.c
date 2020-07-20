@@ -32,58 +32,56 @@
 #include "mhi_bhi.h"
 #include "mhi_trace.h"
 
-static int enable_bb_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
+
+static int
+prepare_dma_mem(struct mhi_device_ctxt *mhi_dev_ctxt,
 			  struct mhi_ring *bb_ctxt,
-			  int nr_el,
-			  int chan,
-			  size_t max_payload)
+			  int chan)
 {
-	int i;
+	int i, nr_el;
+	char pool_name[32];
 	struct mhi_buf_info *mhi_buf_info;
+	int max_payload = bb_ctxt->max_payload;
+	int flags = GFP_KERNEL;
 
-	bb_ctxt->el_size = sizeof(struct mhi_buf_info);
-	bb_ctxt->len     = bb_ctxt->el_size * nr_el;
-	bb_ctxt->base    = kzalloc(bb_ctxt->len, GFP_KERNEL);
-	bb_ctxt->wp	 = bb_ctxt->base;
-	bb_ctxt->rp	 = bb_ctxt->base;
-	bb_ctxt->ack_rp  = bb_ctxt->base;
-	if (!bb_ctxt->base)
-		return -ENOMEM;
-
-	if (mhi_dev_ctxt->flags.bb_required) {
-		char pool_name[32];
 #ifdef CONFIG_NAPIER_X86
-		snprintf(pool_name, sizeof(pool_name), "mhi%d_%d",
-			 0, chan);
+	snprintf(pool_name, sizeof(pool_name), "mhi%d_%d",
+		 0, chan);
 #else
-		snprintf(pool_name, sizeof(pool_name), "mhi%d_%d",
-			 mhi_dev_ctxt->plat_dev->id, chan);
+	snprintf(pool_name, sizeof(pool_name), "mhi%d_%d",
+		 mhi_dev_ctxt->plat_dev->id, chan);
 #endif
+	nr_el = bb_ctxt->len / bb_ctxt->el_size;
 
+	bb_ctxt->dma_pool = dma_pool_create(pool_name,
+#ifdef CONFIG_NAPIER_X86
+		&mhi_dev_ctxt->pcie_device->dev, max_payload, 0, 0);
+#else
+		&mhi_dev_ctxt->plat_dev->dev, max_payload, 4, 0);
+#endif
+	if (unlikely(!bb_ctxt->dma_pool)) {
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-			"Creating pool %s for chan:%d payload: 0x%zx\n",
-			pool_name, chan, max_payload);
-
-		bb_ctxt->dma_pool = dma_pool_create(pool_name,
-#ifdef CONFIG_NAPIER_X86
-			&mhi_dev_ctxt->pcie_device->dev, max_payload, 0, 0);
-#else
-			&mhi_dev_ctxt->plat_dev->dev, max_payload, 0, 0);
-#endif
-		if (unlikely(!bb_ctxt->dma_pool))
-			goto dma_pool_error;
-
-		mhi_buf_info = (struct mhi_buf_info *)bb_ctxt->base;
-		for (i = 0; i < nr_el; i++, mhi_buf_info++) {
-			mhi_buf_info->pre_alloc_v_addr =
-				dma_pool_alloc(bb_ctxt->dma_pool, GFP_KERNEL,
-					       &mhi_buf_info->pre_alloc_p_addr);
-			if (unlikely(!mhi_buf_info->pre_alloc_v_addr))
-				goto dma_alloc_error;
-			mhi_buf_info->pre_alloc_len = max_payload;
-		}
+		"Fail to Creating pool %s for chan:%d payload: 0x%zx\n",
+		pool_name, chan, max_payload);
+		goto dma_pool_error;
 	}
 
+	if (in_interrupt() || irqs_disabled() || in_atomic())
+		flags = GFP_ATOMIC;
+
+	mhi_buf_info = (struct mhi_buf_info *)bb_ctxt->base;
+	for (i = 0; i < nr_el; i++, mhi_buf_info++) {
+		mhi_buf_info->pre_alloc_v_addr =
+			dma_pool_alloc(bb_ctxt->dma_pool, flags,
+				       &mhi_buf_info->pre_alloc_p_addr);
+		if (unlikely(!mhi_buf_info->pre_alloc_v_addr))
+			goto dma_alloc_error;
+		mhi_buf_info->pre_alloc_len = max_payload;
+	}
+	bb_ctxt->dma_pool_initialized = true;
+	mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
+		"Creating pool %s for chan:%d payload: 0x%zx C %d\n",
+		pool_name, chan, max_payload, nr_el);
 	return 0;
 
 dma_alloc_error:
@@ -97,6 +95,32 @@ dma_pool_error:
 	kfree(bb_ctxt->base);
 	bb_ctxt->base = NULL;
 	return -ENOMEM;
+}
+
+
+static int enable_bb_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
+			  struct mhi_ring *bb_ctxt,
+			  int nr_el,
+			  int chan,
+			  size_t max_payload)
+{
+	bb_ctxt->el_size = sizeof(struct mhi_buf_info);
+	bb_ctxt->len     = bb_ctxt->el_size * nr_el;
+	bb_ctxt->base    = kzalloc(bb_ctxt->len, GFP_KERNEL);
+	bb_ctxt->wp	 = bb_ctxt->base;
+	bb_ctxt->rp	 = bb_ctxt->base;
+	bb_ctxt->ack_rp  = bb_ctxt->base;
+	bb_ctxt->max_payload = max_payload;
+	if (!bb_ctxt->base)
+		return -ENOMEM;
+
+	mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR, "0x%zx\n", max_payload);
+#ifndef CONFIG_NAPIER_X86
+	if (mhi_dev_ctxt->flags.bb_required) {
+		prepare_dma_mem(mhi_dev_ctxt, bb_ctxt, chan);
+	}
+#endif
+	return 0;
 }
 
 static void mhi_write_db(struct mhi_device_ctxt *mhi_dev_ctxt,
@@ -829,6 +853,11 @@ static int create_bb(struct mhi_device_ctxt *mhi_dev_ctxt,
 	struct mhi_buf_info *bb_info;
 	int r;
 	uintptr_t bb_index, ctxt_index_wp, ctxt_index_rp;
+#ifdef CONFIG_NAPIER_X86
+	struct device *dev = &mhi_dev_ctxt->pcie_device->dev;
+#else
+	struct device *dev = &mhi_dev_ctxt->plat_dev->dev;
+#endif
 
 	mhi_log(mhi_dev_ctxt, MHI_MSG_RAW,
 		"Entered chan %d\n", chan);
@@ -853,30 +882,27 @@ static int create_bb(struct mhi_device_ctxt *mhi_dev_ctxt,
 	bb_info->client_buf = buf;
 	bb_info->dir = dir;
 	bb_info->bb_p_addr = dma_map_single(
-#ifdef CONFIG_NAPIER_X86
-					&mhi_dev_ctxt->pcie_device->dev,
-#else
-					&mhi_dev_ctxt->plat_dev->dev,
-#endif
+					dev,
 					bb_info->client_buf,
 					bb_info->buf_len,
 					bb_info->dir);
 	bb_info->bb_active = 0;
 	if (!VALID_BUF(bb_info->bb_p_addr, bb_info->buf_len, mhi_dev_ctxt)) {
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-			"Buffer outside DMA range 0x%lx, size 0x%zx\n",
-			(uintptr_t)bb_info->bb_p_addr, buf_len);
-#ifdef CONFIG_NAPIER_X86
-		dma_unmap_single(&mhi_dev_ctxt->pcie_device->dev,
-#else
-		dma_unmap_single(&mhi_dev_ctxt->plat_dev->dev,
-#endif
+			"bb 0x%pK Buffer outside DMA range 0x%lx, size 0x%zx dir %d\n",
+			bb_ctxt,(uintptr_t)bb_info->bb_p_addr, buf_len, dir);
+		dma_unmap_single(dev,
 				bb_info->bb_p_addr,
 				bb_info->buf_len,
 				bb_info->dir);
-
-		if (likely((mhi_dev_ctxt->flags.bb_required &&
-			    bb_info->pre_alloc_len >= bb_info->buf_len))) {
+#ifdef CONFIG_NAPIER_X86
+		if (mhi_dev_ctxt->flags.bb_required &&
+			false == bb_ctxt->dma_pool_initialized) {
+			prepare_dma_mem(mhi_dev_ctxt, bb_ctxt, chan);
+		}
+#endif
+		if (mhi_dev_ctxt->flags.bb_required &&
+			    bb_info->pre_alloc_len >= bb_info->buf_len) {
 			bb_info->bb_p_addr = bb_info->pre_alloc_p_addr;
 			bb_info->bb_v_addr = bb_info->pre_alloc_v_addr;
 			mhi_dev_ctxt->counters.bb_used[chan]++;
@@ -887,9 +913,10 @@ static int create_bb(struct mhi_device_ctxt *mhi_dev_ctxt,
 				       bb_info->buf_len);
 			}
 			bb_info->bb_active = 1;
-		} else
+		} else {
 			mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
 				"No BB allocated\n");
+		}
 	}
 	*bb = bb_info;
 	mhi_log(mhi_dev_ctxt, MHI_MSG_RAW, "Exited chan %d\n", chan);
@@ -899,19 +926,31 @@ static int create_bb(struct mhi_device_ctxt *mhi_dev_ctxt,
 static void disable_bb_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
 			    struct mhi_ring *bb_ctxt)
 {
-	if (mhi_dev_ctxt->flags.bb_required) {
-		struct mhi_buf_info *bb =
-			(struct mhi_buf_info *)bb_ctxt->base;
-		int nr_el = bb_ctxt->len / bb_ctxt->el_size;
-		int i = 0;
+	int nr_el;
+	int i;
+	struct mhi_buf_info *bb;
 
+	mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE,
+		"Entered bb_required %d\n", mhi_dev_ctxt->flags.bb_required);
+	if (mhi_dev_ctxt->flags.bb_required &&
+		bb_ctxt->dma_pool_initialized == true) {
+		bb = (struct mhi_buf_info *)bb_ctxt->base;
+		nr_el = bb_ctxt->len / bb_ctxt->el_size;
+
+		mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE,
+			"Coherent mem free[%d]: dev %pK, V 0x%pK, P 0x%llx, size %d\n",
+			i,
+			&mhi_dev_ctxt->pcie_device->dev,
+			bb->pre_alloc_v_addr,
+			(long long unsigned int)bb->pre_alloc_p_addr,
+			bb->buf_len);
 		for (i = 0; i < nr_el; i++, bb++)
 			dma_pool_free(bb_ctxt->dma_pool, bb->pre_alloc_v_addr,
 				      bb->pre_alloc_p_addr);
 		dma_pool_destroy(bb_ctxt->dma_pool);
+		bb_ctxt->dma_pool_initialized = false;
 		bb_ctxt->dma_pool = NULL;
 	}
-
 	kfree(bb_ctxt->base);
 	bb_ctxt->base = NULL;
 }
@@ -919,7 +958,7 @@ static void disable_bb_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
 static void free_bounce_buffer(struct mhi_device_ctxt *mhi_dev_ctxt,
 			       struct mhi_buf_info *bb)
 {
-	mhi_log(mhi_dev_ctxt, MHI_MSG_RAW, "Entered\n");
+	mhi_log(mhi_dev_ctxt, MHI_MSG_RAW, "Entered bb_active %d\n", bb->bb_active);
 	if (!bb->bb_active)
 		/* This buffer was maped directly to device */
 #ifdef CONFIG_NAPIER_X86
