@@ -173,8 +173,14 @@ irq_error:
 void mhi_ctxt_exit(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
 	int i;
-	for (i = 0; i < mhi_dev_ctxt->core.max_nr_msis; i++)
+	for (i = 0; i < mhi_dev_ctxt->mmio_info.nr_event_rings; i++)
+#ifndef CONFIG_ONE_MSI_VECTOR
 		free_irq(mhi_dev_ctxt->core.irq_base + i, (void *)mhi_dev_ctxt);
+#else
+		free_irq(mhi_dev_ctxt->core.irq_base +
+			mhi_dev_ctxt->ev_ring_props[i].msi_vec,
+			(void *)&mhi_dev_ctxt->mhi_local_event_ctxt[i]);
+#endif
 
 	mhi_deinit_device_ctxt(mhi_dev_ctxt);
 }
