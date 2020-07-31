@@ -323,17 +323,17 @@ int fw_remote_mem_dump(struct mhi_device_ctxt *mhi_dev_ctxt,
 
 typedef struct
 {
-	unsigned long base_address;
-	unsigned long actual_phys_address;
-	unsigned long size;
+	uint64_t base_address;
+	uint64_t actual_phys_address;
+	uint64_t size;
 	char description[20];
 	char file_name[20];
 }ramdump_entry;
 
 typedef struct
 {
-	unsigned int version;
-	unsigned int header_size;
+	uint32_t version;
+	uint32_t header_size;
 	ramdump_entry ramdump_table[MAX_RAMDUMP_TABLE_SIZE];
 }ramdump_header_t;
 
