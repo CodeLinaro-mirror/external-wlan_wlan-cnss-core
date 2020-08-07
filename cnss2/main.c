@@ -51,6 +51,8 @@
 #define FW_SRAM_DUMP_PATH			"/var/crash/fw_sram_dump.bin"
 #define FW_SRAM_START_QCA6390		0x01400000
 #define FW_SRAM_END_QCA6390			0x0171ffff
+#define FW_SRAM_START_QCA6490		0x01400000
+#define FW_SRAM_END_QCA6490			0x0177ffff
 
 static struct cnss_plat_data *plat_env;
 
@@ -1265,6 +1267,10 @@ int cnss_dump_fw_sram_to_file(struct device *dev)
 	}
 
 	switch(plat_priv->device_id) {
+		case QCA6490_DEVICE_ID:
+			fw_sram_start = FW_SRAM_START_QCA6490;
+			fw_sram_end = FW_SRAM_END_QCA6490;
+			break;
 		case QCA6390_DEVICE_ID:
 			fw_sram_start = FW_SRAM_START_QCA6390;
 			fw_sram_end = FW_SRAM_END_QCA6390;
@@ -2049,6 +2055,7 @@ static const struct platform_device_id cnss_platform_id_table[] = {
 	{ .name = "qca6390", .driver_data = QCA6390_DEVICE_ID, },
 	{ .name = "qcn7605", .driver_data = QCN7605_DEVICE_ID, },
 	{ .name = "qcn7605_sdio", .driver_data = QCN7605_SDIO_DEVICE_ID, },
+	{ .name = "qca6490", .driver_data = QCA6490_DEVICE_ID, },
 };
 
 static const struct of_device_id cnss_of_match_table[] = {
