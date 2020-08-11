@@ -850,7 +850,9 @@ void mhi_enable_irq(void)
 
 	disable_irq(MSI_TO_IRQ(s_mhi_dev_ctxt, 0));
 	enable_irq(MSI_TO_IRQ(s_mhi_dev_ctxt, 0));
+#ifndef CONFIG_ONE_MSI_VECTOR
 	disable_irq(MSI_TO_IRQ(s_mhi_dev_ctxt, 1));
 	enable_irq(MSI_TO_IRQ(s_mhi_dev_ctxt, 1));
+#endif
 }
 EXPORT_SYMBOL(mhi_enable_irq);
