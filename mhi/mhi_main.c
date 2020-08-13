@@ -61,7 +61,7 @@ prepare_dma_mem(struct mhi_device_ctxt *mhi_dev_ctxt,
 #endif
 	if (unlikely(!bb_ctxt->dma_pool)) {
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-		"Fail to Creating pool %s for chan:%d payload: 0x%zx\n",
+		"Fail to Creating pool %s for chan:%d payload: 0x%x\n",
 		pool_name, chan, max_payload);
 		goto dma_pool_error;
 	}
@@ -80,7 +80,7 @@ prepare_dma_mem(struct mhi_device_ctxt *mhi_dev_ctxt,
 	}
 	bb_ctxt->dma_pool_initialized = true;
 	mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-		"Creating pool %s for chan:%d payload: 0x%zx C %d\n",
+		"Creating pool %s for chan:%d payload: 0x%x C %d\n",
 		pool_name, chan, max_payload, nr_el);
 	return 0;
 
@@ -938,8 +938,7 @@ static void disable_bb_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
 		nr_el = bb_ctxt->len / bb_ctxt->el_size;
 
 		mhi_log(mhi_dev_ctxt, MHI_MSG_VERBOSE,
-			"Coherent mem free[%d]: dev %pK, V 0x%pK, P 0x%llx, size %d\n",
-			i,
+			"Coherent mem free: dev %pK, V 0x%pK, P 0x%llx, size %zd\n",
 			&mhi_dev_ctxt->pcie_device->dev,
 			bb->pre_alloc_v_addr,
 			(long long unsigned int)bb->pre_alloc_p_addr,
