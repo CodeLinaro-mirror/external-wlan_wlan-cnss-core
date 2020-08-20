@@ -211,6 +211,12 @@ enum cnss_debug_quirks {
 	SKIP_RECOVERY,
 };
 
+enum cnss_bdf_type {
+	CNSS_BDF_BIN,
+	CNSS_BDF_ELF,
+	CNSS_BDF_REGDB = 4,
+};
+
 struct cnss_cal_data {
 	u32 index;
 	u32 total_size;
