@@ -2551,13 +2551,15 @@ void cnss_pci_stop_mhi(struct cnss_pci_data *pci_priv)
 	plat_priv = pci_priv->plat_priv;
 
 	cnss_pci_set_mhi_state_bit(pci_priv, CNSS_MHI_RESUME);
-	cnss_pci_set_mhi_state(pci_priv, CNSS_MHI_POWER_OFF);
+	if (!test_bit(CNSS_DRIVER_LOADING, &plat_priv->driver_state))
+		cnss_pci_set_mhi_state(pci_priv, CNSS_MHI_POWER_OFF);
 
 	if (plat_priv->ramdump_info_v2.dump_data_valid ||
 	    test_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state))
 		return;
 
-	cnss_pci_set_mhi_state(pci_priv, CNSS_MHI_DEINIT);
+	if (!test_bit(CNSS_DRIVER_LOADING, &plat_priv->driver_state))
+		cnss_pci_set_mhi_state(pci_priv, CNSS_MHI_DEINIT);
 }
 
 static int cnss_pci_probe(struct pci_dev *pci_dev,
