@@ -180,27 +180,29 @@ static int bhi_bhie_transfer(struct mhi_device_ctxt *mhi_dev_ctxt,
 		bhie_vecstatus_offs = BHIE_RXVECSTATUS_OFFS;
 	}
 
+	if (tx_vec_table) {
 	/* Program TX/RX Vector table */
-	read_lock_bh(pm_xfer_lock);
-	if (!MHI_REG_ACCESS_VALID(mhi_dev_ctxt->mhi_pm_state)) {
+		read_lock_bh(pm_xfer_lock);
+		if (!MHI_REG_ACCESS_VALID(mhi_dev_ctxt->mhi_pm_state)) {
+			read_unlock_bh(pm_xfer_lock);
+			return -EIO;
+		}
+
+		val = HIGH_WORD(bhie_mem_info->phys_addr);
+		mhi_reg_write(mhi_dev_ctxt, bhi_ctxt->bhi_base,
+			      bhie_vecaddr_high_offs, val);
+		val = LOW_WORD(bhie_mem_info->phys_addr);
+		mhi_reg_write(mhi_dev_ctxt, bhi_ctxt->bhi_base,
+			      bhie_vecaddr_low_offs, val);
+		val = (u32)bhie_mem_info->size;
+		mhi_reg_write(mhi_dev_ctxt, bhi_ctxt->bhi_base, bhie_vecsize_offs, val);
+
+		/* Ring DB to begin Xfer */
+		mhi_reg_write_field(mhi_dev_ctxt, bhi_ctxt->bhi_base, bhie_vecdb_offs,
+				    BHIE_TXVECDB_SEQNUM_BMSK, BHIE_TXVECDB_SEQNUM_SHFT,
+				    tx_sequence);
 		read_unlock_bh(pm_xfer_lock);
-		return -EIO;
 	}
-
-	val = HIGH_WORD(bhie_mem_info->phys_addr);
-	mhi_reg_write(mhi_dev_ctxt, bhi_ctxt->bhi_base,
-		      bhie_vecaddr_high_offs, val);
-	val = LOW_WORD(bhie_mem_info->phys_addr);
-	mhi_reg_write(mhi_dev_ctxt, bhi_ctxt->bhi_base,
-		      bhie_vecaddr_low_offs, val);
-	val = (u32)bhie_mem_info->size;
-	mhi_reg_write(mhi_dev_ctxt, bhi_ctxt->bhi_base, bhie_vecsize_offs, val);
-
-	/* Ring DB to begin Xfer */
-	mhi_reg_write_field(mhi_dev_ctxt, bhi_ctxt->bhi_base, bhie_vecdb_offs,
-			    BHIE_TXVECDB_SEQNUM_BMSK, BHIE_TXVECDB_SEQNUM_SHFT,
-			    tx_sequence);
-	read_unlock_bh(pm_xfer_lock);
 
 	timeout = jiffies + msecs_to_jiffies(bhi_ctxt->poll_timeout);
 	while (time_before(jiffies, timeout)) {
@@ -747,6 +749,8 @@ int bhi_probe(struct mhi_device_ctxt *mhi_dev_ctxt)
 				u32 pcie_word_val = 0;
 				void __iomem *bhi_base;
 				u32 bhie_off;
+				struct bhie_mem_info *bhie_mem_info;
+				u32 rx_sequence, val;
 
 				bhi_base = mhi_dev_ctxt->core.bar0_base;
 				pcie_word_val = mhi_reg_read(bhi_base, BHIOFF);
@@ -772,9 +776,25 @@ int bhi_probe(struct mhi_device_ctxt *mhi_dev_ctxt)
 						return -1;
 					}
 
-					/* clear all BHIE rxvec register space */
-					memset_io(bhi_base + BHIE_RXVECADDR_LOW_OFFS,
-							0, BHIE_RXVECSTATUS_OFFS - BHIE_RXVECADDR_LOW_OFFS + 4);
+					bhie_mem_info = &rddm_table->
+						bhie_mem_info[rddm_table->segment_count - 1];
+					rx_sequence = rddm_table->sequence;
+
+					/* program the vector table */
+					mhi_log(mhi_dev_ctxt, MHI_MSG_INFO, "Programming RXVEC table\n");
+					val = HIGH_WORD(bhie_mem_info->phys_addr);
+					mhi_reg_write(mhi_dev_ctxt, bhi_base,
+						      BHIE_RXVECADDR_HIGH_OFFS, val);
+					val = LOW_WORD(bhie_mem_info->phys_addr);
+					mhi_reg_write(mhi_dev_ctxt, bhi_base, BHIE_RXVECADDR_LOW_OFFS,
+						      val);
+					val = (u32)bhie_mem_info->size;
+					mhi_reg_write(mhi_dev_ctxt, bhi_base, BHIE_RXVECSIZE_OFFS,
+						      val);
+					mhi_reg_write_field(mhi_dev_ctxt, bhi_base, BHIE_RXVECDB_OFFS,
+							    BHIE_TXVECDB_SEQNUM_BMSK, BHIE_TXVECDB_SEQNUM_SHFT,
+							    rx_sequence);
+
 				} else {
 					pr_err("patch-1: bhi_base not initialized, ignore patch-1");
 				}
