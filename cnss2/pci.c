@@ -2299,6 +2299,11 @@ static void cnss_mhi_notify_status(enum MHI_CB_REASON reason, void *priv)
 
 	cnss_pr_dbg("MHI status cb is called with reason %d\n", reason);
 
+	if (test_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state)) {
+		cnss_pr_dbg("Driver is in recovery, ignore");
+		return;
+	}
+
 	if (pci_priv->driver_ops && pci_priv->driver_ops->update_status)
 		pci_priv->driver_ops->update_status(pci_priv->pci_dev,
 						     CNSS_FW_DOWN);
