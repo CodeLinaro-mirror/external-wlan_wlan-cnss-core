@@ -148,6 +148,22 @@ void cnss_pci_dump_qdss_reg(struct cnss_pci_data *pci_priv)
 	}
 }
 
+void cnss_pci_enable_l1(struct cnss_pci_data *pci_priv)
+{
+	struct pci_dev *pdev = pci_priv->pci_dev;
+	u32 lnkctl_offset;
+	u32 val;
+
+	lnkctl_offset = pdev->pcie_cap + PCI_EXP_LNKCTL;
+	pci_read_config_dword(pdev, lnkctl_offset, &val);
+	cnss_pr_dbg("lnkctl 0x%x\n", val);
+
+	val |= PCI_EXP_LNKCTL_ASPM_L1;
+	pci_write_config_dword(pdev, lnkctl_offset, val);
+	pci_read_config_dword(pdev, lnkctl_offset, &val);
+	cnss_pr_dbg("after enable l1 lnkctl 0x%x\n", val);
+}
+
 static void cnss_pci_disable_l1(struct cnss_pci_data *pci_priv)
 {
 	struct pci_dev *pdev = pci_priv->pci_dev;
@@ -199,8 +215,8 @@ static int cnss_set_pci_config_space(struct cnss_pci_data *pci_priv, bool save)
 						      &pci_priv->saved_state);
 			pci_restore_state(pci_dev);
 		}
-
-		cnss_pci_disable_l1(pci_priv);
+		if (!test_bit(ENABLE_PCI_LINK_PS, &quirks))
+			cnss_pci_disable_l1(pci_priv);
 	}
 
 	return 0;
@@ -2678,7 +2694,8 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 		/* Disable L1SS for QCA6390 */
 		pci_read_config_byte(pci_dev, 0x1F4, &aspm_state);
 		cnss_pr_err("Current L1SS status: 0x%x", aspm_state);
-		if (aspm_state & 0xF) {
+		if ((aspm_state & 0xF) &&
+		    (!test_bit(ENABLE_PCI_LINK_PS, &quirks))) {
 			pci_write_config_byte(pci_dev, 0x1F4, aspm_state & ~0xF);
 			pci_read_config_byte(pci_dev, 0x1F4, &aspm_state);
 			cnss_pr_err("L1SS status changed to: 0x%x", aspm_state);
@@ -2694,7 +2711,8 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 		 */
 		pci_read_config_byte(pci_dev, 0x80, &aspm_state);
 		cnss_pr_err("Current ASPM status: 0x%x", aspm_state);
-		if (aspm_state & 0x3) {
+		if ((aspm_state & 0x3) &&
+		    (!test_bit(ENABLE_PCI_LINK_PS, &quirks))) {
 			pci_write_config_byte(pci_dev, 0x80, aspm_state & ~0x3);
 			pci_read_config_byte(pci_dev, 0x80, &aspm_state);
 			cnss_pr_err("ASPM status changed to: %x", aspm_state);

@@ -650,6 +650,9 @@ static int cnss_fw_ready_hdlr(struct cnss_plat_data *plat_priv)
 	else if (ret)
 		goto shutdown;
 
+	if (test_bit(ENABLE_PCI_LINK_PS, &quirks))
+		cnss_pci_enable_l1(plat_priv->bus_priv);
+
 	return 0;
 
 shutdown:

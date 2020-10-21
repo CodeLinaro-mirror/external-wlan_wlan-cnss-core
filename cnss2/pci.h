@@ -133,6 +133,7 @@ void cnss_pci_clear_dump_info(struct cnss_pci_data *pci_priv);
 int cnss_pm_request_resume(struct cnss_pci_data *pci_priv);
 int cnss_pci_dev_ramdump(struct cnss_pci_data *pci_priv);
 void cnss_pci_dump_qdss_reg(struct cnss_pci_data *pci_priv);
+void cnss_pci_enable_l1(struct cnss_pci_data *pci_priv);
 
 #ifdef CONFIG_CNSS2_PCIE
 int cnss_suspend_pci_link(struct cnss_pci_data *pci_priv);

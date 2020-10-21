@@ -42,6 +42,8 @@
 				CNSS_EVENT_UNINTERRUPTIBLE)
 #define QCN7605_CALDB_SIZE 614400
 
+extern unsigned long quirks;
+
 #ifdef CONFIG_NAPIER_X86
 /* Dummy structure to eliminate compiler warning */
 struct subsys_desc {
@@ -209,6 +211,7 @@ enum cnss_debug_quirks {
 	SKIP_DEVICE_BOOT,
 	USE_CORE_ONLY_FW,
 	SKIP_RECOVERY,
+	ENABLE_PCI_LINK_PS,
 };
 
 enum cnss_bdf_type {
