@@ -2711,8 +2711,7 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 		 */
 		pci_read_config_byte(pci_dev, 0x80, &aspm_state);
 		cnss_pr_err("Current ASPM status: 0x%x", aspm_state);
-		if ((aspm_state & 0x3) &&
-		    (!test_bit(ENABLE_PCI_LINK_PS, &quirks))) {
+		if (aspm_state & 0x3) {
 			pci_write_config_byte(pci_dev, 0x80, aspm_state & ~0x3);
 			pci_read_config_byte(pci_dev, 0x80, &aspm_state);
 			cnss_pr_err("ASPM status changed to: %x", aspm_state);
