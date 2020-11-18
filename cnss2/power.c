@@ -14,6 +14,7 @@
 #include <linux/of.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/regulator/consumer.h>
+#include <linux/gpio.h>
 
 #include "main.h"
 #include "debug.h"
@@ -372,8 +373,77 @@ void cnss_power_off_device(struct cnss_plat_data *plat_priv)
 	cnss_vreg_off(plat_priv);
 }
 #else
-int cnss_power_on_device(struct cnss_plat_data *plat_priv) {return 0;}
-void cnss_power_off_device(struct cnss_plat_data *plat_priv) {};
+
+static int wlan_en_gpio_num = -1;
+module_param(wlan_en_gpio_num, int, 0600);
+MODULE_PARM_DESC(wlan_en_gpio_num, "Wlan en gpio number.");
+
+int cnss_get_wlan_en_pin(struct cnss_plat_data *plat_priv)
+{
+	int ret;
+
+	if (wlan_en_gpio_num < 0) {
+		cnss_pr_dbg("wlan en pin is not supported\n");
+		return 0;
+	}
+
+	ret = gpio_request(wlan_en_gpio_num, "wlan_en_gpio");
+	if (ret) {
+		cnss_pr_err("failed to request wlan en gpio %d\n",
+			    wlan_en_gpio_num);
+		goto fail_reset_gpio_num;
+	}
+
+	ret = gpio_direction_output(wlan_en_gpio_num, 0);
+	if (ret) {
+		cnss_pr_err("failed to set input direction\n");
+		goto fail_free_gpio;
+	}
+
+	return 0;
+
+fail_free_gpio:
+	gpio_free(wlan_en_gpio_num);
+fail_reset_gpio_num:
+	wlan_en_gpio_num = -1;
+	return -EIO;
+}
+
+int cnss_free_wlan_en_pin(struct cnss_plat_data *plat_priv)
+{
+	if (wlan_en_gpio_num < 0) {
+		cnss_pr_dbg("wlan en pin is not supported\n");
+		return 0;
+	}
+
+	gpio_free(wlan_en_gpio_num);
+	wlan_en_gpio_num = -1;
+
+	return 0;
+}
+
+int cnss_power_on_device(struct cnss_plat_data *plat_priv)
+{
+	if (wlan_en_gpio_num < 0) {
+		cnss_pr_dbg("wlan en pin is not supported\n");
+		return 0;
+	}
+
+	gpio_set_value(wlan_en_gpio_num, 1);
+	udelay(WLAN_ENABLE_DELAY);
+
+	return 0;
+}
+
+void cnss_power_off_device(struct cnss_plat_data *plat_priv)
+{
+	if (wlan_en_gpio_num < 0) {
+		cnss_pr_dbg("wlan en pin is not supported\n");
+		return;
+	}
+
+	gpio_set_value(wlan_en_gpio_num, 0);
+}
 #endif
 
 void cnss_set_pin_connect_status(struct cnss_plat_data *plat_priv)

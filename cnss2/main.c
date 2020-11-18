@@ -893,8 +893,18 @@ EXPORT_SYMBOL(cnss_idle_shutdown);
 
 
 #ifdef CONFIG_NAPIER_X86
-static int cnss_get_resources(struct cnss_plat_data *plat_priv) {return 0;}
-static void cnss_put_resources(struct cnss_plat_data *plat_priv) {}
+static int cnss_get_resources(struct cnss_plat_data *plat_priv)
+{
+	cnss_get_wlan_en_pin(plat_priv);
+
+	return 0;
+}
+
+static void cnss_put_resources(struct cnss_plat_data *plat_priv)
+{
+	cnss_free_wlan_en_pin(plat_priv);
+}
+
 static int cnss_register_esoc(struct cnss_plat_data *plat_priv) {return 0;}
 static void cnss_unregister_esoc(struct cnss_plat_data *plat_priv) {}
 #else

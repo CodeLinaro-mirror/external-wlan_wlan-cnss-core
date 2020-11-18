@@ -282,6 +282,10 @@ int cnss_driver_event_post(struct cnss_plat_data *plat_priv,
 			   u32 flag, void *data);
 int cnss_get_vreg(struct cnss_plat_data *plat_priv);
 int cnss_get_pinctrl(struct cnss_plat_data *plat_priv);
+#ifdef CONFIG_NAPIER_X86
+int cnss_get_wlan_en_pin(struct cnss_plat_data *plat_priv);
+int cnss_free_wlan_en_pin(struct cnss_plat_data *plat_priv);
+#endif
 int cnss_power_on_device(struct cnss_plat_data *plat_priv);
 void cnss_power_off_device(struct cnss_plat_data *plat_priv);
 int cnss_register_subsys(struct cnss_plat_data *plat_priv);
