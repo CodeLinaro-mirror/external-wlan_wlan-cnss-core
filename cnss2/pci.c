@@ -1142,28 +1142,38 @@ static int cnss_pci_suspend(struct device *dev)
 	driver_ops = pci_priv->driver_ops;
 	if (driver_ops && driver_ops->suspend) {
 		ret = driver_ops->suspend(pci_dev, state);
-		if (pci_priv->pci_link_state) {
-			if (cnss_pci_set_mhi_state(pci_priv,
-						   CNSS_MHI_SUSPEND)) {
-				driver_ops->resume(pci_dev);
-				ret = -EAGAIN;
-				goto out;
-			}
-
-			CLEAR_MASTER(pci_dev);
-
-			cnss_set_pci_config_space(pci_priv,
-						  SAVE_PCI_CONFIG_SPACE);
-			pci_disable_device(pci_dev);
-
-			ret = pci_set_power_state(pci_dev, PCI_D3hot);
-			if (ret)
-				cnss_pr_err("Failed to set D3Hot, err =  %d\n",
-					    ret);
+		if (ret) {
+			cnss_pr_err("Failed to suspend host driver, err = %d\n",
+				    ret);
+			ret = -EAGAIN;
+			goto out;
 		}
 	}
 
+	if (pci_priv->pci_link_state) {
+		ret = cnss_pci_set_mhi_state(pci_priv, CNSS_MHI_SUSPEND);
+		if (ret) {
+			if(driver_ops && driver_ops->resume)
+				driver_ops->resume(pci_dev);
+			ret = -EAGAIN;
+			goto out;
+		}
+
+		CLEAR_MASTER(pci_dev);
+
+		cnss_set_pci_config_space(pci_priv,
+					  SAVE_PCI_CONFIG_SPACE);
+		pci_disable_device(pci_dev);
+
+		ret = pci_set_power_state(pci_dev, PCI_D3hot);
+		if (ret)
+			cnss_pr_err("Failed to set D3Hot, err =  %d\n",
+				    ret);
+	}
+
 	cnss_pci_set_monitor_wake_intr(pci_priv, false);
+
+	return 0;
 
 out:
 	return ret;
@@ -1184,8 +1194,10 @@ static int cnss_pci_resume(struct device *dev)
 	if (!plat_priv)
 		goto out;
 
-	driver_ops = pci_priv->driver_ops;
-	if (driver_ops && driver_ops->resume && !pci_priv->pci_link_down_ind) {
+	if (pci_priv->pci_link_down_ind)
+		goto out;
+
+	if (pci_priv->pci_link_state) {
 		ret = pci_enable_device(pci_dev);
 		if (ret)
 			cnss_pr_err("Failed to enable PCI device, err = %d\n",
@@ -1197,9 +1209,17 @@ static int cnss_pci_resume(struct device *dev)
 
 		pci_set_master(pci_dev);
 		cnss_pci_set_mhi_state(pci_priv, CNSS_MHI_RESUME);
-
-		ret = driver_ops->resume(pci_dev);
 	}
+
+	driver_ops = pci_priv->driver_ops;
+	if (driver_ops && driver_ops->resume) {
+		ret = driver_ops->resume(pci_dev);
+		if (ret)
+			cnss_pr_err("Failed to resume host driver, err = %d\n",
+				    ret);
+	}
+
+	return 0;
 
 out:
 	return ret;
