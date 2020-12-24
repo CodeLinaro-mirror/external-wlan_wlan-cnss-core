@@ -1867,11 +1867,12 @@ void mhi_assert_device_wake(struct mhi_device_ctxt *mhi_dev_ctxt,
 void mhi_force_wake_request(struct mhi_device *mhi_dev)
 {
 	struct mhi_device_ctxt *mhi_dev_ctxt = mhi_dev->mhi_dev_ctxt;
+	unsigned long flags;
 
 	if (mhi_dev_ctxt) {
-		mutex_lock(&mhi_dev_ctxt->pm_lock);
+		read_lock_irqsave(&mhi_dev_ctxt->pm_xfer_lock, flags);
 		mhi_assert_device_wake(mhi_dev_ctxt, true);
-		mutex_unlock(&mhi_dev_ctxt->pm_lock);
+		read_unlock_irqrestore(&mhi_dev_ctxt->pm_xfer_lock, flags);
 	}
 }
 EXPORT_SYMBOL(mhi_force_wake_request);
@@ -1899,11 +1900,12 @@ void mhi_deassert_device_wake(struct mhi_device_ctxt *mhi_dev_ctxt)
 void mhi_force_wake_release(struct mhi_device *mhi_dev)
 {
 	struct mhi_device_ctxt *mhi_dev_ctxt = mhi_dev->mhi_dev_ctxt;
+	unsigned long flags;
 
 	if (mhi_dev_ctxt) {
-		mutex_lock(&mhi_dev_ctxt->pm_lock);
+		read_lock_irqsave(&mhi_dev_ctxt->pm_xfer_lock, flags);
 		mhi_deassert_device_wake(mhi_dev_ctxt);
-		mutex_unlock(&mhi_dev_ctxt->pm_lock);
+		read_unlock_irqrestore(&mhi_dev_ctxt->pm_xfer_lock, flags);
 	}
 }
 EXPORT_SYMBOL(mhi_force_wake_release);
