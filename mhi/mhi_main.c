@@ -31,7 +31,8 @@
 #include "mhi_macros.h"
 #include "mhi_bhi.h"
 #include "mhi_trace.h"
-
+#include "../cnss2/main.h"
+#include "unified_wlan_cnsscore.h"
 
 static int
 prepare_dma_mem(struct mhi_device_ctxt *mhi_dev_ctxt,
@@ -43,7 +44,19 @@ prepare_dma_mem(struct mhi_device_ctxt *mhi_dev_ctxt,
 	struct mhi_buf_info *mhi_buf_info;
 	int max_payload = bb_ctxt->max_payload;
 	int flags = GFP_KERNEL;
+	struct device *dev;
+#if (defined(CONFIG_USE_CUSTOMIZED_DMA_MEM))
+	struct platform_device *plat_dev = cnss_get_plat_dev();
 
+	if (!plat_dev) {
+		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
+			"platfrom driver is not registered!\n");
+		return -1;
+	}
+	dev = &plat_dev->dev;
+#else
+	dev = &mhi_dev_ctxt->pcie_device->dev;
+#endif
 #ifdef CONFIG_NAPIER_X86
 	snprintf(pool_name, sizeof(pool_name), "mhi%d_%d",
 		 0, chan);
@@ -54,11 +67,8 @@ prepare_dma_mem(struct mhi_device_ctxt *mhi_dev_ctxt,
 	nr_el = bb_ctxt->len / bb_ctxt->el_size;
 
 	bb_ctxt->dma_pool = dma_pool_create(pool_name,
-#ifdef CONFIG_NAPIER_X86
-		&mhi_dev_ctxt->pcie_device->dev, max_payload, 0, 0);
-#else
-		&mhi_dev_ctxt->plat_dev->dev, max_payload, 4, 0);
-#endif
+		dev, max_payload, 0, 0);
+
 	if (unlikely(!bb_ctxt->dma_pool)) {
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
 		"Fail to Creating pool %s for chan:%d payload: 0x%x\n",
@@ -115,7 +125,7 @@ static int enable_bb_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
 		return -ENOMEM;
 
 	mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR, "0x%zx\n", max_payload);
-#ifndef CONFIG_NAPIER_X86
+#ifdef CONFIG_NAPIER_X86
 	if (mhi_dev_ctxt->flags.bb_required) {
 		prepare_dma_mem(mhi_dev_ctxt, bb_ctxt, chan);
 	}
@@ -310,9 +320,9 @@ int mhi_release_chan_ctxt(struct mhi_device_ctxt *mhi_dev_ctxt,
 	if (cc_list == NULL || ring == NULL)
 		return -EINVAL;
 #ifdef CONFIG_NAPIER_X86
-	dma_free_coherent(&mhi_dev_ctxt->pcie_device->dev,
+	cnss_dma_free_coherent(&mhi_dev_ctxt->pcie_device->dev,
 #else
-	dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev,
+	cnss_dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev,
 #endif
 			  ring->len,
 			  ring->base,
@@ -352,9 +362,9 @@ static int populate_tre_ring(struct mhi_client_config *client_config)
 	chan_ctxt = &mhi_dev_ctxt->dev_space.ring_ctxt.cc_list[chan];
 	ring_local_addr =
 #ifdef CONFIG_NAPIER_X86
-		dma_alloc_coherent(&mhi_dev_ctxt->pcie_device->dev,
+		cnss_dma_alloc_coherent(&mhi_dev_ctxt->pcie_device->dev,
 #else
-                dma_alloc_coherent(&mhi_dev_ctxt->plat_dev->dev,
+                cnss_dma_alloc_coherent(&mhi_dev_ctxt->plat_dev->dev,
 #endif
 				   nr_desc * sizeof(union mhi_xfer_pkt),
 				   &ring_dma_addr,
@@ -881,28 +891,10 @@ static int create_bb(struct mhi_device_ctxt *mhi_dev_ctxt,
 	bb_info->buf_len = buf_len;
 	bb_info->client_buf = buf;
 	bb_info->dir = dir;
-	bb_info->bb_p_addr = dma_map_single(
-					dev,
-					bb_info->client_buf,
-					bb_info->buf_len,
-					bb_info->dir);
-	bb_info->bb_active = 0;
-	if (!VALID_BUF(bb_info->bb_p_addr, bb_info->buf_len, mhi_dev_ctxt)) {
-		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
-			"bb 0x%pK Buffer outside DMA range 0x%lx, size 0x%zx dir %d\n",
-			bb_ctxt,(uintptr_t)bb_info->bb_p_addr, buf_len, dir);
-		dma_unmap_single(dev,
-				bb_info->bb_p_addr,
-				bb_info->buf_len,
-				bb_info->dir);
-#ifdef CONFIG_NAPIER_X86
-		if (mhi_dev_ctxt->flags.bb_required &&
-			false == bb_ctxt->dma_pool_initialized) {
-			prepare_dma_mem(mhi_dev_ctxt, bb_ctxt, chan);
-		}
-#endif
-		if (mhi_dev_ctxt->flags.bb_required &&
-			    bb_info->pre_alloc_len >= bb_info->buf_len) {
+
+	if (mhi_dev_ctxt->flags.bb_required && 
+		true == bb_ctxt->dma_pool_initialized) {
+		if (bb_info->pre_alloc_len >= bb_info->buf_len) {
 			bb_info->bb_p_addr = bb_info->pre_alloc_p_addr;
 			bb_info->bb_v_addr = bb_info->pre_alloc_v_addr;
 			mhi_dev_ctxt->counters.bb_used[chan]++;
@@ -913,11 +905,23 @@ static int create_bb(struct mhi_device_ctxt *mhi_dev_ctxt,
 				       bb_info->buf_len);
 			}
 			bb_info->bb_active = 1;
+			mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
+				"using DMA Buffer 0x%lx, size 0x%zx dir %d\n",
+				(uintptr_t)bb_info->bb_p_addr, buf_len, dir);
 		} else {
 			mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
-				"No BB allocated\n");
+				"No BB allocated with required size %d[%d]\n",
+				bb_info->buf_len, bb_info->pre_alloc_len);
 		}
+	} else {
+		bb_info->bb_p_addr = dma_map_single(
+						dev,
+						bb_info->client_buf,
+						bb_info->buf_len,
+						bb_info->dir);
+		bb_info->bb_active = 0;
 	}
+
 	*bb = bb_info;
 	mhi_log(mhi_dev_ctxt, MHI_MSG_RAW, "Exited chan %d\n", chan);
 	return 0;

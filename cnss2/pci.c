@@ -1580,7 +1580,7 @@ int cnss_pci_alloc_fw_mem(struct cnss_pci_data *pci_priv)
 		if (!fw_mem[i].va && fw_mem[i].size) {
 			alloc_size = fw_mem[i].size + align;
 			fw_mem[i].pre_aligned=
-				dma_alloc_coherent(&pci_priv->pci_dev->dev,
+				cnss_dma_alloc_coherent(&pci_priv->pci_dev->dev,
 						   alloc_size,
 						   &fw_mem[i].phys_addr, GFP_KERNEL);
 			if (!fw_mem[i].pre_aligned) {
@@ -1627,7 +1627,7 @@ static void cnss_pci_free_fw_mem(struct cnss_pci_data *pci_priv)
 				    fw_mem[i].va, &fw_mem[i].pa,
 				    fw_mem[i].size, fw_mem[i].type);
 			alloc_size = fw_mem[i].size + align;
-			dma_free_coherent(&pci_priv->pci_dev->dev,
+			cnss_dma_free_coherent(&pci_priv->pci_dev->dev,
 					  alloc_size, fw_mem[i].pre_aligned,
 					  fw_mem[i].phys_addr);
 			fw_mem[i].va = NULL;
@@ -1660,7 +1660,7 @@ int cnss_pci_load_m3(struct cnss_pci_data *pci_priv)
 			return ret;
 		}
 
-		m3_mem->va = dma_alloc_coherent(&pci_priv->pci_dev->dev,
+		m3_mem->va = cnss_dma_alloc_coherent(&pci_priv->pci_dev->dev,
 						fw_entry->size, &m3_mem->pa,
 						GFP_KERNEL);
 		if (!m3_mem->va) {
@@ -1686,7 +1686,7 @@ static void cnss_pci_free_m3_mem(struct cnss_pci_data *pci_priv)
 	if (m3_mem->va && m3_mem->size) {
 		cnss_pr_dbg("Freeing memory for M3, va: 0x%pK, pa: %pa, size: 0x%zx\n",
 			    m3_mem->va, &m3_mem->pa, m3_mem->size);
-		dma_free_coherent(&pci_priv->pci_dev->dev, m3_mem->size,
+		cnss_dma_free_coherent(&pci_priv->pci_dev->dev, m3_mem->size,
 				  m3_mem->va, m3_mem->pa);
 	}
 

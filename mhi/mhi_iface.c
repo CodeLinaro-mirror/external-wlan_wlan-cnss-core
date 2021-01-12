@@ -157,7 +157,7 @@ irq_error:
 	mhi_dev_ctxt->mhi_ev_wq.m3_event = NULL;
 	kfree(mhi_dev_ctxt->mhi_ev_wq.bhi_event);
 	mhi_dev_ctxt->mhi_ev_wq.bhi_event = NULL;
-	dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev,
+	cnss_dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev,
 		   mhi_dev_ctxt->dev_space.dev_mem_len,
 		   mhi_dev_ctxt->dev_space.dev_mem_start,
 		   mhi_dev_ctxt->dev_space.dma_dev_mem_start);
@@ -445,12 +445,12 @@ deregister_pcie:
 
 #ifdef CONFIG_NAPIER_X86
 
-#ifdef CONFIG_USE_CUSTOMIZED_DMA_MEM
-static ulong pmem_start = 0x60000000;
+#if (defined(CONFIG_USE_CUSTOMIZED_DMA_MEM))
+static ulong pmem_start = 0x0;
 module_param(pmem_start, ulong, 0600);
 MODULE_PARM_DESC(pmem_start, "start of physical memoryfor PCI transaction");
 
-static ulong pmem_end = 0x6e000000;
+static ulong pmem_end = 0xffffffff;
 module_param(pmem_end, ulong, 0600);
 MODULE_PARM_DESC(pmem_end, "end of physical memoryfor PCI transaction");
 #endif
@@ -463,7 +463,7 @@ static int mhi_plat_probe(void)
 	mhi_dev_ctxt = kzalloc(sizeof(*mhi_dev_ctxt), GFP_KERNEL);
 	if (!mhi_dev_ctxt)
 		return -ENOMEM;
-#ifdef CONFIG_USE_CUSTOMIZED_DMA_MEM
+#if (defined(CONFIG_USE_CUSTOMIZED_DMA_MEM))
 	address_window[0] = pmem_start;
 	address_window[1] = pmem_end;
 #else
@@ -493,7 +493,7 @@ static int mhi_plat_probe(void)
 
 		INIT_WORK(&bhi_ctxt->fw_load_work, bhi_firmware_download);
 	}
-#ifdef CONFIG_USE_CUSTOMIZED_DMA_MEM
+#if (defined(CONFIG_USE_CUSTOMIZED_DMA_MEM))
 	mhi_dev_ctxt->flags.bb_required = true;
 #else
 	mhi_dev_ctxt->flags.bb_required = false;

@@ -77,7 +77,7 @@ static int bhi_alloc_bhie_xfer(struct mhi_device_ctxt *mhi_dev_ctxt,
 		info->size = size;
 		info->alloc_size = info->size + align;
 		info->pre_aligned =
-			dma_alloc_coherent(dev, info->alloc_size,
+			cnss_dma_alloc_coherent(dev, info->alloc_size,
 					   &info->dma_handle, GFP_KERNEL);
 		if (!info->pre_aligned)
 			goto alloc_dma_error;
@@ -107,7 +107,7 @@ static int bhi_alloc_bhie_xfer(struct mhi_device_ctxt *mhi_dev_ctxt,
 
 alloc_dma_error:
 	for (i = i - 1; i >= 0; i--)
-		dma_free_coherent(dev,
+		cnss_dma_free_coherent(dev,
 				  bhie_mem_info[i].alloc_size,
 				  bhie_mem_info[i].pre_aligned,
 				  bhie_mem_info[i].dma_handle);
@@ -132,7 +132,7 @@ static int bhi_alloc_pbl_xfer(struct mhi_device_ctxt *mhi_dev_ctxt,
 	mem_info->size = size;
 	mem_info->alloc_size = size + (align_len - 1);
 	mem_info->pre_aligned =
-		dma_alloc_coherent(dev, mem_info->alloc_size,
+		cnss_dma_alloc_coherent(dev, mem_info->alloc_size,
 				   &mem_info->dma_handle, GFP_KERNEL);
 	if (mem_info->pre_aligned == NULL)
 		return -ENOMEM;
@@ -515,7 +515,7 @@ static ssize_t bhi_write(struct file *file,
 		mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
 			"Failed to load bhi image\n");
 	}
-	dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev, mem_info.alloc_size,
+	cnss_dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev, mem_info.alloc_size,
 			  mem_info.pre_aligned, mem_info.dma_handle);
 
 	/* Regardless of failure set to RESET state */
@@ -528,7 +528,7 @@ static ssize_t bhi_write(struct file *file,
 	return count;
 
 bhi_copy_error:
-	dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev, mem_info.alloc_size,
+	cnss_dma_free_coherent(&mhi_dev_ctxt->plat_dev->dev, mem_info.alloc_size,
 			  mem_info.pre_aligned, mem_info.dma_handle);
 
 	return ret_val;
@@ -842,7 +842,7 @@ void bhi_exit(struct mhi_device_ctxt *mhi_dev_ctxt)
 	fw_table->sg_list = NULL;
 	bhie_mem_info = fw_table->bhie_mem_info;
 	for (i = 0; i < fw_table->segment_count; i++, bhie_mem_info++)
-		dma_free_coherent(dev, bhie_mem_info->alloc_size,
+		cnss_dma_free_coherent(dev, bhie_mem_info->alloc_size,
 				  bhie_mem_info->pre_aligned,
 				  bhie_mem_info->dma_handle);
 	kfree(fw_table->bhie_mem_info);
@@ -858,7 +858,7 @@ void bhi_exit(struct mhi_device_ctxt *mhi_dev_ctxt)
 	rddm_table->sg_list = NULL;
 	bhie_mem_info = rddm_table->bhie_mem_info;
 	for (i = 0; i < rddm_table->segment_count; i++, bhie_mem_info++)
-		dma_free_coherent(dev, bhie_mem_info->alloc_size,
+		cnss_dma_free_coherent(dev, bhie_mem_info->alloc_size,
 				  bhie_mem_info->pre_aligned,
 				  bhie_mem_info->dma_handle);
 	kfree(rddm_table->bhie_mem_info);

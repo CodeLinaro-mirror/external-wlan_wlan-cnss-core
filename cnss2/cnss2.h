@@ -293,5 +293,8 @@ extern int cnss_qmi_send_put(struct device *dev);
 
 extern int cnss_pci_prevent_l1(struct device *dev);
 extern void cnss_pci_allow_l1(struct device *dev);
-
+extern void *cnss_dma_alloc_coherent(struct device *dev, size_t size,
+			      dma_addr_t *dma_handle, gfp_t flag);
+extern void cnss_dma_free_coherent(struct device *dev, size_t size,
+			    void *vaddr, dma_addr_t dma_handle);
 #endif /* _NET_CNSS2_H */

@@ -47,4 +47,8 @@ void hdd_module_exit(void);
 int wcnss_pre_alloc_init(void);
 void wcnss_pre_alloc_exit(void);
 
+#ifdef CONFIG_USE_CUSTOMIZED_DMA_MEM
+void *cnss_get_plat_dev(void);
+#endif
+
 #endif

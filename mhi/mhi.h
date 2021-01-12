@@ -34,6 +34,7 @@
 #include <linux/irqreturn.h>
 #include <linux/list.h>
 #include <linux/dma-mapping.h>
+#include "../cnss2/cnss2.h"
 
 #define UNUSED(x)			(void)(x)
 

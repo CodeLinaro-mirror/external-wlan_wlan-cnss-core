@@ -1721,7 +1721,8 @@ static int cnss_qca6174_register_ramdump(struct cnss_plat_data *plat_priv)
 
 	if (of_property_read_u32(dev->of_node, "qcom,wlan-ramdump-dynamic",
 				 &ramdump_size) == 0) {
-		ramdump_info->ramdump_va = dma_alloc_coherent(dev, ramdump_size,
+		ramdump_info->ramdump_va = cnss_dma_alloc_coherent(dev,
+			ramdump_size,
 			&ramdump_info->ramdump_pa, GFP_KERNEL);
 
 		if (ramdump_info->ramdump_va)
@@ -1752,7 +1753,7 @@ static int cnss_qca6174_register_ramdump(struct cnss_plat_data *plat_priv)
 
 	return 0;
 free_ramdump:
-	dma_free_coherent(dev, ramdump_info->ramdump_size,
+	cnss_dma_free_coherent(dev, ramdump_info->ramdump_size,
 			  ramdump_info->ramdump_va, ramdump_info->ramdump_pa);
 out:
 	return ret;
@@ -1770,7 +1771,7 @@ static void cnss_qca6174_unregister_ramdump(struct cnss_plat_data *plat_priv)
 		destroy_ramdump_device(ramdump_info->ramdump_dev);
 
 	if (ramdump_info->ramdump_va)
-		dma_free_coherent(dev, ramdump_info->ramdump_size,
+		cnss_dma_free_coherent(dev, ramdump_info->ramdump_size,
 				  ramdump_info->ramdump_va,
 				  ramdump_info->ramdump_pa);
 }
@@ -2138,6 +2139,7 @@ static int cnss_probe(struct platform_device *plat_dev)
 	plat_priv = devm_kzalloc(&plat_dev->dev, sizeof(*plat_priv),
 				 GFP_KERNEL);
 	if (!plat_priv) {
+		cnss_pr_err("%s,Failed to alloc memory!\n", __func__);
 		ret = -ENOMEM;
 		goto out;
 	}
