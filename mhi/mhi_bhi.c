@@ -662,6 +662,7 @@ int bhi_probe(struct mhi_device_ctxt *mhi_dev_ctxt)
 	int ret, i;
 	size_t remainder;
 	const u8 *image;
+	int id;
 
 	// Save mhi_dev_ctxt
 	s_mhi_dev_ctxt = mhi_dev_ctxt;
@@ -669,6 +670,11 @@ int bhi_probe(struct mhi_device_ctxt *mhi_dev_ctxt)
 	/* expose dev node to userspace */
 	if (bhi_ctxt->manage_boot == false)
 		return bhi_expose_dev_bhi(mhi_dev_ctxt);
+
+	id = mhi_reg_read_remap(mhi_dev_ctxt,
+				mhi_dev_ctxt->mmio_info.mmio_addr,
+				JTAGID);
+	mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR, "jtagid:0x%x\n", id);
 
 	/* Make sure minimum  buffer we allocate for BHI/E is >= sbl image */
 	while (fw_info->segment_size < fw_info->max_sbl_len)

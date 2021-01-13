@@ -183,4 +183,5 @@
 
 #define WLAON_WARM_SW_ENTRY (0x1f80504)
 
+#define JTAGID (0x1910010)
 #endif
