@@ -37,11 +37,8 @@
 
 #define PCI_BAR_NUM			0
 
-#ifdef CONFIG_ARM_LPAE
-#define PCI_DMA_MASK			64
-#else
-#define PCI_DMA_MASK			32
-#endif
+#define PCI_DMA_MASK_32_BIT		32
+#define PCI_DMA_MASK_36_BIT		36
 
 #define FW_MEM_DEFAULT_ALIGNMENT (0x4000)
 
@@ -2020,6 +2017,7 @@ static int cnss_pci_enable_bus(struct cnss_pci_data *pci_priv)
 	int ret = 0;
 	struct pci_dev *pci_dev = pci_priv->pci_dev;
 	u16 device_id;
+	u32 pci_dma_mask = PCI_DMA_MASK_36_BIT;
 
 	pci_read_config_word(pci_dev, PCI_DEVICE_ID, &device_id);
 	if (device_id != pci_priv->pci_device_id->device)  {
@@ -2047,17 +2045,20 @@ static int cnss_pci_enable_bus(struct cnss_pci_data *pci_priv)
 		goto disable_device;
 	}
 
-	ret = pci_set_dma_mask(pci_dev, DMA_BIT_MASK(PCI_DMA_MASK));
+	if (device_id == QCA6174_DEVICE_ID)
+		pci_dma_mask = PCI_DMA_MASK_32_BIT;
+
+	ret = pci_set_dma_mask(pci_dev, DMA_BIT_MASK(pci_dma_mask));
 	if (ret) {
 		cnss_pr_err("Failed to set PCI DMA mask (%d), err = %d\n",
-			    ret, PCI_DMA_MASK);
+			    ret, pci_dma_mask);
 		goto release_region;
 	}
 
-	ret = pci_set_consistent_dma_mask(pci_dev, DMA_BIT_MASK(PCI_DMA_MASK));
+	ret = pci_set_consistent_dma_mask(pci_dev, DMA_BIT_MASK(pci_dma_mask));
 	if (ret) {
 		cnss_pr_err("Failed to set PCI consistent DMA mask (%d), err = %d\n",
-			    ret, PCI_DMA_MASK);
+			    ret, pci_dma_mask);
 		goto release_region;
 	}
 
