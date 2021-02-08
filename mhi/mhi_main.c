@@ -910,7 +910,7 @@ static int create_bb(struct mhi_device_ctxt *mhi_dev_ctxt,
 				(uintptr_t)bb_info->bb_p_addr, buf_len, dir);
 		} else {
 			mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
-				"No BB allocated with required size %d[%d]\n",
+				"No BB allocated with required size %zu[%zu]\n",
 				bb_info->buf_len, bb_info->pre_alloc_len);
 		}
 	} else {
