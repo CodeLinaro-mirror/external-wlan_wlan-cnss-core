@@ -610,7 +610,7 @@ struct mhi_device_ctxt {
 	rwlock_t pm_xfer_lock; /* lock to control PM State */
 	spinlock_t dev_wake_lock; /* lock to set wake bit */
 	struct mutex pm_lock;
-	struct wakeup_source w_lock;
+	struct wakeup_source *w_lock;
 
 	char *chan_info;
 	struct dentry *child;
@@ -753,6 +753,8 @@ void mhi_assert_device_wake(struct mhi_device_ctxt *mhi_dev_ctxt,
 int mhi_reg_notifiers(struct mhi_device_ctxt *mhi_dev_ctxt);
 int mhi_cpu_notifier_cb(struct notifier_block *nfb, unsigned long action,
 			void *hcpu);
+int mhi_hp_online(unsigned int cpu);
+int mhi_hp_offline(unsigned int cpu);
 int init_mhi_base_state(struct mhi_device_ctxt *mhi_dev_ctxt);
 int mhi_turn_off_pcie_link(struct mhi_device_ctxt *mhi_dev_ctxt, bool graceful);
 int mhi_turn_on_pcie_link(struct mhi_device_ctxt *mhi_dev_ctxt);

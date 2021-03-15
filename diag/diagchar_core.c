@@ -141,10 +141,6 @@ static int diag_mhi_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id diag_mhi_table[] = {
-	{.compatible = "qcom,diag-mhi"},
-	{},
-};
 #endif
 
 #ifdef CONFIG_DIAG_HSIC

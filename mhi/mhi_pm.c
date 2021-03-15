@@ -615,8 +615,8 @@ void mhi_link_state_cb(struct msm_pcie_notify *notify)
 	case MSM_PCIE_EVENT_WAKEUP:
 		mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
 			"Received MSM_PCIE_EVENT_WAKE\n");
-		__pm_stay_awake(&mhi_dev_ctxt->w_lock);
-		__pm_relax(&mhi_dev_ctxt->w_lock);
+		__pm_stay_awake(mhi_dev_ctxt->w_lock);
+		__pm_relax(mhi_dev_ctxt->w_lock);
 
 		if (mhi_dev_ctxt->flags.mhi_initialized) {
 			mhi_dev_ctxt->runtime_get(mhi_dev_ctxt);

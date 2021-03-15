@@ -20,6 +20,7 @@
 #include <linux/skbuff.h>
 #endif
 #include "cnss_prealloc.h"
+#include <linux/version.h>
 
 static DEFINE_SPINLOCK(alloc_lock);
 
@@ -38,7 +39,11 @@ struct wcnss_prealloc {
 	void *ptr;
 #ifdef CONFIG_SLUB_DEBUG
 	unsigned long stack_trace[WCNSS_MAX_STACK_TRACE];
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+	unsigned int nr_entries;
+#else
 	struct stack_trace trace;
+#endif
 #endif
 };
 
@@ -252,6 +257,14 @@ void wcnss_prealloc_deinit(void)
 }
 
 #ifdef CONFIG_SLUB_DEBUG
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+static void wcnss_prealloc_save_stack_trace(struct wcnss_prealloc *entry)
+{
+	memset(&entry->stack_trace, 0, sizeof(entry->stack_trace));
+
+	entry->nr_entries = stack_trace_save(entry->stack_trace, WCNSS_MAX_STACK_TRACE, 2);
+}
+#else
 static void wcnss_prealloc_save_stack_trace(struct wcnss_prealloc *entry)
 {
 	struct stack_trace *trace = &entry->trace;
@@ -264,6 +277,7 @@ static void wcnss_prealloc_save_stack_trace(struct wcnss_prealloc *entry)
 
 	save_stack_trace(trace);
 }
+#endif
 #else
 static inline
 void wcnss_prealloc_save_stack_trace(struct wcnss_prealloc *entry) {}
@@ -328,7 +342,11 @@ void wcnss_prealloc_check_memory_leak(void)
 
 		pr_err("Size: %zu, addr: %pK, backtrace:\n",
 		       wcnss_allocs[i].size, wcnss_allocs[i].ptr);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+		stack_trace_print(wcnss_allocs[i].stack_trace, wcnss_allocs[i].nr_entries, 1);
+#else
 		print_stack_trace(&wcnss_allocs[i].trace, 1);
+#endif
 	}
 }
 #else

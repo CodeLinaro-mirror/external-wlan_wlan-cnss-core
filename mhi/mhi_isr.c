@@ -74,8 +74,8 @@ static int mhi_process_event_ring(
 			unsigned long flags;
 			struct mhi_ring *cmd_ring = &mhi_dev_ctxt->
 				mhi_local_cmd_ctxt[PRIMARY_CMD_RING];
-			__pm_stay_awake(&mhi_dev_ctxt->w_lock);
-			__pm_relax(&mhi_dev_ctxt->w_lock);
+			__pm_stay_awake(mhi_dev_ctxt->w_lock);
+			__pm_relax(mhi_dev_ctxt->w_lock);
 			get_cmd_pkt(mhi_dev_ctxt,
 				    &event_to_process,
 				    &cmd_pkt, ev_index);
@@ -103,7 +103,7 @@ static int mhi_process_event_ring(
 			struct mhi_ring *ring;
 			unsigned long flags;
 
-			__pm_stay_awake(&mhi_dev_ctxt->w_lock);
+			__pm_stay_awake(mhi_dev_ctxt->w_lock);
 			chan = MHI_EV_READ_CHID(EV_CHID, &event_to_process);
 			if (unlikely(!VALID_CHAN_NR(chan))) {
 				mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
@@ -117,7 +117,7 @@ static int mhi_process_event_ring(
 						 &event_to_process,
 						 ev_index);
 			spin_unlock_irqrestore(&ring->ring_lock, flags);
-			__pm_relax(&mhi_dev_ctxt->w_lock);
+			__pm_relax(mhi_dev_ctxt->w_lock);
 			event_quota--;
 			break;
 		}
@@ -200,8 +200,8 @@ static int mhi_process_event_ring(
 			mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
 				"MHI EE received ring 0x%x event:0x%x\n",
 				ev_index, event);
-			__pm_stay_awake(&mhi_dev_ctxt->w_lock);
-			__pm_relax(&mhi_dev_ctxt->w_lock);
+			__pm_stay_awake(mhi_dev_ctxt->w_lock);
+			__pm_relax(mhi_dev_ctxt->w_lock);
 			switch (event) {
 			case MHI_EXEC_ENV_SBL:
 				new_state = STATE_TRANSITION_SBL;

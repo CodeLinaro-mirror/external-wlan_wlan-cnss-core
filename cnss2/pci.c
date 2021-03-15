@@ -1829,6 +1829,12 @@ int cnss_smmu_map(struct device *dev,
 }
 EXPORT_SYMBOL(cnss_smmu_map);
 
+struct iommu_domain *cnss_smmu_get_domain(struct device *dev)
+{
+	return NULL;
+}
+EXPORT_SYMBOL(cnss_smmu_get_domain);
+
 #ifndef CONFIG_ONE_MSI_VECTOR
 static struct cnss_msi_config msi_config = {
 	.total_vectors = 32,
@@ -1881,9 +1887,10 @@ static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 		goto out;
 	}
 
-	num_vectors = pci_enable_msi_range(pci_dev,
-					   msi_config->total_vectors,
-					   msi_config->total_vectors);
+	num_vectors = pci_alloc_irq_vectors(pci_dev,
+					    msi_config->total_vectors,
+					    msi_config->total_vectors,
+					    PCI_IRQ_MSI);
 	if (num_vectors != msi_config->total_vectors) {
 		cnss_pr_err("Failed to get enough MSI vectors (%d), available vectors = %d",
 			    msi_config->total_vectors, num_vectors);
@@ -2247,6 +2254,10 @@ void cnss_pci_clear_dump_info(struct cnss_pci_data *pci_priv)
 	plat_priv->ramdump_info_v2.dump_data.nentries = 0;
 	plat_priv->ramdump_info_v2.dump_data_valid = false;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#define vfs_write kernel_write
+#endif
 
 int cnss_pci_fw_sram_dump_to_file(struct cnss_pci_data *pci_priv,
 		uint32_t fw_sram_start,

@@ -29,6 +29,7 @@
 #include "diagfwd_mhi.h"
 #include "diag_ipc_logging.h"
 #include "diag_nl.h"
+#include <linux/kmemleak.h>
 
 static void mhi_enabled_notifier(void)
 {

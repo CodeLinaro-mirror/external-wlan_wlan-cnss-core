@@ -15,6 +15,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
+#include <linux/module.h>
 
 #include "main.h"
 #include "debug.h"

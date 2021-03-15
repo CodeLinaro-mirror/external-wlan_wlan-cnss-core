@@ -331,7 +331,7 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 	if (msi_requested < msi_required)
 		msi_requested <<= 1;
 
-	ret_val = pci_enable_msi_range(pcie_device, 1, msi_requested);
+	ret_val = pci_alloc_irq_vectors(pcie_device, 1, msi_requested, PCI_IRQ_MSI);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
 	if (IS_ERR_VALUE((unsigned long)ret_val) || (ret_val < msi_requested)) {
 #else

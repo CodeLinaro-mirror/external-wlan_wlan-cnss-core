@@ -17,13 +17,19 @@
 #include "mhi_bhi.h"
 #include "mhi_sys.h"
 
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#define vfs_write kernel_write
+#endif
+
 static int get_time_of_the_day_in_hr_min_sec(char *tbuf, int len)
 {
-	struct timeval tv;
+	struct timespec64 tv;
 	struct rtc_time tm;
 	int time_len = 0;
 
-	do_gettimeofday(&tv);
+	ktime_get_real_ts64(&tv);
 	/* Convert rtc to local time */
 	tv.tv_sec -= sys_tz.tz_minuteswest * 60;
 	rtc_time_to_tm(tv.tv_sec, &tm);

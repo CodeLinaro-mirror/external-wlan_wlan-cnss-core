@@ -266,6 +266,25 @@ int mhi_cpu_notifier_cb(struct notifier_block *nfb, unsigned long action,
 	return NOTIFY_OK;
 }
 
+extern struct mhi_device_ctxt *mhi_dev_ctxt;
+int mhi_hp_online(unsigned int cpu)
+{
+	if (cpu > 0)
+		mhi_move_interrupts(mhi_dev_ctxt, cpu);
+
+	return 0;
+}
+
+int mhi_hp_offline(unsigned int cpu)
+{
+	for_each_online_cpu(cpu) {
+		if (cpu > 0)
+			mhi_move_interrupts(mhi_dev_ctxt, cpu);
+	}
+
+	return 0;
+}
+
 #ifdef CONFIG_NAPIER_X86
 struct mhi_chan_info mhi_chan[] =
 {{0x0, 0x80, 0x1, 0x92},
