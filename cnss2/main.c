@@ -36,6 +36,7 @@
 #endif
 
 #include "cnss_module.h"
+#include "mhi.h"
 
 #define CNSS_DUMP_FORMAT_VER		0x11
 #define CNSS_DUMP_FORMAT_VER_V2		0x22
@@ -50,7 +51,6 @@
 #define CNSS_EVENT_PENDING		2989
 #define CE_MSI_NAME			"CE"
 
-#define FW_SRAM_DUMP_PATH			"/var/crash/q6_sram.bin"
 #define FW_SRAM_START_QCA6390		0x01400000
 #define FW_SRAM_END_QCA6390			0x0171ffff
 #define FW_SRAM_START_QCA6490		0x01400000
@@ -1172,6 +1172,7 @@ static int cnss_do_recovery(struct cnss_plat_data *plat_priv,
 			goto self_recovery;
 	case CNSS_REASON_DEFAULT:
 	case CNSS_REASON_TIMEOUT:
+			goto self_recovery;
 		break;
 	default:
 		cnss_pr_err("Unsupported recovery reason: %s(%d)\n",
@@ -1302,6 +1303,9 @@ int cnss_dump_fw_sram_to_file(struct cnss_plat_data *plat_priv)
 	uint32_t fw_sram_start;
 	uint32_t fw_sram_end;
 	int ret;
+	uint32_t len;
+	char time_buf[24];
+	char fw_sram_dump_path[64];
 
 	if (!plat_priv) {
 		cnss_pr_err("plat_priv is NULL\n");
@@ -1323,12 +1327,21 @@ int cnss_dump_fw_sram_to_file(struct cnss_plat_data *plat_priv)
 			return -ENOTSUPP;
 	}
 
-	cnss_pr_info("FW sram dump start %s ...\n", FW_SRAM_DUMP_PATH);
+	len = get_time_of_the_day_in_hr_min_sec(time_buf, sizeof(time_buf));
+	len = scnprintf(fw_sram_dump_path,
+			sizeof(fw_sram_dump_path),
+			"/var/crash/%s",
+			time_buf);
+	scnprintf(fw_sram_dump_path + len,
+		  sizeof(fw_sram_dump_path) - len,
+		  "q6-sram.bin");
+
+	cnss_pr_info("FW sram dump start %s ...\n", fw_sram_dump_path);
 
 	ret = cnss_bus_fw_sram_dump_to_file(plat_priv,
 			fw_sram_start,
 			fw_sram_end,
-			FW_SRAM_DUMP_PATH);
+			fw_sram_dump_path);
 
 	cnss_pr_info("FW sram dump end, status %d\n", ret);
 

@@ -24,7 +24,7 @@
 #define vfs_write kernel_write
 #endif
 
-static int get_time_of_the_day_in_hr_min_sec(char *tbuf, int len)
+int get_time_of_the_day_in_hr_min_sec(char *tbuf, int len)
 {
 	struct timespec64 tv;
 	struct rtc_time tm;

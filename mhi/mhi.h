@@ -831,10 +831,17 @@ void mhi_reset_pcie_rxvecstatus(struct mhi_device_ctxt *mhi_dev_ctxt);
 void mhi_set_pcie_mhictrl_reset(struct mhi_device_ctxt *mhi_dev_ctxt);
 #endif
 
+int get_time_of_the_day_in_hr_min_sec(char *tbuf, int len);
+
 int fw_paging_dump(struct mhi_device_ctxt *mhi_dev_ctxt,
 		   struct bhie_vec_table *fw_table,
 		   char *file_full_path);
 int fw_remote_mem_dump(struct mhi_device_ctxt *mhi_dev_ctxt,
 		       struct fw_remote_mem *fw_mem,
 		       char *file_full_path);
+
+void mhi_dump_event_ring(struct mhi_device_ctxt *mhi_dev_ctxt);
+
+void mhi_dump_irq(struct mhi_device_ctxt *mhi_dev_ctxt);
+
 #endif

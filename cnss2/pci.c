@@ -1743,8 +1743,21 @@ int cnss_pci_force_fw_assert_hdlr(struct cnss_pci_data *pci_priv)
 
 void cnss_pci_fw_boot_timeout_hdlr(struct cnss_pci_data *pci_priv)
 {
+	struct cnss_plat_data *plat_priv;
+	struct mhi_device_ctxt *mhi_dev_ctxt;
+
 	if (!pci_priv)
 		return;
+
+	plat_priv = pci_priv->plat_priv;
+	mhi_dev_ctxt = pci_priv->mhi_dev.mhi_dev_ctxt;
+
+	mhi_dump_irq(mhi_dev_ctxt);
+	mhi_dump_event_ring(mhi_dev_ctxt);
+	cnss_dump_fw_sram_to_file(plat_priv);
+	cnss_pci_dump_fw_remote_mem_to_file(plat_priv->bus_priv);
+	cnss_pci_dump_fw_paging_to_file(plat_priv->bus_priv);
+
 	cnss_pr_err("Timeout waiting for FW ready indication\n");
 
 	cnss_schedule_recovery(&pci_priv->pci_dev->dev, CNSS_REASON_TIMEOUT);
