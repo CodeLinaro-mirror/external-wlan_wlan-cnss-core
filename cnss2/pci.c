@@ -460,6 +460,10 @@ int cnss_pci_call_driver_probe(struct cnss_pci_data *pci_priv)
 		if (ret) {
 			cnss_pr_err("Failed to probe host driver, err = %d\n",
 				    ret);
+			/* Clearing the driver loading state in driver probe
+			   failure case as well. Otherwise target reset won't
+			   happen during MHI power off */
+			clear_bit(CNSS_DRIVER_LOADING, &plat_priv->driver_state);
 			goto out;
 		}
 		clear_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state);
