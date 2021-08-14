@@ -30,10 +30,16 @@
 #define WLFW_SERVICE_INS_ID_V01		1
 #define WLFW_CLIENT_ID			0x4b4e454c
 #define MAX_BDF_FILE_NAME		32
+#define CHIP_ID_GF_MASK			0x10
+#define GF_BDF_FILE_NAME_PREFIX		"bdwlang"
 #define BDF_FILE_NAME_PREFIX		"bdwlan"
+#define GF_DEFAULT_ELF_BDF_FILE_NAME	"bdwlang.elf"
 #define DEFAULT_ELF_BDF_FILE_NAME	"bdwlan.elf"
+#define GF_ELF_BDF_FILE_NAME_PREFIX	"bdwlang.e"
 #define ELF_BDF_FILE_NAME_PREFIX	"bdwlan.e"
+#define GF_BIN_BDF_FILE_NAME_PREFIX	"bdwlang.b"
 #define BIN_BDF_FILE_NAME_PREFIX	"bdwlan.b"
+#define GF_DEFAULT_BIN_BDF_FILE_NAME	"bdwlang.bin"
 #define DEFAULT_BIN_BDF_FILE_NAME       "bdwlan.bin"
 #define REGDB_FILE_NAME			"regdb.bin"
 
@@ -820,32 +826,63 @@ int cnss_wlfw_bdf_dnld_send_sync(struct cnss_plat_data *plat_priv,
 	switch (bdf_type) {
 	case CNSS_BDF_ELF:
 		if (plat_priv->board_info.board_id == 0xFF) {
-			snprintf(filename, sizeof(filename),
-				 DEFAULT_ELF_BDF_FILE_NAME);
+			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
+				snprintf(filename, sizeof(filename),
+					 GF_DEFAULT_ELF_BDF_FILE_NAME);
+			else
+				snprintf(filename, sizeof(filename),
+					 DEFAULT_ELF_BDF_FILE_NAME);
 		} else if (plat_priv->board_info.board_id < 0xFF) {
-			snprintf(filename, sizeof(filename),
-				 ELF_BDF_FILE_NAME_PREFIX "%02x",
-				 plat_priv->board_info.board_id);
+			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
+				snprintf(filename, sizeof(filename),
+					 GF_ELF_BDF_FILE_NAME_PREFIX "%02x",
+					 plat_priv->board_info.board_id);
+
+			else
+				snprintf(filename, sizeof(filename),
+					 ELF_BDF_FILE_NAME_PREFIX "%02x",
+					 plat_priv->board_info.board_id);
 		} else {
-			snprintf(filename, sizeof(filename),
-				 BDF_FILE_NAME_PREFIX "%02x.e%02x",
-				 plat_priv->board_info.board_id >> 8 & 0xFF,
-				 plat_priv->board_info.board_id & 0xFF);
+			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
+				snprintf(filename, sizeof(filename),
+					 GF_BDF_FILE_NAME_PREFIX "%02x.e%02x",
+					 plat_priv->board_info.board_id >> 8 & 0xFF,
+					 plat_priv->board_info.board_id & 0xFF);
+			else
+				snprintf(filename, sizeof(filename),
+					 BDF_FILE_NAME_PREFIX "%02x.e%02x",
+					 plat_priv->board_info.board_id >> 8 & 0xFF,
+					 plat_priv->board_info.board_id & 0xFF);
 		}
 		break;
 	case CNSS_BDF_BIN:
 		if (plat_priv->board_info.board_id == 0xFF) {
-			snprintf(filename, sizeof(filename),
-				 DEFAULT_BIN_BDF_FILE_NAME);
+			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
+				snprintf(filename, sizeof(filename),
+					 GF_DEFAULT_BIN_BDF_FILE_NAME);
+			else
+				snprintf(filename, sizeof(filename),
+					 DEFAULT_BIN_BDF_FILE_NAME);
 		} else if (plat_priv->board_info.board_id < 0xFF) {
-			snprintf(filename, sizeof(filename),
-				 BIN_BDF_FILE_NAME_PREFIX "%02x",
-				 plat_priv->board_info.board_id);
+			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
+				snprintf(filename, sizeof(filename),
+					 GF_BIN_BDF_FILE_NAME_PREFIX "%02x",
+					 plat_priv->board_info.board_id);
+			else
+				snprintf(filename, sizeof(filename),
+					 BIN_BDF_FILE_NAME_PREFIX "%02x",
+					 plat_priv->board_info.board_id);
 		} else {
-			snprintf(filename, sizeof(filename),
-				 BDF_FILE_NAME_PREFIX "%02x.b%02x",
-				 plat_priv->board_info.board_id >> 8 & 0xFF,
-				 plat_priv->board_info.board_id & 0xFF);
+			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
+				snprintf(filename, sizeof(filename),
+					 GF_BDF_FILE_NAME_PREFIX "%02x.b%02x",
+					 plat_priv->board_info.board_id >> 8 & 0xFF,
+					 plat_priv->board_info.board_id & 0xFF);
+			else
+				snprintf(filename, sizeof(filename),
+					 BDF_FILE_NAME_PREFIX "%02x.b%02x",
+					 plat_priv->board_info.board_id >> 8 & 0xFF,
+					 plat_priv->board_info.board_id & 0xFF);
 		}
 		break;
 	case CNSS_BDF_REGDB:
