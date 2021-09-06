@@ -589,11 +589,15 @@ int cnss_wlfw_tgt_cap_send_sync(struct cnss_plat_data *plat_priv)
 		plat_priv->soc_info = resp.soc_info;
 	if (resp.fw_version_info_valid)
 		plat_priv->fw_version_info = resp.fw_version_info;
+	if (resp.otp_version_valid)
+		plat_priv->otp_version = resp.otp_version;
 
-	cnss_pr_dbg("Target capability: chip_id: 0x%x, chip_family: 0x%x, board_id: 0x%x, soc_id: 0x%x, fw_version: 0x%x, fw_build_timestamp: %s",
+	cnss_pr_dbg("Target capability: chip_id: 0x%x, chip_family: 0x%x, board_id: 0x%x, soc_id: 0x%x, otp_version: 0x%x\n",
 		    plat_priv->chip_info.chip_id,
 		    plat_priv->chip_info.chip_family,
 		    plat_priv->board_info.board_id, plat_priv->soc_info.soc_id,
+		    plat_priv->otp_version);
+	cnss_pr_dbg("fw_version: 0x%x, fw_build_timestamp: %s",
 		    plat_priv->fw_version_info.fw_version,
 		    plat_priv->fw_version_info.fw_build_timestamp);
 
