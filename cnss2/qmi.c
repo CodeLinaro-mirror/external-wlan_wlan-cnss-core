@@ -31,7 +31,7 @@
 #define WLFW_CLIENT_ID			0x4b4e454c
 #define MAX_BDF_FILE_NAME		32
 #define CHIP_ID_GF_MASK			0x10
-#define GF_BDF_FILE_NAME_PREFIX		"bdwlang"
+#define GF_BDF_FILE_NAME_PREFIX		"bdwlan"
 #define BDF_FILE_NAME_PREFIX		"bdwlan"
 #define GF_DEFAULT_ELF_BDF_FILE_NAME	"bdwlang.elf"
 #define DEFAULT_ELF_BDF_FILE_NAME	"bdwlan.elf"
@@ -849,7 +849,7 @@ int cnss_wlfw_bdf_dnld_send_sync(struct cnss_plat_data *plat_priv,
 		} else {
 			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
 				snprintf(filename, sizeof(filename),
-					 GF_BDF_FILE_NAME_PREFIX "%02x.e%02x",
+					 GF_BDF_FILE_NAME_PREFIX "%02xg.e%02x",
 					 plat_priv->board_info.board_id >> 8 & 0xFF,
 					 plat_priv->board_info.board_id & 0xFF);
 			else
@@ -879,7 +879,7 @@ int cnss_wlfw_bdf_dnld_send_sync(struct cnss_plat_data *plat_priv,
 		} else {
 			if (plat_priv->chip_info.chip_id & CHIP_ID_GF_MASK)
 				snprintf(filename, sizeof(filename),
-					 GF_BDF_FILE_NAME_PREFIX "%02x.b%02x",
+					 GF_BDF_FILE_NAME_PREFIX "%02xg.b%02x",
 					 plat_priv->board_info.board_id >> 8 & 0xFF,
 					 plat_priv->board_info.board_id & 0xFF);
 			else
