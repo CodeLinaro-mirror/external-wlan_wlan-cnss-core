@@ -26,6 +26,7 @@
 #include "debug.h"
 #include "qmi.h"
 #include "msm_mhi.h"
+#include "cnss_module.h"
 
 #define WLFW_SERVICE_INS_ID_V01		1
 #define WLFW_CLIENT_ID			0x4b4e454c
@@ -1393,7 +1394,7 @@ unsigned int cnss_get_qmi_timeout(void)
 
 	return QMI_WLFW_TIMEOUT_MS;
 }
-EXPORT_SYMBOL(cnss_get_qmi_timeout);
+cnss_export_symbol(cnss_get_qmi_timeout);
 
 int cnss_wlfw_server_arrive(struct cnss_plat_data *plat_priv)
 {

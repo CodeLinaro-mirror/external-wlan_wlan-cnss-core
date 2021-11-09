@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include "main.h"
+#include "cnss_module.h"
 
 static DEFINE_MUTEX(unsafe_channel_list_lock);
 static DEFINE_MUTEX(dfs_nol_info_lock);
@@ -47,7 +48,7 @@ int cnss_set_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 ch_count)
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_set_wlan_unsafe_channel);
+cnss_export_symbol(cnss_set_wlan_unsafe_channel);
 
 int cnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list,
 				 u16 *ch_count, u16 buf_len)
@@ -71,7 +72,7 @@ int cnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list,
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_get_wlan_unsafe_channel);
+cnss_export_symbol(cnss_get_wlan_unsafe_channel);
 
 int cnss_wlan_set_dfs_nol(const void *info, u16 info_len)
 {
@@ -100,7 +101,7 @@ int cnss_wlan_set_dfs_nol(const void *info, u16 info_len)
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_wlan_set_dfs_nol);
+cnss_export_symbol(cnss_wlan_set_dfs_nol);
 
 int cnss_wlan_get_dfs_nol(void *info, u16 info_len)
 {
@@ -127,4 +128,4 @@ int cnss_wlan_get_dfs_nol(void *info, u16 info_len)
 
 	return len;
 }
-EXPORT_SYMBOL(cnss_wlan_get_dfs_nol);
+cnss_export_symbol(cnss_wlan_get_dfs_nol);

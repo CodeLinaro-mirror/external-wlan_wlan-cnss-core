@@ -32,6 +32,7 @@
 #include <net/sock.h>
 #include "ipc_router_private.h"
 #include "ipc_router_security.h"
+#include "cnss_module.h"
 
 #define IRSC_COMPLETION_TIMEOUT_MS 30000
 #define SEC_RULES_HASH_SZ 32
@@ -90,7 +91,7 @@ int check_permissions(void)
 		rc = 1;
 	return rc;
 }
-EXPORT_SYMBOL(check_permissions);
+cnss_export_symbol(check_permissions);
 
 /**
  * msm_ipc_config_sec_rules() - Add a security rule to the database
@@ -196,7 +197,7 @@ int msm_ipc_config_sec_rules(void *arg)
 
 	return 0;
 }
-EXPORT_SYMBOL(msm_ipc_config_sec_rules);
+cnss_export_symbol(msm_ipc_config_sec_rules);
 
 /**
  * msm_ipc_add_default_rule() - Add default security rule
@@ -302,7 +303,7 @@ void *msm_ipc_get_security_rule(uint32_t service_id, uint32_t instance_id)
 	up_read(&security_rules_lock_lha4);
 	return NULL;
 }
-EXPORT_SYMBOL(msm_ipc_get_security_rule);
+cnss_export_symbol(msm_ipc_get_security_rule);
 
 /**
  * msm_ipc_check_send_permissions() - Check if the sendng process has
@@ -336,7 +337,7 @@ int msm_ipc_check_send_permissions(void *data)
 	}
 	return 0;
 }
-EXPORT_SYMBOL(msm_ipc_check_send_permissions);
+cnss_export_symbol(msm_ipc_check_send_permissions);
 
 /**
  * msm_ipc_router_security_init() - Initialize the security rule database
@@ -353,4 +354,4 @@ int msm_ipc_router_security_init(void)
 	msm_ipc_add_default_rule();
 	return 0;
 }
-EXPORT_SYMBOL(msm_ipc_router_security_init);
+cnss_export_symbol(msm_ipc_router_security_init);

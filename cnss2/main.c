@@ -35,6 +35,8 @@
 #include "unified_wlan_cnsscore.h"
 #endif
 
+#include "cnss_module.h"
+
 #define CNSS_DUMP_FORMAT_VER		0x11
 #define CNSS_DUMP_FORMAT_VER_V2		0x22
 #define CNSS_DUMP_MAGIC_VER_V2		0x42445953
@@ -170,13 +172,13 @@ void cnss_lock_pm_sem(struct device *dev)
 {
 	down_read(&cnss_pm_sem);
 }
-EXPORT_SYMBOL(cnss_lock_pm_sem);
+cnss_export_symbol(cnss_lock_pm_sem);
 
 void cnss_release_pm_sem(struct device *dev)
 {
 	up_read(&cnss_pm_sem);
 }
-EXPORT_SYMBOL(cnss_release_pm_sem);
+cnss_export_symbol(cnss_release_pm_sem);
 
 int cnss_get_fw_files_for_target(struct device *dev,
 				 struct cnss_fw_files *pfw_files,
@@ -199,7 +201,7 @@ int cnss_get_fw_files_for_target(struct device *dev,
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_get_fw_files_for_target);
+cnss_export_symbol(cnss_get_fw_files_for_target);
 
 int cnss_request_bus_bandwidth(struct device *dev, int bandwidth)
 {
@@ -236,7 +238,7 @@ int cnss_request_bus_bandwidth(struct device *dev, int bandwidth)
 
 	return ret;
 }
-EXPORT_SYMBOL(cnss_request_bus_bandwidth);
+cnss_export_symbol(cnss_request_bus_bandwidth);
 
 int cnss_get_platform_cap(struct device *dev, struct cnss_platform_cap *cap)
 {
@@ -250,7 +252,7 @@ int cnss_get_platform_cap(struct device *dev, struct cnss_platform_cap *cap)
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_get_platform_cap);
+cnss_export_symbol(cnss_get_platform_cap);
 
 void cnss_set_driver_status(enum cnss_driver_status driver_status)
 {
@@ -261,7 +263,7 @@ void cnss_set_driver_status(enum cnss_driver_status driver_status)
 
 	plat_priv->driver_status = driver_status;
 }
-EXPORT_SYMBOL(cnss_set_driver_status);
+cnss_export_symbol(cnss_set_driver_status);
 
 void cnss_request_pm_qos(struct device *dev, u32 qos_val)
 {
@@ -273,7 +275,7 @@ void cnss_request_pm_qos(struct device *dev, u32 qos_val)
 	pm_qos_add_request(&plat_priv->qos_request, PM_QOS_CPU_DMA_LATENCY,
 			   qos_val);
 }
-EXPORT_SYMBOL(cnss_request_pm_qos);
+cnss_export_symbol(cnss_request_pm_qos);
 
 void cnss_remove_pm_qos(struct device *dev)
 {
@@ -284,7 +286,7 @@ void cnss_remove_pm_qos(struct device *dev)
 
 	pm_qos_remove_request(&plat_priv->qos_request);
 }
-EXPORT_SYMBOL(cnss_remove_pm_qos);
+cnss_export_symbol(cnss_remove_pm_qos);
 
 u8 *cnss_common_get_wlan_mac_address(struct device *dev, u32 *num)
 {
@@ -309,7 +311,7 @@ out:
 	*num = 0;
 	return NULL;
 }
-EXPORT_SYMBOL(cnss_common_get_wlan_mac_address);
+cnss_export_symbol(cnss_common_get_wlan_mac_address);
 
 int cnss_wlan_enable(struct device *dev,
 		     struct cnss_wlan_enable_cfg *config,
@@ -439,7 +441,7 @@ skip_cfg:
 out:
 	return ret;
 }
-EXPORT_SYMBOL(cnss_wlan_enable);
+cnss_export_symbol(cnss_wlan_enable);
 
 int cnss_wlan_disable(struct device *dev, enum cnss_driver_mode mode)
 {
@@ -453,7 +455,7 @@ int cnss_wlan_disable(struct device *dev, enum cnss_driver_mode mode)
 
 	return cnss_wlfw_wlan_mode_send_sync(plat_priv, QMI_WLFW_OFF_V01);
 }
-EXPORT_SYMBOL(cnss_wlan_disable);
+cnss_export_symbol(cnss_wlan_disable);
 
 #ifdef CONFIG_CNSS2_DEBUG
 int cnss_athdiag_read(struct device *dev, u32 offset, u32 mem_type,
@@ -494,7 +496,7 @@ int cnss_athdiag_read(struct device *dev, u32 offset, u32 mem_type,
 out:
 	return ret;
 }
-EXPORT_SYMBOL(cnss_athdiag_read);
+cnss_export_symbol(cnss_athdiag_read);
 
 int cnss_athdiag_write(struct device *dev, u32 offset, u32 mem_type,
 		       u32 data_len, u8 *input)
@@ -530,21 +532,21 @@ int cnss_athdiag_write(struct device *dev, u32 offset, u32 mem_type,
 out:
 	return ret;
 }
-EXPORT_SYMBOL(cnss_athdiag_write);
+cnss_export_symbol(cnss_athdiag_write);
 #else
 int cnss_athdiag_read(struct device *dev, u32 offset, u32 mem_type,
 		      u32 data_len, u8 *output)
 {
 	return -EPERM;
 }
-EXPORT_SYMBOL(cnss_athdiag_read);
+cnss_export_symbol(cnss_athdiag_read);
 
 int cnss_athdiag_write(struct device *dev, u32 offset, u32 mem_type,
 		       u32 data_len, u8 *input)
 {
 	return -EPERM;
 }
-EXPORT_SYMBOL(cnss_athdiag_write);
+cnss_export_symbol(cnss_athdiag_write);
 #endif
 
 int cnss_set_fw_log_mode(struct device *dev, u8 fw_log_mode)
@@ -556,7 +558,7 @@ int cnss_set_fw_log_mode(struct device *dev, u8 fw_log_mode)
 
 	return cnss_wlfw_ini_send_sync(plat_priv, fw_log_mode);
 }
-EXPORT_SYMBOL(cnss_set_fw_log_mode);
+cnss_export_symbol(cnss_set_fw_log_mode);
 
 unsigned long *cnss_get_debug_quirks(void)
 {
@@ -860,7 +862,7 @@ int cnss_power_up(struct device *dev)
 out:
 	return ret;
 }
-EXPORT_SYMBOL(cnss_power_up);
+cnss_export_symbol(cnss_power_up);
 
 int cnss_power_down(struct device *dev)
 {
@@ -877,19 +879,19 @@ int cnss_power_down(struct device *dev)
 				      CNSS_DRIVER_EVENT_POWER_DOWN,
 				      CNSS_EVENT_SYNC, NULL);
 }
-EXPORT_SYMBOL(cnss_power_down);
+cnss_export_symbol(cnss_power_down);
 
 int cnss_idle_restart(struct device *dev)
 {
 	return 0;
 }
-EXPORT_SYMBOL(cnss_idle_restart);
+cnss_export_symbol(cnss_idle_restart);
 
 int cnss_idle_shutdown(struct device *dev)
 {
 	return 0;
 }
-EXPORT_SYMBOL(cnss_idle_shutdown);
+cnss_export_symbol(cnss_idle_shutdown);
 
 
 #ifdef CONFIG_NAPIER_X86
@@ -1063,7 +1065,7 @@ void *cnss_get_virt_ramdump_mem(struct device *dev, unsigned long *size)
 
 	return ramdump_info->ramdump_va;
 }
-EXPORT_SYMBOL(cnss_get_virt_ramdump_mem);
+cnss_export_symbol(cnss_get_virt_ramdump_mem);
 
 void cnss_device_crashed(struct device *dev)
 {
@@ -1082,7 +1084,7 @@ void cnss_device_crashed(struct device *dev)
 #endif
 	}
 }
-EXPORT_SYMBOL(cnss_device_crashed);
+cnss_export_symbol(cnss_device_crashed);
 
 static void cnss_crash_shutdown(const struct subsys_desc *subsys_desc)
 {
@@ -1219,7 +1221,7 @@ int cnss_self_recovery(struct device *dev,
 	cnss_schedule_recovery(dev, reason);
 	return 0;
 }
-EXPORT_SYMBOL(cnss_self_recovery);
+cnss_export_symbol(cnss_self_recovery);
 
 void cnss_schedule_recovery(struct device *dev,
 			    enum cnss_recovery_reason reason)
@@ -1240,7 +1242,7 @@ void cnss_schedule_recovery(struct device *dev,
 			       CNSS_DRIVER_EVENT_RECOVERY,
 			       false, data);
 }
-EXPORT_SYMBOL(cnss_schedule_recovery);
+cnss_export_symbol(cnss_schedule_recovery);
 
 int cnss_force_fw_assert(struct device *dev)
 {
@@ -1267,7 +1269,7 @@ int cnss_force_fw_assert(struct device *dev)
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_force_fw_assert);
+cnss_export_symbol(cnss_force_fw_assert);
 
 int cnss_dump_fw_sram_to_file(struct device *dev)
 {
@@ -1307,7 +1309,7 @@ int cnss_dump_fw_sram_to_file(struct device *dev)
 
 	return ret;
 }
-EXPORT_SYMBOL(cnss_dump_fw_sram_to_file);
+cnss_export_symbol(cnss_dump_fw_sram_to_file);
 
 static int cnss_wlfw_server_arrive_hdlr(struct cnss_plat_data *plat_priv)
 {
@@ -1363,20 +1365,20 @@ int cnss_force_collect_rddm(struct device *dev)
 
 	return ret;
 }
-EXPORT_SYMBOL(cnss_force_collect_rddm);
+cnss_export_symbol(cnss_force_collect_rddm);
 
 
 int cnss_qmi_send_get(struct device *dev)
 {
 	return 0;
 }
-EXPORT_SYMBOL(cnss_qmi_send_get);
+cnss_export_symbol(cnss_qmi_send_get);
 
 int cnss_qmi_send_put(struct device *dev)
 {
 	return 0;
 }
-EXPORT_SYMBOL(cnss_qmi_send_put);
+cnss_export_symbol(cnss_qmi_send_put);
 
 int cnss_qmi_send(struct device *dev, int type, void *cmd,
 		  int cmd_len, void *cb_ctx,
@@ -1384,7 +1386,7 @@ int cnss_qmi_send(struct device *dev, int type, void *cmd,
 {
 	return -EINVAL;
 }
-EXPORT_SYMBOL(cnss_qmi_send);
+cnss_export_symbol(cnss_qmi_send);
 
 static int cnss_cold_boot_cal_start_hdlr(struct cnss_plat_data *plat_priv)
 {

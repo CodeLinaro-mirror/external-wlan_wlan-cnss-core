@@ -33,6 +33,7 @@
 #include "mhi_trace.h"
 #include "../cnss2/main.h"
 #include "unified_wlan_cnsscore.h"
+#include "cnss_module.h"
 
 static int
 prepare_dma_mem(struct mhi_device_ctxt *mhi_dev_ctxt,
@@ -574,7 +575,7 @@ error_tre_ring:
 		"Exited chan 0x%x ret:%d\n", chan, ret_val);
 	return ret_val;
 }
-EXPORT_SYMBOL(mhi_open_channel);
+cnss_export_symbol(mhi_open_channel);
 
 #ifdef CONFIG_NAPIER_X86
 bool mhi_is_device_ready(const struct device * const dev,
@@ -626,7 +627,7 @@ bool mhi_is_device_ready(const struct device * const dev,
 	return match_found;
 }
 #endif
-EXPORT_SYMBOL(mhi_is_device_ready);
+cnss_export_symbol(mhi_is_device_ready);
 
 int mhi_register_channel(struct mhi_client_handle **client_handle,
 			 struct mhi_client_info_t *client_info)
@@ -720,7 +721,7 @@ int mhi_register_channel(struct mhi_client_handle **client_handle,
 		"Successfuly registered chan:%u\n", chan);
 	return 0;
 }
-EXPORT_SYMBOL(mhi_register_channel);
+cnss_export_symbol(mhi_register_channel);
 
 void mhi_close_channel(struct mhi_client_handle *client_handle)
 {
@@ -819,7 +820,7 @@ error_completion:
 	client_config->chan_status = 0;
 	mutex_unlock(&cfg->chan_lock);
 }
-EXPORT_SYMBOL(mhi_close_channel);
+cnss_export_symbol(mhi_close_channel);
 
 void mhi_update_chan_db(struct mhi_device_ctxt *mhi_dev_ctxt,
 					  u32 chan)
@@ -1121,7 +1122,7 @@ int mhi_queue_xfer(struct mhi_client_handle *client_handle,
 	read_unlock_irqrestore(&mhi_dev_ctxt->pm_xfer_lock, flags);
 	return 0;
 }
-EXPORT_SYMBOL(mhi_queue_xfer);
+cnss_export_symbol(mhi_queue_xfer);
 
 int mhi_send_cmd(struct mhi_device_ctxt *mhi_dev_ctxt,
 			enum MHI_COMMAND cmd, u32 chan)
@@ -1775,7 +1776,7 @@ int mhi_poll_inbound(struct mhi_client_handle *client_handle,
 		result->buf_addr, result->bytes_xferd, chan);
 	return r;
 }
-EXPORT_SYMBOL(mhi_poll_inbound);
+cnss_export_symbol(mhi_poll_inbound);
 
 int validate_ev_el_addr(struct mhi_ring *ring, uintptr_t addr)
 {
@@ -1822,7 +1823,7 @@ int mhi_get_max_desc(struct mhi_client_handle *client_handle)
 	client_config = client_handle->client_config;
 	return client_config->chan_info.max_desc - 1;
 }
-EXPORT_SYMBOL(mhi_get_max_desc);
+cnss_export_symbol(mhi_get_max_desc);
 
 int mhi_get_epid(struct mhi_client_handle *client_handle)
 {
@@ -1898,7 +1899,7 @@ void mhi_force_wake_request(struct mhi_device *mhi_dev)
 		read_unlock_irqrestore(&mhi_dev_ctxt->pm_xfer_lock, flags);
 	}
 }
-EXPORT_SYMBOL(mhi_force_wake_request);
+cnss_export_symbol(mhi_force_wake_request);
 
 void mhi_deassert_device_wake(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
@@ -1931,7 +1932,7 @@ void mhi_force_wake_release(struct mhi_device *mhi_dev)
 		read_unlock_irqrestore(&mhi_dev_ctxt->pm_xfer_lock, flags);
 	}
 }
-EXPORT_SYMBOL(mhi_force_wake_release);
+cnss_export_symbol(mhi_force_wake_release);
 
 bool mhi_is_device_awake(struct mhi_device *mhi_dev)
 {
@@ -1941,7 +1942,7 @@ bool mhi_is_device_awake(struct mhi_device *mhi_dev)
 
 	return true;
 }
-EXPORT_SYMBOL(mhi_is_device_awake);
+cnss_export_symbol(mhi_is_device_awake);
 
 int mhi_set_lpm(struct mhi_client_handle *client_handle, bool enable_lpm)
 {
@@ -1961,7 +1962,7 @@ int mhi_set_lpm(struct mhi_client_handle *client_handle, bool enable_lpm)
 
 	return 0;
 }
-EXPORT_SYMBOL(mhi_set_lpm);
+cnss_export_symbol(mhi_set_lpm);
 
 #ifdef CONFIG_NAPIER_X86
 int mhi_set_bus_request(struct mhi_device_ctxt *mhi_dev_ctxt,
@@ -1973,7 +1974,7 @@ void mhi_pcie_sw_soc_reset(struct mhi_device *mhi_device)
 
 	mhi_pcie_sw_reset(mhi_dev_ctxt);
 }
-EXPORT_SYMBOL(mhi_pcie_sw_soc_reset);
+cnss_export_symbol(mhi_pcie_sw_soc_reset);
 
 #else
 int mhi_set_bus_request(struct mhi_device_ctxt *mhi_dev_ctxt,
@@ -2006,7 +2007,7 @@ int mhi_deregister_channel(struct mhi_client_handle *client_handle)
 	kfree(client_handle);
 	return ret_val;
 }
-EXPORT_SYMBOL(mhi_deregister_channel);
+cnss_export_symbol(mhi_deregister_channel);
 
 int mhi_register_device(struct mhi_device *mhi_device,
 			const char *node_name,
@@ -2142,7 +2143,7 @@ int mhi_register_device(struct mhi_device *mhi_device,
 	mhi_log(mhi_dev_ctxt, MHI_MSG_INFO, "Exit success\n");
 	return 0;
 }
-EXPORT_SYMBOL(mhi_register_device);
+cnss_export_symbol(mhi_register_device);
 
 void mhi_deregister_device(struct mhi_device *mhi_device)
 {
@@ -2176,7 +2177,7 @@ void mhi_deregister_device(struct mhi_device *mhi_device)
 	mhi_ctxt->core.dev_id = PCI_ANY_ID;
 	mhi_ctxt->pcie_device = NULL;
 }
-EXPORT_SYMBOL(mhi_deregister_device);
+cnss_export_symbol(mhi_deregister_device);
 
 
 int mhi_xfer_rddm(struct mhi_device *mhi_device, enum mhi_rddm_segment seg,
@@ -2199,7 +2200,7 @@ int mhi_xfer_rddm(struct mhi_device *mhi_device, enum mhi_rddm_segment seg,
 	}
 	return segments;
 }
-EXPORT_SYMBOL(mhi_xfer_rddm);
+cnss_export_symbol(mhi_xfer_rddm);
 
 void mhi_process_db_brstmode(struct mhi_device_ctxt *mhi_dev_ctxt,
 			     void __iomem *io_addr,

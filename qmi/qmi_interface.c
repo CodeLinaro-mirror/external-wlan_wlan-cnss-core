@@ -45,6 +45,8 @@
 #include "unified_wlan_cnsscore.h"
 #endif
 
+#include "cnss_module.h"
+
 #define BUILD_INSTANCE_ID(vers, ins) (((vers) & 0xFF) | (((ins) & 0xFF) << 8))
 #define LOOKUP_MASK 0xFFFFFFFF
 #define MAX_WQ_NAME_LEN 20
@@ -125,7 +127,7 @@ struct elem_info qmi_response_type_v01_ei[] = {
 		.ei_array	= NULL,
 	},
 };
-EXPORT_SYMBOL(qmi_response_type_v01_ei);
+cnss_export_symbol(qmi_response_type_v01_ei);
 
 struct elem_info qmi_error_resp_type_v01_ei[] = {
 	{
@@ -817,7 +819,7 @@ handle_create_err1:
 	kfree(temp_handle);
 	return NULL;
 }
-EXPORT_SYMBOL(qmi_handle_create);
+cnss_export_symbol(qmi_handle_create);
 
 static void clean_txn_info(struct qmi_handle *handle)
 {
@@ -885,7 +887,7 @@ int qmi_handle_destroy(struct qmi_handle *handle)
 	kfree(handle);
 	return 0;
 }
-EXPORT_SYMBOL(qmi_handle_destroy);
+cnss_export_symbol(qmi_handle_destroy);
 
 int qmi_register_ind_cb(struct qmi_handle *handle,
 	void (*ind_cb)(struct qmi_handle *handle,
@@ -907,7 +909,7 @@ int qmi_register_ind_cb(struct qmi_handle *handle,
 	mutex_unlock(&handle->handle_lock);
 	return 0;
 }
-EXPORT_SYMBOL(qmi_register_ind_cb);
+cnss_export_symbol(qmi_register_ind_cb);
 
 static int qmi_encode_and_send_req(struct qmi_txn **ret_txn_handle,
 	struct qmi_handle *handle, enum txn_type type,
@@ -1090,7 +1092,7 @@ send_req_wait_err:
 	mutex_unlock(&handle->handle_lock);
 	return rc;
 }
-EXPORT_SYMBOL(qmi_send_req_wait);
+cnss_export_symbol(qmi_send_req_wait);
 
 int qmi_send_req_nowait(struct qmi_handle *handle,
 			struct msg_desc *req_desc,
@@ -1107,7 +1109,7 @@ int qmi_send_req_nowait(struct qmi_handle *handle,
 				       resp_desc, resp, resp_len,
 				       resp_cb, resp_cb_data);
 }
-EXPORT_SYMBOL(qmi_send_req_nowait);
+cnss_export_symbol(qmi_send_req_nowait);
 
 /**
  * qmi_encode_and_send_resp() - Encode and send QMI response
@@ -1263,7 +1265,7 @@ int qmi_send_resp(struct qmi_handle *handle, void *conn_handle,
 	mutex_unlock(&handle->handle_lock);
 	return rc;
 }
-EXPORT_SYMBOL(qmi_send_resp);
+cnss_export_symbol(qmi_send_resp);
 
 /**
  * qmi_send_resp_from_cb() - Send response to a request from request_cb
@@ -1296,7 +1298,7 @@ int qmi_send_resp_from_cb(struct qmi_handle *handle, void *conn_handle,
 		pr_err("%s: Error encoding and sending response\n", __func__);
 	return rc;
 }
-EXPORT_SYMBOL(qmi_send_resp_from_cb);
+cnss_export_symbol(qmi_send_resp_from_cb);
 
 /**
  * qmi_send_ind() - Send unsolicited event/indication to a client
@@ -1329,7 +1331,7 @@ int qmi_send_ind(struct qmi_handle *handle, void *conn_handle,
 	mutex_unlock(&handle->handle_lock);
 	return rc;
 }
-EXPORT_SYMBOL(qmi_send_ind);
+cnss_export_symbol(qmi_send_ind);
 
 /**
  * qmi_send_ind_from_cb() - Send indication to a client from registration_cb
@@ -1360,7 +1362,7 @@ int qmi_send_ind_from_cb(struct qmi_handle *handle, void *conn_handle,
 		pr_err("%s: Error encoding and sending ind.\n", __func__);
 	return rc;
 }
-EXPORT_SYMBOL(qmi_send_ind_from_cb);
+cnss_export_symbol(qmi_send_ind_from_cb);
 
 /**
  * translate_err_code() - Translate Linux error codes into QMI error codes
@@ -1740,7 +1742,7 @@ int qmi_recv_msg(struct qmi_handle *handle)
 	mutex_unlock(&handle->handle_lock);
 	return rc;
 }
-EXPORT_SYMBOL(qmi_recv_msg);
+cnss_export_symbol(qmi_recv_msg);
 
 int qmi_connect_to_service(struct qmi_handle *handle,
 			   uint32_t service_id,
@@ -1788,7 +1790,7 @@ int qmi_connect_to_service(struct qmi_handle *handle,
 
 	return 0;
 }
-EXPORT_SYMBOL(qmi_connect_to_service);
+cnss_export_symbol(qmi_connect_to_service);
 
 /**
  * svc_event_add_svc_addr() - Add a specific service address to the list
@@ -2041,7 +2043,7 @@ int qmi_svc_event_notifier_register(uint32_t service_id,
 
 	return ret;
 }
-EXPORT_SYMBOL(qmi_svc_event_notifier_register);
+cnss_export_symbol(qmi_svc_event_notifier_register);
 
 int qmi_svc_event_notifier_unregister(uint32_t service_id,
 				      uint32_t service_vers,
@@ -2078,7 +2080,7 @@ int qmi_svc_event_notifier_unregister(uint32_t service_id,
 
 	return ret;
 }
-EXPORT_SYMBOL(qmi_svc_event_notifier_unregister);
+cnss_export_symbol(qmi_svc_event_notifier_unregister);
 
 /**
  * qmi_svc_event_worker() - Read control messages over service event port
@@ -2267,7 +2269,7 @@ int qmi_svc_register(struct qmi_handle *handle, void *ops_options)
 	mutex_unlock(&handle->handle_lock);
 	return rc;
 }
-EXPORT_SYMBOL(qmi_svc_register);
+cnss_export_symbol(qmi_svc_register);
 
 
 /**
@@ -2301,7 +2303,7 @@ int qmi_svc_unregister(struct qmi_handle *handle)
 	mutex_unlock(&handle->handle_lock);
 	return 0;
 }
-EXPORT_SYMBOL(qmi_svc_unregister);
+cnss_export_symbol(qmi_svc_unregister);
 
 #ifdef CONFIG_WLAN_CNSS_CORE
 int qmi_interface_init(void)

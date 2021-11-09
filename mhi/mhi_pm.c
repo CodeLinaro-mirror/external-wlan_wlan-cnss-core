@@ -24,6 +24,7 @@
 #include "mhi.h"
 #include "mhi_hwio.h"
 #include "mhi_bhi.h"
+#include "cnss_module.h"
 
 static const char *const mhi_dev_ctrl_str[MHI_DEV_CTRL_MAXCMD] = {
 	[MHI_DEV_CTRL_INIT] = "INIT",
@@ -727,4 +728,4 @@ int mhi_pm_control_device(struct mhi_device *mhi_device, enum mhi_dev_ctrl ctrl)
 	}
 	return 0;
 }
-EXPORT_SYMBOL(mhi_pm_control_device);
+cnss_export_symbol(mhi_pm_control_device);

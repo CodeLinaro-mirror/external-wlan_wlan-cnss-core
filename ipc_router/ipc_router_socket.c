@@ -39,6 +39,7 @@
 
 #include "ipc_router_private.h"
 #include "ipc_router_security.h"
+#include "cnss_module.h"
 
 #define msm_ipc_sk(sk) ((struct msm_ipc_sock *)(sk))
 #define msm_ipc_sk_port(sk) ((struct msm_ipc_port *)(msm_ipc_sk(sk)->port))
@@ -593,7 +594,7 @@ int register_ipcrtr_af_init_notifier(struct notifier_block *nb)
 	mutex_unlock(&ipcrtr_af_init_lock);
 	return ret;
 }
-EXPORT_SYMBOL(register_ipcrtr_af_init_notifier);
+cnss_export_symbol(register_ipcrtr_af_init_notifier);
 
 /**
  * unregister_ipcrtr_af_init_notifier() - Unregister for ipc router socket
@@ -612,7 +613,7 @@ int unregister_ipcrtr_af_init_notifier(struct notifier_block *nb)
 	ret = raw_notifier_chain_unregister(&ipcrtr_af_init_chain, nb);
 	return ret;
 }
-EXPORT_SYMBOL(unregister_ipcrtr_af_init_notifier);
+cnss_export_symbol(unregister_ipcrtr_af_init_notifier);
 
 static const struct net_proto_family msm_ipc_family_ops = {
 	.owner		= THIS_MODULE,

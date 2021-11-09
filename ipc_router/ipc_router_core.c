@@ -54,6 +54,7 @@
 #endif
 
 #include <linux/version.h>
+#include "cnss_module.h"
 
 enum {
 	SMEM_LOG = 1U << 0,
@@ -4503,16 +4504,16 @@ module_exit(msm_ipc_router_deinit);
 MODULE_DESCRIPTION("MSM IPC Router");
 MODULE_LICENSE("GPL v2");
 #endif
-EXPORT_SYMBOL(clone_pkt);
-EXPORT_SYMBOL(ipc_router_peek_pkt_size);
-EXPORT_SYMBOL(release_pkt);
-EXPORT_SYMBOL(create_pkt);
-EXPORT_SYMBOL(msm_ipc_router_xprt_notify);
-EXPORT_SYMBOL(msm_ipc_router_create_port);
-EXPORT_SYMBOL(msm_ipc_router_lookup_server_name);
-EXPORT_SYMBOL(msm_ipc_router_close_port);
-EXPORT_SYMBOL(msm_ipc_router_read_msg);
-EXPORT_SYMBOL(msm_ipc_router_bind_control_port);
-EXPORT_SYMBOL(msm_ipc_router_send_msg);
-EXPORT_SYMBOL(msm_ipc_router_register_server);
-EXPORT_SYMBOL(msm_ipc_router_unregister_server);
+cnss_export_symbol(clone_pkt);
+cnss_export_symbol(ipc_router_peek_pkt_size);
+cnss_export_symbol(release_pkt);
+cnss_export_symbol(create_pkt);
+cnss_export_symbol(msm_ipc_router_xprt_notify);
+cnss_export_symbol(msm_ipc_router_create_port);
+cnss_export_symbol(msm_ipc_router_lookup_server_name);
+cnss_export_symbol(msm_ipc_router_close_port);
+cnss_export_symbol(msm_ipc_router_read_msg);
+cnss_export_symbol(msm_ipc_router_bind_control_port);
+cnss_export_symbol(msm_ipc_router_send_msg);
+cnss_export_symbol(msm_ipc_router_register_server);
+cnss_export_symbol(msm_ipc_router_unregister_server);

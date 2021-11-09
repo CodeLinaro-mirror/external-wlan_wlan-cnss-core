@@ -18,6 +18,7 @@
 #include "mhi_sys.h"
 
 #include <linux/version.h>
+#include "cnss_module.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 #define vfs_write kernel_write
@@ -443,6 +444,6 @@ void mhi_set_fw_remote_mem(struct mhi_device *mhi_device,
 	bhi_ctxt->fw_mem.vaddr = vaddr;
 	bhi_ctxt->fw_mem.size = size;
 }
-EXPORT_SYMBOL(mhi_set_fw_remote_mem);
+cnss_export_symbol(mhi_set_fw_remote_mem);
 
 

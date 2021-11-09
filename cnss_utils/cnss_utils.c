@@ -18,6 +18,7 @@
 #include <linux/etherdevice.h>
 #include <linux/debugfs.h>
 #include "cnss_utils.h"
+#include "cnss_module.h"
 
 #define CNSS_MAX_CH_NUM 45
 struct cnss_unsafe_channel_list {
@@ -83,7 +84,7 @@ end:
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_utils_set_wlan_unsafe_channel);
+cnss_export_symbol(cnss_utils_set_wlan_unsafe_channel);
 
 int cnss_utils_get_wlan_unsafe_channel(struct device *dev,
 				       u16 *unsafe_ch_list,
@@ -113,7 +114,7 @@ int cnss_utils_get_wlan_unsafe_channel(struct device *dev,
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_utils_get_wlan_unsafe_channel);
+cnss_export_symbol(cnss_utils_get_wlan_unsafe_channel);
 
 int cnss_utils_wlan_set_dfs_nol(struct device *dev,
 				const void *info, u16 info_len)
@@ -144,7 +145,7 @@ int cnss_utils_wlan_set_dfs_nol(struct device *dev,
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_utils_wlan_set_dfs_nol);
+cnss_export_symbol(cnss_utils_wlan_set_dfs_nol);
 
 int cnss_utils_wlan_get_dfs_nol(struct device *dev,
 				void *info, u16 info_len)
@@ -174,7 +175,7 @@ int cnss_utils_wlan_get_dfs_nol(struct device *dev,
 
 	return len;
 }
-EXPORT_SYMBOL(cnss_utils_wlan_get_dfs_nol);
+cnss_export_symbol(cnss_utils_wlan_get_dfs_nol);
 
 void cnss_utils_increment_driver_load_cnt(struct device *dev)
 {
@@ -185,7 +186,7 @@ void cnss_utils_increment_driver_load_cnt(struct device *dev)
 
 	++(priv->driver_load_cnt);
 }
-EXPORT_SYMBOL(cnss_utils_increment_driver_load_cnt);
+cnss_export_symbol(cnss_utils_increment_driver_load_cnt);
 
 int cnss_utils_get_driver_load_cnt(struct device *dev)
 {
@@ -196,7 +197,7 @@ int cnss_utils_get_driver_load_cnt(struct device *dev)
 
 	return priv->driver_load_cnt;
 }
-EXPORT_SYMBOL(cnss_utils_get_driver_load_cnt);
+cnss_export_symbol(cnss_utils_get_driver_load_cnt);
 
 static int set_wlan_mac_address(const u8 *mac_list, const uint32_t len,
 				enum mac_type type)
@@ -250,14 +251,14 @@ int cnss_utils_set_wlan_mac_address(const u8 *mac_list, const uint32_t len)
 {
 	return set_wlan_mac_address(mac_list, len, CNSS_MAC_PROVISIONED);
 }
-EXPORT_SYMBOL(cnss_utils_set_wlan_mac_address);
+cnss_export_symbol(cnss_utils_set_wlan_mac_address);
 
 int cnss_utils_set_wlan_derived_mac_address(
 				const u8 *mac_list, const uint32_t len)
 {
 	return set_wlan_mac_address(mac_list, len, CNSS_MAC_DERIVED);
 }
-EXPORT_SYMBOL(cnss_utils_set_wlan_derived_mac_address);
+cnss_export_symbol(cnss_utils_set_wlan_derived_mac_address);
 
 static u8 *get_wlan_mac_address(struct device *dev,
 				u32 *num, enum mac_type type)
@@ -289,14 +290,14 @@ u8 *cnss_utils_get_wlan_mac_address(struct device *dev, uint32_t *num)
 {
 	return get_wlan_mac_address(dev, num, CNSS_MAC_PROVISIONED);
 }
-EXPORT_SYMBOL(cnss_utils_get_wlan_mac_address);
+cnss_export_symbol(cnss_utils_get_wlan_mac_address);
 
 u8 *cnss_utils_get_wlan_derived_mac_address(
 			struct device *dev, uint32_t *num)
 {
 	return get_wlan_mac_address(dev, num, CNSS_MAC_DERIVED);
 }
-EXPORT_SYMBOL(cnss_utils_get_wlan_derived_mac_address);
+cnss_export_symbol(cnss_utils_get_wlan_derived_mac_address);
 
 void cnss_utils_set_cc_source(struct device *dev,
 			      enum cnss_utils_cc_src cc_source)
@@ -308,7 +309,7 @@ void cnss_utils_set_cc_source(struct device *dev,
 
 	priv->cc_source = cc_source;
 }
-EXPORT_SYMBOL(cnss_utils_set_cc_source);
+cnss_export_symbol(cnss_utils_set_cc_source);
 
 enum cnss_utils_cc_src cnss_utils_get_cc_source(struct device *dev)
 {
@@ -319,7 +320,7 @@ enum cnss_utils_cc_src cnss_utils_get_cc_source(struct device *dev)
 
 	return priv->cc_source;
 }
-EXPORT_SYMBOL(cnss_utils_get_cc_source);
+cnss_export_symbol(cnss_utils_get_cc_source);
 
 static ssize_t cnss_utils_mac_write(struct file *fp,
 				    const char __user *user_buf,

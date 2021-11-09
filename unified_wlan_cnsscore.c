@@ -20,6 +20,7 @@
 #include <linux/platform_device.h>
 #include <cnss2/main.h>
 #include <cnss2/debug.h>
+#include "cnss_module.h"
 
 #ifdef CONFIG_WLAN_CNSS_CORE
 
@@ -55,7 +56,7 @@ void *cnss_dma_alloc_coherent(struct device *dev, size_t size,
 	return vaddr;
 
 }
-EXPORT_SYMBOL(cnss_dma_alloc_coherent);
+cnss_export_symbol(cnss_dma_alloc_coherent);
 
 void cnss_dma_free_coherent(struct device *dev, size_t size,
 			    void *vaddr, dma_addr_t dma_handle)
@@ -72,7 +73,7 @@ void cnss_dma_free_coherent(struct device *dev, size_t size,
 
 	return;
 }
-EXPORT_SYMBOL(cnss_dma_free_coherent);
+cnss_export_symbol(cnss_dma_free_coherent);
 
 #else
 void *cnss_dma_alloc_coherent(struct device *dev, size_t size,
@@ -80,14 +81,14 @@ void *cnss_dma_alloc_coherent(struct device *dev, size_t size,
 {
 	return dma_alloc_coherent(dev, size, dma_handle, flag);
 }
-EXPORT_SYMBOL(cnss_dma_alloc_coherent);
+cnss_export_symbol(cnss_dma_alloc_coherent);
 
 void cnss_dma_free_coherent(struct device *dev, size_t size,
 			    void *vaddr, dma_addr_t dma_handle)
 {
 	dma_free_coherent(dev, size, vaddr, dma_handle);
 }
-EXPORT_SYMBOL(cnss_dma_free_coherent);
+cnss_export_symbol(cnss_dma_free_coherent);
 #endif
 
 static int unified_pdrv_init(void)

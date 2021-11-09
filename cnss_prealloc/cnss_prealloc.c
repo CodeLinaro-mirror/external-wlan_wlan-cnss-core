@@ -21,6 +21,7 @@
 #endif
 #include "cnss_prealloc.h"
 #include <linux/version.h>
+#include "cnss_module.h"
 
 static DEFINE_SPINLOCK(alloc_lock);
 
@@ -305,7 +306,7 @@ void *wcnss_prealloc_get(size_t size)
 
 	return NULL;
 }
-EXPORT_SYMBOL(wcnss_prealloc_get);
+cnss_export_symbol(wcnss_prealloc_get);
 
 int wcnss_prealloc_put(void *ptr)
 {
@@ -324,7 +325,7 @@ int wcnss_prealloc_put(void *ptr)
 
 	return 0;
 }
-EXPORT_SYMBOL(wcnss_prealloc_put);
+cnss_export_symbol(wcnss_prealloc_put);
 
 #ifdef CONFIG_SLUB_DEBUG
 void wcnss_prealloc_check_memory_leak(void)
@@ -352,7 +353,7 @@ void wcnss_prealloc_check_memory_leak(void)
 #else
 void wcnss_prealloc_check_memory_leak(void) {}
 #endif
-EXPORT_SYMBOL(wcnss_prealloc_check_memory_leak);
+cnss_export_symbol(wcnss_prealloc_check_memory_leak);
 
 int wcnss_pre_alloc_reset(void)
 {
@@ -374,7 +375,7 @@ int wcnss_pre_alloc_reset(void)
 
 	return n;
 }
-EXPORT_SYMBOL(wcnss_pre_alloc_reset);
+cnss_export_symbol(wcnss_pre_alloc_reset);
 
 #if defined(CONFIG_WCNSS_SKB_PRE_ALLOC)
 struct sk_buff *wcnss_skb_prealloc_get(unsigned int size)
@@ -401,7 +402,7 @@ struct sk_buff *wcnss_skb_prealloc_get(unsigned int size)
 
 	return NULL;
 }
-EXPORT_SYMBOL(wcnss_skb_prealloc_get);
+cnss_export_symbol(wcnss_skb_prealloc_get);
 
 int wcnss_skb_prealloc_put(struct sk_buff *skb)
 {
@@ -420,7 +421,7 @@ int wcnss_skb_prealloc_put(struct sk_buff *skb)
 
 	return 0;
 }
-EXPORT_SYMBOL(wcnss_skb_prealloc_put);
+cnss_export_symbol(wcnss_skb_prealloc_put);
 
 static int prealloc_skb_memory_stats_show(struct seq_file *fp, void *data)
 {

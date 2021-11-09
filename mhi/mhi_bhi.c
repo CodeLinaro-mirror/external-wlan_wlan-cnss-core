@@ -22,6 +22,7 @@
 #include "mhi_macros.h"
 #include "mhi_hwio.h"
 #include "mhi_bhi.h"
+#include "cnss_module.h"
 
 static struct mhi_device_ctxt *s_mhi_dev_ctxt;
 
@@ -881,4 +882,4 @@ void mhi_enable_irq(void)
 	enable_irq(MSI_TO_IRQ(s_mhi_dev_ctxt, 1));
 #endif
 }
-EXPORT_SYMBOL(mhi_enable_irq);
+cnss_export_symbol(mhi_enable_irq);

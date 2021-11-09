@@ -25,6 +25,7 @@
 #endif
 
 #include "qmi_encdec_priv.h"
+#include "cnss_module.h"
 
 #define TLV_LEN_SIZE sizeof(uint16_t)
 #define TLV_TYPE_SIZE sizeof(uint8_t)
@@ -270,7 +271,7 @@ int qmi_kernel_encode(struct msg_desc *desc,
 	}
 	return ret;
 }
-EXPORT_SYMBOL(qmi_kernel_encode);
+cnss_export_symbol(qmi_kernel_encode);
 
 /**
  * qmi_encode_basic_elem() - Encodes elements of basic/primary data type
@@ -601,7 +602,7 @@ int qmi_kernel_decode(struct msg_desc *desc, void *out_c_struct,
 	else
 		return 0;
 }
-EXPORT_SYMBOL(qmi_kernel_decode);
+cnss_export_symbol(qmi_kernel_decode);
 
 /**
  * qmi_decode_basic_elem() - Decodes elements of basic/primary data type

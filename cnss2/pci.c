@@ -24,6 +24,7 @@
 #include "debug.h"
 #include "pci.h"
 #include "mhi.h"
+#include "cnss_module.h"
 
 #define PCI_LINK_UP			1
 #define PCI_LINK_DOWN			0
@@ -278,19 +279,19 @@ int cnss_pci_is_device_down(struct device *dev)
 	return test_bit(CNSS_DEV_ERR_NOTIFY, &plat_priv->driver_state) |
 			pci_priv->pci_link_down_ind;
 }
-EXPORT_SYMBOL(cnss_pci_is_device_down);
+cnss_export_symbol(cnss_pci_is_device_down);
 
 void cnss_pci_lock_reg_window(struct device *dev, unsigned long *flags)
 {
 	spin_lock_bh(&pci_reg_window_lock);
 }
-EXPORT_SYMBOL(cnss_pci_lock_reg_window);
+cnss_export_symbol(cnss_pci_lock_reg_window);
 
 void cnss_pci_unlock_reg_window(struct device *dev, unsigned long *flags)
 {
 	spin_unlock_bh(&pci_reg_window_lock);
 }
-EXPORT_SYMBOL(cnss_pci_unlock_reg_window);
+cnss_export_symbol(cnss_pci_unlock_reg_window);
 
 int cnss_suspend_pci_link(struct cnss_pci_data *pci_priv)
 {
@@ -369,13 +370,13 @@ int cnss_pci_prevent_l1(struct device *dev)
 {
 	return 0;
 }
-EXPORT_SYMBOL(cnss_pci_prevent_l1);
+cnss_export_symbol(cnss_pci_prevent_l1);
 
 void cnss_pci_allow_l1(struct device *dev)
 {
 	//empty body
 }
-EXPORT_SYMBOL(cnss_pci_allow_l1);
+cnss_export_symbol(cnss_pci_allow_l1);
 
 int cnss_pci_link_down(struct device *dev)
 {
@@ -407,7 +408,7 @@ int cnss_pci_link_down(struct device *dev)
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_pci_link_down);
+cnss_export_symbol(cnss_pci_link_down);
 
 int cnss_pci_recovery_update_status(struct cnss_pci_data *pci_priv)
 {
@@ -929,7 +930,7 @@ int cnss_wlan_register_driver(struct cnss_wlan_driver *driver_ops)
 				     driver_ops);
 	return ret;
 }
-EXPORT_SYMBOL(cnss_wlan_register_driver);
+cnss_export_symbol(cnss_wlan_register_driver);
 
 void cnss_wlan_unregister_driver(struct cnss_wlan_driver *driver_ops)
 {
@@ -944,7 +945,7 @@ void cnss_wlan_unregister_driver(struct cnss_wlan_driver *driver_ops)
 			       CNSS_DRIVER_EVENT_UNREGISTER_DRIVER,
 			       CNSS_EVENT_SYNC_UNINTERRUPTIBLE, NULL);
 }
-EXPORT_SYMBOL(cnss_wlan_unregister_driver);
+cnss_export_symbol(cnss_wlan_unregister_driver);
 
 int cnss_pci_register_driver_hdlr(struct cnss_pci_data *pci_priv,
 				  void *data)
@@ -1121,7 +1122,7 @@ int cnss_pci_is_drv_connected(struct device *dev)
 
 	return pci_priv->drv_connected_last;
 }
-EXPORT_SYMBOL(cnss_pci_is_drv_connected);
+cnss_export_symbol(cnss_pci_is_drv_connected);
 
 static int cnss_pci_suspend(struct device *dev)
 {
@@ -1368,7 +1369,7 @@ int cnss_wlan_pm_control(struct device *dev, bool vote)
 #endif
 	return 0;
 }
-EXPORT_SYMBOL(cnss_wlan_pm_control);
+cnss_export_symbol(cnss_wlan_pm_control);
 
 int cnss_auto_suspend(struct device *dev)
 {
@@ -1425,7 +1426,7 @@ resume_mhi:
 out:
 	return ret;
 }
-EXPORT_SYMBOL(cnss_auto_suspend);
+cnss_export_symbol(cnss_auto_suspend);
 
 int cnss_auto_resume(struct device *dev)
 {
@@ -1469,7 +1470,7 @@ int cnss_auto_resume(struct device *dev)
 out:
 	return ret;
 }
-EXPORT_SYMBOL(cnss_auto_resume);
+cnss_export_symbol(cnss_auto_resume);
 
 #ifdef CONFIG_CNSS_QCA6390
 int cnss_pci_force_wake_request(struct device *dev)
@@ -1493,7 +1494,7 @@ int cnss_pci_force_wake_request(struct device *dev)
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_pci_force_wake_request);
+cnss_export_symbol(cnss_pci_force_wake_request);
 
 int cnss_pci_is_device_awake(struct device *dev)
 {
@@ -1514,7 +1515,7 @@ int cnss_pci_is_device_awake(struct device *dev)
 
 	return mhi_is_device_awake(mhi_dev);
 }
-EXPORT_SYMBOL(cnss_pci_is_device_awake);
+cnss_export_symbol(cnss_pci_is_device_awake);
 
 int cnss_pci_force_wake_release(struct device *dev)
 {
@@ -1537,25 +1538,25 @@ int cnss_pci_force_wake_release(struct device *dev)
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_pci_force_wake_release);
+cnss_export_symbol(cnss_pci_force_wake_release);
 #else
 int cnss_pci_force_wake_request(struct device *dev)
 {
 	return 0;
 }
-EXPORT_SYMBOL(cnss_pci_force_wake_request);
+cnss_export_symbol(cnss_pci_force_wake_request);
 
 int cnss_pci_is_device_awake(struct device *dev)
 {
 	return true;
 }
-EXPORT_SYMBOL(cnss_pci_is_device_awake);
+cnss_export_symbol(cnss_pci_is_device_awake);
 
 int cnss_pci_force_wake_release(struct device *dev)
 {
 	return 0;
 }
-EXPORT_SYMBOL(cnss_pci_force_wake_release);
+cnss_export_symbol(cnss_pci_force_wake_release);
 #endif
 
 int cnss_pm_request_resume(struct cnss_pci_data *pci_priv)
@@ -1759,7 +1760,7 @@ int cnss_get_soc_info(struct device *dev, struct cnss_soc_info *info)
 
 	return 0;
 }
-EXPORT_SYMBOL(cnss_get_soc_info);
+cnss_export_symbol(cnss_get_soc_info);
 
 int cnss_pci_get_bar_info(struct cnss_pci_data *pci_priv, void __iomem **va,
 			  phys_addr_t *pa)
@@ -1786,7 +1787,7 @@ struct dma_iommu_mapping *cnss_smmu_get_mapping(struct device *dev)
 	return NULL;
 #endif
 }
-EXPORT_SYMBOL(cnss_smmu_get_mapping);
+cnss_export_symbol(cnss_smmu_get_mapping);
 
 int cnss_smmu_map(struct device *dev,
 		  phys_addr_t paddr, uint32_t *iova_addr, size_t size)
@@ -1831,13 +1832,13 @@ int cnss_smmu_map(struct device *dev,
 #endif
 	return 0;
 }
-EXPORT_SYMBOL(cnss_smmu_map);
+cnss_export_symbol(cnss_smmu_map);
 
 struct iommu_domain *cnss_smmu_get_domain(struct device *dev)
 {
 	return NULL;
 }
-EXPORT_SYMBOL(cnss_smmu_get_domain);
+cnss_export_symbol(cnss_smmu_get_domain);
 
 #ifndef CONFIG_ONE_MSI_VECTOR
 static struct cnss_msi_config msi_config = {
@@ -1970,7 +1971,7 @@ int cnss_get_user_msi_assignment(struct device *dev, char *user_name,
 
 	return -EINVAL;
 }
-EXPORT_SYMBOL(cnss_get_user_msi_assignment);
+cnss_export_symbol(cnss_get_user_msi_assignment);
 
 int cnss_get_msi_irq(struct device *dev, unsigned int vector)
 {
@@ -1978,7 +1979,7 @@ int cnss_get_msi_irq(struct device *dev, unsigned int vector)
 
 	return pci_dev->irq + vector;
 }
-EXPORT_SYMBOL(cnss_get_msi_irq);
+cnss_export_symbol(cnss_get_msi_irq);
 
 void cnss_get_msi_address(struct device *dev, u32 *msi_addr_low,
 			  u32 *msi_addr_high)
@@ -1999,7 +2000,7 @@ void cnss_get_msi_address(struct device *dev, u32 *msi_addr_low,
 		*msi_addr_high = 0;
 	cnss_pr_dbg("msi low addr %x high addr %x\n", *msi_addr_low, *msi_addr_high);
 }
-EXPORT_SYMBOL(cnss_get_msi_address);
+cnss_export_symbol(cnss_get_msi_address);
 
 static char *get_wake_msi_name(void)
 {

@@ -12,6 +12,7 @@
 
 #include "mhi_sys.h"
 #include "mhi.h"
+#include "cnss_module.h"
 
 static int add_element(struct mhi_ring *ring, void **rp,
 			void **wp, void **assigned_addr)
@@ -124,7 +125,7 @@ int mhi_get_free_desc(struct mhi_client_handle *client_handle)
 
 	return min(bb_ring, ch_ring);
 }
-EXPORT_SYMBOL(mhi_get_free_desc);
+cnss_export_symbol(mhi_get_free_desc);
 
 int get_nr_avail_ring_elements(struct mhi_device_ctxt *mhi_dev_ctxt,
 			       struct mhi_ring *ring)
