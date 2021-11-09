@@ -34,12 +34,13 @@
 #include "mhi_macros.h"
 #include "mhi_hwio.h"
 #include "mhi_bhi.h"
+#include "cnss_module.h"
 
 struct mhi_device_driver *mhi_device_drv;
 #ifdef CONFIG_NAPIER_X86
 struct mhi_device_ctxt *mhi_dev_ctxt;
 
-char napier_fw_img[] = "amss.bin";
+char napier_fw_img[] = FW_PREFIX "amss.bin";
 #endif
 
 static int mhi_pci_probe(struct pci_dev *pcie_device,
@@ -193,7 +194,7 @@ static const struct dev_pm_ops pm_ops = {
 };
 
 static struct pci_driver mhi_pcie_driver = {
-	.name = "mhi_pcie_drv",
+	.name = MHI_PCIE_DRIVER_NAME,
 	.id_table = mhi_pcie_device_id,
 	.probe = mhi_pci_probe,
 	.driver = {
@@ -706,12 +707,12 @@ static int __init mhi_init(void)
 	mutex_lock(&mhi_dev_drv->lock);
 	INIT_LIST_HEAD(&mhi_dev_drv->head);
 	mutex_unlock(&mhi_dev_drv->lock);
-	mhi_dev_drv->mhi_bhi_class = class_create(THIS_MODULE, "bhi");
+	mhi_dev_drv->mhi_bhi_class = class_create(THIS_MODULE, MHI_BHI_CLASS_NAME);
 	if (IS_ERR(mhi_dev_drv->mhi_bhi_class)) {
 		pr_err("Error creating mhi_bhi_class\n");
 		goto class_error;
 	}
-	mhi_dev_drv->parent = debugfs_create_dir("mhi", NULL);
+	mhi_dev_drv->parent = debugfs_create_dir(MHI_DIR_NAME, NULL);
 	mhi_device_drv = mhi_dev_drv;
 
 #ifdef CONFIG_NAPIER_X86

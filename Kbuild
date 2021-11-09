@@ -186,6 +186,19 @@ ifneq ($(CONFIG_CNSS_DISABLE_EXPORT_SYMBOL),)
 	KBUILD_CPPFLAGS += -DCNSS_DISABLE_EXPORT_SYMBOL
 endif
 
+ifneq ($(CONFIG_MULTI_CARD),)
+	KBUILD_CPPFLAGS += -DMULTI_CARD
+	ifneq ($(CONFIG_PCIE_SSID),)
+		KBUILD_CPPFLAGS += -DPCIE_SSID=$(CONFIG_PCIE_SSID)
+	endif
+	ifneq ($(CONFIG_CUSTOM_FW_NL_PROTO),)
+		KBUILD_CPPFLAGS += -DCUSTOM_FW_NL_PROTO=$(CONFIG_CUSTOM_FW_NL_PROTO)
+	endif
+	ifneq ($(CONFIG_IPC_SOCKET_FAMILY),)
+		KBUILD_CPPFLAGS += -DIPC_SOCKET_FAMILY=$(CONFIG_IPC_SOCKET_FAMILY)
+	endif
+endif
+
 CDEFINES :=	-Wall\
 		-Werror
 KBUILD_CPPFLAGS += $(CDEFINES)
@@ -228,6 +241,7 @@ QTI_SDIO_CLIENT_DIR := $(CNSS_CORE_BASE)/qti_sdio_client
 QCN_DIR := $(CNSS_CORE_BASE)/qcn
 CNSS_UTILS_DIR := $(CNSS_CORE_BASE)/cnss_utils
 CNSS_PREALLOC_DIR := $(CNSS_CORE_BASE)/cnss_prealloc
+MULTI_CARD_DIR := $(CNSS_CORE_BASE)/multi_card
 
 INIT_OBJS := $(CNSS_CORE_BASE)/unified_wlan_cnsscore.o
 INIT_INC := -I$(ROOTDIR)
@@ -344,6 +358,11 @@ ifneq ($(CONFIG_WCNSS_MEM_PRE_ALLOC), )
 	CNSS_PREALLOC_INC := $(CNSS_PREALLOC_DIR)
 endif
 
+ifneq ($(CONFIG_MULTI_CARD),)
+	MULTI_CARD_OBJS := $(MULTI_CARD_DIR)/multi_card.o
+	MULTI_CARD_INC := $(MULTI_CARD_DIR)
+endif
+
 ifneq ($(CONFIG_SINGLE_KO_FEATURE),)
 OBJS += $(INIT_OBJS)
 else
@@ -363,7 +382,8 @@ OBJS += $(IPC_ROUTER_OBJS)                 \
 	$(DIAG_OBJS)                       \
 	$(CNSS_OBJS)                       \
 	$(CNSS_UTILS_OBJS)                 \
-	$(CNSS_PREALLOC_OBJS)
+	$(CNSS_PREALLOC_OBJS)              \
+	$(MULTI_CARD_OBJS)
 
 ifneq ($(CONFIG_SINGLE_KO_FEATURE),)
 INCS += $(INIT_INC)
@@ -377,7 +397,8 @@ INCS += $(CNSS_INC)                     \
         $(DIAG_INC)                     \
         $(QMI_INC)                      \
         $(CNSS_UTILS_INC)               \
-        $(CNSS_PREALLOC_INC)
+        $(CNSS_PREALLOC_INC)            \
+        $(MULTI_CARD_INC)
 
 
 cflags-y += $(INCS)

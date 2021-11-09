@@ -29,7 +29,7 @@ static DEFINE_SPINLOCK(alloc_lock);
 #define WCNSS_MAX_STACK_TRACE			64
 #endif
 
-#define PRE_ALLOC_DEBUGFS_DIR		"cnss-prealloc"
+#define PRE_ALLOC_DEBUGFS_DIR		PRE_ALLOC_DEBUGFS_DIR_NAME
 #define PRE_ALLOC_DEBUGFS_FILE_OBJ	"status"
 
 static struct dentry *debug_base;

@@ -30,19 +30,19 @@
 
 #define WLFW_SERVICE_INS_ID_V01		1
 #define WLFW_CLIENT_ID			0x4b4e454c
-#define MAX_BDF_FILE_NAME		32
+#define MAX_BDF_FILE_NAME		64
 #define CHIP_ID_GF_MASK			0x10
-#define GF_BDF_FILE_NAME_PREFIX		"bdwlan"
-#define BDF_FILE_NAME_PREFIX		"bdwlan"
-#define GF_DEFAULT_ELF_BDF_FILE_NAME	"bdwlang.elf"
-#define DEFAULT_ELF_BDF_FILE_NAME	"bdwlan.elf"
-#define GF_ELF_BDF_FILE_NAME_PREFIX	"bdwlang.e"
-#define ELF_BDF_FILE_NAME_PREFIX	"bdwlan.e"
-#define GF_BIN_BDF_FILE_NAME_PREFIX	"bdwlang.b"
-#define BIN_BDF_FILE_NAME_PREFIX	"bdwlan.b"
-#define GF_DEFAULT_BIN_BDF_FILE_NAME	"bdwlang.bin"
-#define DEFAULT_BIN_BDF_FILE_NAME       "bdwlan.bin"
-#define REGDB_FILE_NAME			"regdb.bin"
+#define GF_BDF_FILE_NAME_PREFIX		FW_PREFIX "bdwlan"
+#define BDF_FILE_NAME_PREFIX		FW_PREFIX "bdwlan"
+#define GF_DEFAULT_ELF_BDF_FILE_NAME	FW_PREFIX "bdwlang.elf"
+#define DEFAULT_ELF_BDF_FILE_NAME	FW_PREFIX "bdwlan.elf"
+#define GF_ELF_BDF_FILE_NAME_PREFIX	FW_PREFIX "bdwlang.e"
+#define ELF_BDF_FILE_NAME_PREFIX	FW_PREFIX "bdwlan.e"
+#define GF_BIN_BDF_FILE_NAME_PREFIX	FW_PREFIX "bdwlang.b"
+#define BIN_BDF_FILE_NAME_PREFIX	FW_PREFIX "bdwlan.b"
+#define GF_DEFAULT_BIN_BDF_FILE_NAME	FW_PREFIX "bdwlang.bin"
+#define DEFAULT_BIN_BDF_FILE_NAME       FW_PREFIX "bdwlan.bin"
+#define REGDB_FILE_NAME			FW_PREFIX "regdb.bin"
 
 
 #ifdef CONFIG_CNSS2_DEBUG

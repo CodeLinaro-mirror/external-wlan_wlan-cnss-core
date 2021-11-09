@@ -64,7 +64,7 @@ enum {
 static int msm_ipc_router_debug_mask;
 module_param_named(debug_mask, msm_ipc_router_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
-#define MODULE_NAME "ipc_router"
+#define MODULE_NAME IPC_ROUTER_DRIVER_NAME
 
 #define IPC_RTR_INFO_PAGES 6
 
@@ -1821,7 +1821,7 @@ static struct msm_ipc_server *msm_ipc_router_create_server(
 	kref_init(&server->ref);
 	list_add_tail(&server->list, &server_list[key]);
 	scnprintf(server->pdev_name, sizeof(server->pdev_name),
-		  "SVC%08x:%08x", service, instance);
+		  IPC_ROUTER_SERVER_FORMAT, service, instance);
 	server->next_pdev_id = 1;
 
 create_srv_port:

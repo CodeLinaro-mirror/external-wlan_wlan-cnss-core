@@ -3,6 +3,7 @@
 
 #include <linux/types.h>
 #include <linux/ioctl.h>
+#include <cnss_module.h>
 
 struct msm_ipc_port_addr {
 	uint32_t node_id;
@@ -29,7 +30,7 @@ struct msm_ipc_addr {
  */
 
 #ifndef AF_MSM_IPC
-#define AF_MSM_IPC		27
+#define AF_MSM_IPC		AF_MSM_IPC_NUM
 #endif
 
 #ifndef PF_MSM_IPC

@@ -15,6 +15,7 @@
 
 #include <net/sock.h>
 #include <net/netlink.h>
+#include <cnss_module.h>
 
 static struct sock *srv_sock;
 
@@ -119,7 +120,7 @@ static void nl_srv_rcv(struct sk_buff *skb)
 
 int nl_srv_create(void)
 {
-#define NETLINK_CUSTOM_FW 27
+#define NETLINK_CUSTOM_FW NETLINK_CUSTOM_FW_NUM
 	int retcode = 0;
 	struct netlink_kernel_cfg cfg = {
 		.groups = 0x01,

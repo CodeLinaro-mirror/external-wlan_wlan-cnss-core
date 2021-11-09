@@ -46,8 +46,8 @@
 #define MHI_NODE_NAME			"qcom,mhi"
 #define MHI_MSI_NAME			"MHI"
 
-#define MAX_M3_FILE_NAME_LENGTH		13
-#define DEFAULT_M3_FILE_NAME		"m3.bin"
+#define MAX_M3_FILE_NAME_LENGTH		64
+#define DEFAULT_M3_FILE_NAME		FW_PREFIX "m3.bin"
 
 #define WAKE_MSI_NAME			"WAKE"
 
@@ -2856,7 +2856,7 @@ static const struct pci_device_id cnss_pci_id_table[] = {
 	  PCI_ANY_ID, PCI_ANY_ID },
 	{ QCA6290_VENDOR_ID, QCA6290_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
 	{ QCA6390_VENDOR_ID, QCA6390_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
-	{ QCA6490_VENDOR_ID, QCA6490_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
+	{ QCA6490_VENDOR_ID, QCA6490_DEVICE_ID, PCI_ANY_ID, QCA6490_SSID },
 	{ QCN7605_VENDOR_ID, QCN7605_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
 	{ 0 }
 };
@@ -2871,7 +2871,7 @@ static const struct dev_pm_ops cnss_pm_ops = {
 };
 
 struct pci_driver cnss_pci_driver = {
-	.name     = "cnss_pci",
+	.name     = CNSS_PCI_DRIVER_NAME,
 	.id_table = cnss_pci_id_table,
 	.probe    = cnss_pci_probe,
 	.remove   = cnss_pci_remove,

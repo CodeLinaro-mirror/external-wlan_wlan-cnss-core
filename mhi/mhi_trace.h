@@ -10,8 +10,10 @@
  * GNU General Public License for more details.
  */
 
+#include "cnss_module.h"
+
 #undef TRACE_SYSTEM
-#define TRACE_SYSTEM mhi
+#define TRACE_SYSTEM MHI_TRACE_SYSTEM_NAME
 #define TRACE_INCLUDE_FILE mhi_trace
 
 #if !defined(_TRACE_SCHED_H) || defined(TRACE_HEADER_MULTI_READ)
