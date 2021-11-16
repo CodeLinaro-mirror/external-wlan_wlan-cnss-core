@@ -22,6 +22,9 @@
 #include "cnss_prealloc.h"
 #include <linux/version.h>
 #include "cnss_module.h"
+#ifdef CONFIG_WCNSS_DMA_PRE_ALLOC
+#include <linux/dma-mapping.h>
+#endif
 
 static DEFINE_SPINLOCK(alloc_lock);
 
@@ -47,6 +50,24 @@ struct wcnss_prealloc {
 #endif
 #endif
 };
+
+#ifdef CONFIG_WCNSS_DMA_PRE_ALLOC
+/* pre-alloc for consistent memory */
+struct wcnss_consistent_prealloc {
+	struct device *dev;
+	size_t size;
+	int in_use;
+	void *vaddr;
+	dma_addr_t paddr;
+};
+
+#define MAX_DMA_PREALLOC_NUM (64)
+#define PREALLOC_SIZE_THRESHOLD (32*1024)
+
+static
+struct wcnss_consistent_prealloc wcnss_dma_allocs[MAX_DMA_PREALLOC_NUM];
+static int dma_allocate_cnt = 0;
+#endif
 
 /* pre-alloced mem for WLAN driver */
 
@@ -256,6 +277,183 @@ void wcnss_prealloc_deinit(void)
 	}
 #endif
 }
+
+#ifdef CONFIG_WCNSS_DMA_PRE_ALLOC
+
+static void wcnss_prealloc_dma_init(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_DMA_PREALLOC_NUM; i++) {
+		wcnss_dma_allocs[i].dev = NULL;
+		wcnss_dma_allocs[i].in_use = 0;
+		wcnss_dma_allocs[i].size = 0;
+		wcnss_dma_allocs[i].vaddr = NULL;
+		wcnss_dma_allocs[i].paddr = 0;
+	}
+}
+
+static void wcnss_prealloc_dma_deinit(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_DMA_PREALLOC_NUM; i++) {
+		if (wcnss_dma_allocs[i].dev
+		    && wcnss_dma_allocs[i].size > 0
+		    && wcnss_dma_allocs[i].paddr
+		    && wcnss_dma_allocs[i].vaddr) {
+			pr_err("dma free[%d], vaddr %p, paddr %llx size %d\n",
+				dma_allocate_cnt,
+				wcnss_dma_allocs[i].vaddr,
+				wcnss_dma_allocs[i].paddr,
+				(int)wcnss_dma_allocs[i].size);
+			dma_free_coherent(wcnss_dma_allocs[i].dev,
+					  wcnss_dma_allocs[i].size,
+					  wcnss_dma_allocs[i].vaddr,
+					  wcnss_dma_allocs[i].paddr);
+			wcnss_dma_allocs[i].dev = NULL;
+			wcnss_dma_allocs[i].in_use = 0;
+			wcnss_dma_allocs[i].size = 0;
+			wcnss_dma_allocs[i].vaddr = NULL;
+			wcnss_dma_allocs[i].paddr = 0;
+			dma_allocate_cnt--;
+		}
+	}
+}
+
+static void
+prealloc_dma_memory_stats_show(struct seq_file *fp, void *data)
+{
+	int i = 0;
+
+	seq_printf(fp, "\nDMA memory status[%d]:\n", dma_allocate_cnt);
+	seq_puts(fp, "dev\t\t\tsize\tin_use\tvaddr\t\t\tpaddr\n");
+
+	for (i = 0; i < MAX_DMA_PREALLOC_NUM; i++) {
+		seq_printf(fp, "%p\t%dKb\t%d\t%p\t%llx\n",
+			wcnss_dma_allocs[i].dev,
+			(int)(wcnss_dma_allocs[i].size>>10),
+			wcnss_dma_allocs[i].in_use,
+			wcnss_dma_allocs[i].vaddr,
+			wcnss_dma_allocs[i].paddr);
+	}
+}
+
+static inline
+void wcnss_dma_prealloc_dump(void)
+{
+	int i;
+
+	pr_err("dma prealloc mem table[%d]:\n", dma_allocate_cnt);
+	pr_err("\tdev\t\tsize\t\tin_use\t\tvaddr\t\tpaddr\n");
+	for (i = 0; i < MAX_DMA_PREALLOC_NUM; i++) {
+		pr_err("\t%p\t\t%d\t\t%d\t\t%p\t\t%llx\n",
+			wcnss_dma_allocs[i].dev,
+			(int)(wcnss_dma_allocs[i].size),
+			wcnss_dma_allocs[i].in_use,
+			wcnss_dma_allocs[i].vaddr,
+			wcnss_dma_allocs[i].paddr);
+	}
+}
+
+void wcnss_dma_prealloc_save(struct device *dev, size_t size,
+			   void *vaddr, dma_addr_t dma_handle)
+{
+	int i = 0;
+
+	if (size < PREALLOC_SIZE_THRESHOLD)
+		return;
+
+	if (dma_allocate_cnt > MAX_DMA_PREALLOC_NUM) {
+		pr_err("dma_prealloc save fail, size %d cnt %d\n",
+			(int)size, dma_allocate_cnt);
+		return;
+	}
+	for (i = 0; i < MAX_DMA_PREALLOC_NUM; i++) {
+		if (wcnss_dma_allocs[i].dev == NULL
+		    && wcnss_dma_allocs[i].vaddr == NULL
+		    && wcnss_dma_allocs[i].in_use == 0)
+			break;
+	}
+	if (i < MAX_DMA_PREALLOC_NUM) {
+		wcnss_dma_allocs[i].dev = dev;
+		wcnss_dma_allocs[i].size = size;
+		wcnss_dma_allocs[i].vaddr = vaddr;
+		wcnss_dma_allocs[i].in_use = 1;
+		wcnss_dma_allocs[i].paddr = dma_handle;
+		dma_allocate_cnt++;
+		pr_err("dma prealloc save[%d], vaddr %p, paddr %llx size %d\n",
+			dma_allocate_cnt, vaddr, dma_handle, (int)size);
+	}else {
+		pr_err("dma prealloc save fail[%d], vaddr %p, paddr %llx size %d\n",
+			dma_allocate_cnt, vaddr, dma_handle, (int)size);
+		wcnss_dma_prealloc_dump();
+	}
+
+	return;
+}
+
+void *wcnss_dma_prealloc_get(size_t size, dma_addr_t *dma_handle)
+{
+	int i = 0;
+
+	if (size < PREALLOC_SIZE_THRESHOLD)
+		return NULL;
+
+	for (i = 0; i < MAX_DMA_PREALLOC_NUM; i++) {
+		if (wcnss_dma_allocs[i].in_use)
+			continue;
+
+		if (wcnss_dma_allocs[i].size == size) {
+			/* we found the slot */
+			wcnss_dma_allocs[i].in_use = 1;
+			*dma_handle = wcnss_dma_allocs[i].paddr;
+			return wcnss_dma_allocs[i].vaddr;
+		}
+	}
+	pr_err("dma get failed,size %d dma_allocate_cnt %d\n",
+		(int)size, dma_allocate_cnt);
+	return NULL;
+}
+
+int wcnss_dma_prealloc_put(size_t size,
+			   void *vaddr, dma_addr_t dma_handle)
+{
+	int i = 0;
+
+	if (size < PREALLOC_SIZE_THRESHOLD)
+		return 0;
+
+	for (i = 0; i < MAX_DMA_PREALLOC_NUM; i++) {
+		if (wcnss_dma_allocs[i].size == size
+		    && wcnss_dma_allocs[i].vaddr == vaddr) {
+			wcnss_dma_allocs[i].in_use = 0;
+			return 1;
+		}
+	}
+	pr_err("dma put failed, vaddr %p, paddr %llx size %d",
+		vaddr, dma_handle, (int)size);
+	wcnss_dma_prealloc_dump();
+	return 0;
+}
+
+#else
+static void wcnss_prealloc_dma_init(void)
+{
+
+}
+
+static void wcnss_prealloc_dma_deinit(void)
+{
+
+}
+
+static void
+prealloc_dma_memory_stats_show(struct seq_file *fp, void *data)
+{
+	seq_printf(fp, "\nDMA Prealloc not support\n");
+}
+#endif
 
 #ifdef CONFIG_SLUB_DEBUG
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
@@ -474,7 +672,8 @@ static int prealloc_memory_stats_show(struct seq_file *fp, void *data)
 
 	seq_puts(fp, "\nSlot_Size(Kb)\t\t[Used : Free]\n");
 	for (i = 0; i < ARRAY_SIZE(wcnss_allocs); i++) {
-		tsize += wcnss_allocs[i].size;
+		if (wcnss_allocs[i].ptr)
+			tsize += wcnss_allocs[i].size;
 		if (size != wcnss_allocs[i].size) {
 			if (size) {
 				seq_printf(
@@ -491,7 +690,7 @@ static int prealloc_memory_stats_show(struct seq_file *fp, void *data)
 		if (wcnss_allocs[i].occupied) {
 			tused += wcnss_allocs[i].size;
 			++used_slots;
-		} else {
+		} else if (wcnss_allocs[i].ptr) {
 			++free_slots;
 		}
 	}
@@ -508,6 +707,7 @@ static int prealloc_memory_stats_show(struct seq_file *fp, void *data)
 #ifdef CONFIG_WCNSS_SKB_PRE_ALLOC
 	prealloc_skb_memory_stats_show(fp, data);
 #endif
+	prealloc_dma_memory_stats_show(fp, data);
 	return 0;
 }
 
@@ -530,14 +730,15 @@ int wcnss_pre_alloc_init(void)
 static int __init wcnss_pre_alloc_init(void)
 #endif
 {
-	int ret;
+	int ret = 0;
 
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 	ret = wcnss_prealloc_init();
 	if (ret) {
-		pr_err("%s: Failed to init the prealloc pool\n", __func__);
 		return ret;
 	}
-
+#endif
+	wcnss_prealloc_dma_init();
 	debug_base = debugfs_create_dir(PRE_ALLOC_DEBUGFS_DIR, NULL);
 	if (IS_ERR_OR_NULL(debug_base)) {
 		pr_err("%s: Failed to create debugfs dir\n", __func__);
@@ -558,7 +759,10 @@ void wcnss_pre_alloc_exit(void)
 static void __exit wcnss_pre_alloc_exit(void)
 #endif
 {
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 	wcnss_prealloc_deinit();
+#endif
+	wcnss_prealloc_dma_deinit();
 	debugfs_remove_recursive(debug_base);
 }
 

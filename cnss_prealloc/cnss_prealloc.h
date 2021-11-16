@@ -26,4 +26,12 @@ extern struct sk_buff *wcnss_skb_prealloc_get(unsigned int size);
 extern int wcnss_skb_prealloc_put(struct sk_buff *skb);
 #endif
 
+#ifdef CONFIG_WCNSS_DMA_PRE_ALLOC
+int wcnss_dma_prealloc_put(size_t size,
+			   void *vaddr, dma_addr_t dma_handle);
+void *wcnss_dma_prealloc_get(size_t size, dma_addr_t *dma_handle);
+void wcnss_dma_prealloc_save(struct device *dev, size_t size,
+			   void *vaddr, dma_addr_t dma_handle);
+#endif
+
 #endif /* _NET_CNSS__PREALLOC_H_ */

@@ -21,7 +21,7 @@
 #include <cnss2/main.h>
 #include <cnss2/debug.h>
 #include "cnss_module.h"
-
+#include <cnss_prealloc/cnss_prealloc.h>
 #ifdef CONFIG_WLAN_CNSS_CORE
 
 #include "unified_wlan_cnsscore.h"
@@ -79,13 +79,29 @@ cnss_export_symbol(cnss_dma_free_coherent);
 void *cnss_dma_alloc_coherent(struct device *dev, size_t size,
 			      dma_addr_t *dma_handle, gfp_t flag)
 {
-	return dma_alloc_coherent(dev, size, dma_handle, flag);
+	void *vaddr;
+
+#ifdef CONFIG_WCNSS_DMA_PRE_ALLOC
+	vaddr = wcnss_dma_prealloc_get(size, dma_handle);
+	if (vaddr)
+		return vaddr;
+#endif
+	vaddr = dma_alloc_coherent(dev, size, dma_handle, flag);
+
+#ifdef CONFIG_WCNSS_DMA_PRE_ALLOC
+	wcnss_dma_prealloc_save(dev, size, vaddr, *dma_handle);
+#endif
+	return vaddr;
 }
 cnss_export_symbol(cnss_dma_alloc_coherent);
 
 void cnss_dma_free_coherent(struct device *dev, size_t size,
 			    void *vaddr, dma_addr_t dma_handle)
 {
+#ifdef CONFIG_WCNSS_DMA_PRE_ALLOC
+	if (wcnss_dma_prealloc_put(size, vaddr, dma_handle))
+		return;
+#endif
 	dma_free_coherent(dev, size, vaddr, dma_handle);
 }
 cnss_export_symbol(cnss_dma_free_coherent);
@@ -204,19 +220,16 @@ static int unified_pdrv_init(void)
 	}
 #endif
 
-#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 	/* cnss prealloc initialise */
 	ret = wcnss_pre_alloc_init();
 	if (ret){
 		printk("%s: updrv: failed to pre alloc memory\n",__func__);
 		goto fail14;
 	}
-#endif
+
 	return 0;
 
-#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 fail14:
-#endif
 #ifdef CONFIG_SINGLE_KO_FEATURE
 	hdd_module_exit();
 #endif
@@ -284,9 +297,6 @@ fail:
 
 static void unified_pdrv_deinit(void)
 {
-#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
-	wcnss_pre_alloc_exit();
-#endif
 #ifdef CONFIG_SINGLE_KO_FEATURE
 	hdd_module_exit();
 #endif
@@ -312,6 +322,9 @@ static void unified_pdrv_deinit(void)
 #ifdef CONFIG_USB_QTI_KS_BRIDGE
 	ksb_exit();
 #endif
+
+	wcnss_pre_alloc_exit();
+
 #ifdef CONFIG_MSM_MHI
 	mhi_exit();
 #endif

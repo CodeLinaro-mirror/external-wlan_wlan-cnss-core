@@ -55,12 +55,6 @@ KBUILD_OPTIONS += CONFIG_SDIO_XPRT=m CONFIG_QCN=m CONFIG_DIAG_SDIO=y CONFIG_QTI_
 endif
 endif #unified_driver end
 
-ifeq ($(unified_prealloc), 1)
-KBUILD_OPTIONS += CONFIG_WCNSS_MEM_PRE_ALLOC=y
-else
-KBUILD_OPTIONS += CONFIG_WCNSS_MEM_PRE_ALLOC=m
-endif
-
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(shell pwd) modules $(KBUILD_OPTIONS)
 
