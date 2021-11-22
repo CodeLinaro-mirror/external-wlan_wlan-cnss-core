@@ -224,7 +224,6 @@ extern void cnss_schedule_recovery(struct device *dev,
 extern int cnss_self_recovery(struct device *dev,
 			      enum cnss_recovery_reason reason);
 extern int cnss_force_fw_assert(struct device *dev);
-extern int cnss_dump_fw_sram_to_file(struct device *dev);
 extern int cnss_force_collect_rddm(struct device *dev);
 extern void *cnss_get_virt_ramdump_mem(struct device *dev, unsigned long *size);
 extern int cnss_get_fw_files_for_target(struct device *dev,

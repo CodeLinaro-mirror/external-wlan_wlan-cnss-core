@@ -76,5 +76,6 @@ int cnss_debug_init(void);
 void cnss_debug_deinit(void);
 int cnss_debugfs_create(struct cnss_plat_data *plat_priv);
 void cnss_debugfs_destroy(struct cnss_plat_data *plat_priv);
+extern int cnss_dump_fw_sram_to_file(struct cnss_plat_data *plat_priv);
 
 #endif /* _CNSS_DEBUG_H */

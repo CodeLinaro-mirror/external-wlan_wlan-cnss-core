@@ -1271,9 +1271,8 @@ int cnss_force_fw_assert(struct device *dev)
 }
 cnss_export_symbol(cnss_force_fw_assert);
 
-int cnss_dump_fw_sram_to_file(struct device *dev)
+int cnss_dump_fw_sram_to_file(struct cnss_plat_data *plat_priv)
 {
-	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
 	uint32_t fw_sram_start;
 	uint32_t fw_sram_end;
 	int ret;
@@ -1309,7 +1308,6 @@ int cnss_dump_fw_sram_to_file(struct device *dev)
 
 	return ret;
 }
-cnss_export_symbol(cnss_dump_fw_sram_to_file);
 
 static int cnss_wlfw_server_arrive_hdlr(struct cnss_plat_data *plat_priv)
 {

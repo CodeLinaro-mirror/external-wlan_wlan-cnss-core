@@ -394,6 +394,27 @@ void dump_fw_to_file(struct mhi_device_ctxt *mhi_dev_ctxt)
 	}
 }
 
+bool is_ramdump_all_zero(struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	struct bhi_ctxt_t *bhi_ctxt = &mhi_dev_ctxt->bhi_ctxt;
+	struct bhie_vec_table *rddm_table = &bhi_ctxt->rddm_table;
+	int seg = 0;
+	char *buf = NULL;
+	unsigned head_len;
+
+	head_len = sizeof(ramdump_header_t);
+
+	for (seg = 0; seg < rddm_table->segment_count; seg++) {
+		buf = rddm_table->bhie_mem_info[seg].aligned;
+
+		if (buf[head_len+1]+buf[head_len+3]+buf[head_len+5]
+			+buf[head_len+7]+buf[head_len+9] != 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
 #define FW_DUMP_INFO_FORMAT_STR \
 	"[%s] to write file:none, mem: 0x%p, size: 0x%x\n"
 void dump_fw_info_to_kmsg(struct mhi_device_ctxt *mhi_dev_ctxt)

@@ -282,8 +282,11 @@ int bhi_rddm(struct mhi_device_ctxt *mhi_dev_ctxt, bool in_panic)
 	if (!in_panic) {
 		ret = bhi_rddm_graceful(mhi_dev_ctxt);
 #ifdef CONFIG_NAPIER_X86
-		if (!ret)
+		if (!ret) {
 			dump_fw_to_file(mhi_dev_ctxt);
+			if (is_ramdump_all_zero(mhi_dev_ctxt))
+				ret = -EINVAL;
+		}
 #endif
 		return ret;
 	}

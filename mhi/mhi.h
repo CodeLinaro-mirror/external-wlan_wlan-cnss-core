@@ -48,6 +48,7 @@ struct fw_remote_mem {
 
 void dump_fw_to_file(struct mhi_device_ctxt *mhi_dev_ctxt);
 void dump_fw_info_to_kmsg(struct mhi_device_ctxt *mhi_dev_ctxt);
+bool is_ramdump_all_zero(struct mhi_device_ctxt *mhi_dev_ctxt);
 
 #endif
 
