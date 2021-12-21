@@ -411,4 +411,11 @@ u8 *cnss_utils_get_wlan_derived_mac_address_##suffix( \
 #define CNSS_UTILS_GET_WLAN_DERIVED_MAC_ADDRESS_DECLARE(pcie_ssid) CNSS_UTILS_GET_WLAN_DERIVED_MAC_ADDRESS_ALIAS_DECLARE(pcie_ssid)
 
 CNSS_UTILS_GET_WLAN_DERIVED_MAC_ADDRESS_DECLARE(PCIE_SSID)
+
+#define CNSS_SMMU_GET_DOMAIN_ALIAS_DECLARE(suffix) \
+struct iommu_domain *cnss_smmu_get_domain_##suffix(struct device *dev);
+
+#define CNSS_SMMU_GET_DOMAIN_DECLARE(pcie_ssid) CNSS_SMMU_GET_DOMAIN_ALIAS_DECLARE(pcie_ssid)
+
+CNSS_SMMU_GET_DOMAIN_DECLARE(PCIE_SSID)
 #endif

@@ -642,3 +642,14 @@ EXPORT_SYMBOL(cnss_utils_get_wlan_derived_mac_address_##suffix);
 #define CNSS_UTILS_GET_WLAN_DERIVED_MAC_ADDRESS_EXPORT(pcie_ssid) CNSS_UTILS_GET_WLAN_DERIVED_MAC_ADDRESS_ALIAS_EXPORT(pcie_ssid)
 
 CNSS_UTILS_GET_WLAN_DERIVED_MAC_ADDRESS_EXPORT(PCIE_SSID)
+
+#define CNSS_SMMU_GET_DOMAIN_ALIAS_EXPORT(suffix) \
+struct iommu_domain *cnss_smmu_get_domain_##suffix(struct device *dev) \
+{ \
+	return cnss_smmu_get_domain(dev); \
+} \
+EXPORT_SYMBOL(cnss_smmu_get_domain_##suffix);
+
+#define CNSS_SMMU_GET_DOMAIN_EXPORT(pcie_ssid) CNSS_SMMU_GET_DOMAIN_ALIAS_EXPORT(pcie_ssid)
+
+CNSS_SMMU_GET_DOMAIN_EXPORT(PCIE_SSID)
