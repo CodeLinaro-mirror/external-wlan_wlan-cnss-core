@@ -265,6 +265,29 @@ void cnss_set_driver_status(enum cnss_driver_status driver_status)
 }
 cnss_export_symbol(cnss_set_driver_status);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
+void cnss_request_pm_qos(struct device *dev, u32 qos_val)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+
+	if (!plat_priv)
+		return;
+
+	cpu_latency_qos_add_request(&plat_priv->qos_request, qos_val);
+}
+cnss_export_symbol(cnss_request_pm_qos);
+
+void cnss_remove_pm_qos(struct device *dev)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+
+	if (!plat_priv)
+		return;
+
+	cpu_latency_qos_remove_request(&plat_priv->qos_request);
+}
+cnss_export_symbol(cnss_remove_pm_qos);
+#else
 void cnss_request_pm_qos(struct device *dev, u32 qos_val)
 {
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
@@ -287,6 +310,7 @@ void cnss_remove_pm_qos(struct device *dev)
 	pm_qos_remove_request(&plat_priv->qos_request);
 }
 cnss_export_symbol(cnss_remove_pm_qos);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)) */
 
 u8 *cnss_common_get_wlan_mac_address(struct device *dev, u32 *num)
 {

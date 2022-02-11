@@ -2271,7 +2271,9 @@ int cnss_pci_fw_sram_dump_to_file(struct cnss_pci_data *pci_priv,
 {
 	struct mhi_device_ctxt *mhi_dev_ctxt;
 	struct file *fp = NULL;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
 	mm_segment_t fs;
+#endif
 	uint32_t offset;
 	loff_t pos = 0;
 	int status;
@@ -2294,8 +2296,10 @@ int cnss_pci_fw_sram_dump_to_file(struct cnss_pci_data *pci_priv,
 		return -EACCES;
 	}
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
 	fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 	pos = 0;
 
 	for (offset = fw_sram_start; offset < fw_sram_end; offset += 4) {
@@ -2320,7 +2324,9 @@ out:
 		return status;
 	}
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
 	set_fs(fs);
+#endif
 
 	return status;
 }

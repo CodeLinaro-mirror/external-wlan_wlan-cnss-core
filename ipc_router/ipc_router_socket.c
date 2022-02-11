@@ -637,9 +637,11 @@ static const struct proto_ops msm_ipc_proto_ops = {
 #endif
 	.listen			= sock_no_listen,
 	.shutdown		= sock_no_shutdown,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0))
 	.setsockopt		= sock_no_setsockopt,
 	.getsockopt		= sock_no_getsockopt,
-#ifdef CONFIG_COMPAT
+#endif
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 9, 0)) && (defined(CONFIG_COMPAT))
 	.compat_setsockopt	= sock_no_setsockopt,
 	.compat_getsockopt	= sock_no_getsockopt,
 #endif
