@@ -190,6 +190,9 @@ static void __cld80211_exit(void)
 	genl_unregister_family(&cld80211_fam);
 }
 
+
+#ifndef CONFIG_CNSS2_X86
+
 /**
  * cld80211_is_valid_dt_node_found - Check if valid device tree node present
  *
@@ -212,11 +215,14 @@ static bool cld80211_is_valid_dt_node_found(void)
 
 	return false;
 }
+#endif
 
 static int __init cld80211_init(void)
 {
+#ifndef CONFIG_CNSS2_X86
 	if (!cld80211_is_valid_dt_node_found())
 		return -ENODEV;
+#endif
 
 	return __cld80211_init();
 }

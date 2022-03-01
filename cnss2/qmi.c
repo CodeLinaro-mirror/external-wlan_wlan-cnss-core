@@ -507,7 +507,7 @@ int cnss_wlfw_tgt_cap_send_sync(struct cnss_plat_data *plat_priv)
 				resp->dev_mem_info[i].start;
 			plat_priv->dev_mem_info[i].size =
 				resp->dev_mem_info[i].size;
-			cnss_pr_buf("Device memory info[%d]: start = 0x%llx, size = 0x%llx\n",
+			cnss_pr_dbg("Device memory info[%d]: start = 0x%llx, size = 0x%llx\n",
 				    i, plat_priv->dev_mem_info[i].start,
 				    plat_priv->dev_mem_info[i].size);
 		}
@@ -647,8 +647,13 @@ int cnss_wlfw_bdf_dnld_send_sync(struct cnss_plat_data *plat_priv,
 		ret = cnss_request_firmware_direct(plat_priv, &fw_entry,
 						   filename);
 	else
+#ifndef CONFIG_CNSS2_X86
 		ret = firmware_request_nowarn(&fw_entry, filename,
 					      &plat_priv->plat_dev->dev);
+#else
+		ret = firmware_request_nowarn(&fw_entry, filename,
+					      NULL);
+#endif
 
 	if (ret) {
 		cnss_pr_err("Failed to load BDF: %s, ret: %d\n", filename, ret);

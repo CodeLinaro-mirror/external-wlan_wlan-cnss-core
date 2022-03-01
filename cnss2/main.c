@@ -29,6 +29,9 @@
 #include "bus.h"
 #include "debug.h"
 #include "genl.h"
+#ifdef CONFIG_CNSS2_X86
+#include "coredump.h"
+#endif
 
 #define CNSS_DUMP_FORMAT_VER		0x11
 #define CNSS_DUMP_FORMAT_VER_V2		0x22
@@ -70,6 +73,14 @@ enum cnss_cal_db_op {
 static struct cnss_plat_data *plat_env;
 
 static DECLARE_RWSEM(cnss_pm_sem);
+
+#ifdef CONFIG_CNSS2_X86
+unsigned long quirks;
+#ifdef CONFIG_CNSS2_DEBUG
+module_param(quirks, ulong, 0600);
+MODULE_PARM_DESC(quirks, "Debug quirks for the driver");
+#endif
+#endif
 
 static struct cnss_fw_files FW_FILES_QCA6174_FW_3_0 = {
 	"qwlan30.bin", "bdwlan30.bin", "otp30.bin", "utf30.bin",
@@ -224,7 +235,8 @@ void cnss_pm_stay_awake(struct cnss_plat_data *plat_priv)
 	cnss_pr_dbg("PM stay awake, state: 0x%lx, count: %d\n",
 		    plat_priv->driver_state,
 		    atomic_read(&plat_priv->pm_count));
-	pm_stay_awake(&plat_priv->plat_dev->dev);
+	if (plat_priv->plat_dev)
+		pm_stay_awake(&plat_priv->plat_dev->dev);
 }
 
 void cnss_pm_relax(struct cnss_plat_data *plat_priv)
@@ -239,7 +251,8 @@ void cnss_pm_relax(struct cnss_plat_data *plat_priv)
 	cnss_pr_dbg("PM relax, state: 0x%lx, count: %d\n",
 		    plat_priv->driver_state,
 		    atomic_read(&plat_priv->pm_count));
-	pm_relax(&plat_priv->plat_dev->dev);
+	if (plat_priv->plat_dev)
+		pm_relax(&plat_priv->plat_dev->dev);
 }
 
 void cnss_lock_pm_sem(struct device *dev)
@@ -1068,6 +1081,7 @@ skip_wait:
 }
 EXPORT_SYMBOL(cnss_idle_shutdown);
 
+#ifndef CONFIG_CNSS2_X86
 static int cnss_get_resources(struct cnss_plat_data *plat_priv)
 {
 	int ret = 0;
@@ -1105,6 +1119,10 @@ static void cnss_put_resources(struct cnss_plat_data *plat_priv)
 	cnss_put_clk(plat_priv);
 	cnss_put_vreg_type(plat_priv, CNSS_VREG_PRIM);
 }
+#else
+static int cnss_get_resources(struct cnss_plat_data *plat_priv) {return 0; }
+static void cnss_put_resources(struct cnss_plat_data *plat_priv) {}
+#endif
 
 #if IS_ENABLED(CONFIG_ESOC) && IS_ENABLED(CONFIG_MSM_SUBSYSTEM_RESTART)
 static int cnss_modem_notifier_nb(struct notifier_block *nb,
@@ -1322,11 +1340,25 @@ static void cnss_recovery_work_handler(struct work_struct *work)
 	struct cnss_plat_data *plat_priv =
 		container_of(work, struct cnss_plat_data, recovery_work);
 
-	if (!plat_priv->recovery_enabled)
+#ifdef CONFIG_CNSS2_X86
+	cnss_bus_dev_ramdump(plat_priv);
+#endif
+
+	if (!plat_priv->recovery_enabled) {
+#ifndef CONFIG_CNSS2_X86
 		panic("subsys-restart: Resetting the SoC wlan crashed\n");
+#else
+		//cnss_pr_err("Skip recovery, return\n");
+		//return 0;
+		cnss_pr_err("Do recovery, continue...\n");
+#endif
+	}
 
 	cnss_bus_dev_shutdown(plat_priv);
+#ifndef CONFIG_CNSS2_X86
 	cnss_bus_dev_ramdump(plat_priv);
+#endif
+
 	msleep(POWER_RESET_MIN_DELAY_MS);
 
 	ret = cnss_bus_dev_powerup(plat_priv);
@@ -2442,6 +2474,7 @@ static bool cnss_dump_enabled(void)
 
 int cnss_do_elf_ramdump(struct cnss_plat_data *plat_priv)
 {
+#ifndef CONFIG_CNSS2_X86
 	struct cnss_ramdump_info_v2 *info_v2 = &plat_priv->ramdump_info_v2;
 	struct cnss_dump_data *dump_data = &info_v2->dump_data;
 	struct cnss_dump_seg *dump_seg = info_v2->dump_data_vaddr;
@@ -2454,6 +2487,8 @@ int cnss_do_elf_ramdump(struct cnss_plat_data *plat_priv)
 		cnss_pr_info("Dump collection is not enabled\n");
 		return ret;
 	}
+
+	cnss_pr_info("%s %d\n", __func__, __LINE__);
 
 	INIT_LIST_HEAD(&head);
 	for (i = 0; i < dump_data->nentries; i++) {
@@ -2501,6 +2536,16 @@ do_elf_dump:
 	}
 
 	return ret;
+#else
+	if (!dump_enabled()) {
+		cnss_pr_info("Dump collection is not enabled\n");
+		return 0;
+	}
+
+	cnss_rddm_submit(plat_priv->bus_priv);
+	return 0;
+#endif
+
 }
 #endif /* CONFIG_MSM_SUBSYSTEM_RESTART */
 
@@ -2717,14 +2762,19 @@ void cnss_unregister_ramdump(struct cnss_plat_data *plat_priv)
 #else
 int cnss_register_ramdump(struct cnss_plat_data *plat_priv)
 {
+
 	struct cnss_ramdump_info_v2 *info_v2 = &plat_priv->ramdump_info_v2;
 	struct cnss_dump_data *dump_data = dump_data = &info_v2->dump_data;
 	struct device *dev = &plat_priv->plat_dev->dev;
+#ifndef CONFIG_CNSS2_X86
 	u32 ramdump_size = 0;
 
 	if (of_property_read_u32(dev->of_node, "qcom,wlan-ramdump-dynamic",
 				 &ramdump_size) == 0)
 		info_v2->ramdump_size = ramdump_size;
+#else
+		info_v2->ramdump_size = 0x780000;
+#endif
 
 	cnss_pr_dbg("Ramdump size 0x%lx\n", info_v2->ramdump_size);
 
@@ -2740,7 +2790,6 @@ int cnss_register_ramdump(struct cnss_plat_data *plat_priv)
 		sizeof(dump_data->name));
 
 	info_v2->ramdump_dev = dev;
-
 	return 0;
 }
 
@@ -2885,8 +2934,13 @@ int cnss_request_firmware_direct(struct cnss_plat_data *plat_priv,
 		return request_firmware_direct(fw_entry, filename,
 					       &plat_priv->plat_dev->dev);
 	else
+#ifndef CONFIG_CNSS2_X86
 		return firmware_request_nowarn(fw_entry, filename,
 					       &plat_priv->plat_dev->dev);
+#else
+		return firmware_request_nowarn(fw_entry, filename,
+					       NULL);
+#endif
 }
 
 #if IS_ENABLED(CONFIG_INTERCONNECT)
@@ -3271,6 +3325,14 @@ static void cnss_remove_sysfs_link(struct cnss_plat_data *plat_priv)
 static int cnss_create_sysfs(struct cnss_plat_data *plat_priv)
 {
 	int ret = 0;
+#ifdef CONFIG_CNSS2_X86
+	struct cnss_pci_data *pci_priv = plat_priv->bus_priv;
+
+	if (!pci_priv) {
+		cnss_pr_err("PCI device not probed yet\n");
+		return 0;
+	}
+#endif
 
 	ret = devm_device_add_group(&plat_priv->plat_dev->dev,
 				    &cnss_attr_group);
@@ -3289,6 +3351,9 @@ out:
 
 static void cnss_remove_sysfs(struct cnss_plat_data *plat_priv)
 {
+	if (!plat_priv->plat_dev)
+		return;
+
 	cnss_remove_sysfs_link(plat_priv);
 	devm_device_remove_group(&plat_priv->plat_dev->dev, &cnss_attr_group);
 }
@@ -3347,10 +3412,12 @@ static int cnss_misc_init(struct cnss_plat_data *plat_priv)
 		cnss_pr_err("Failed to register reboot notifier, err = %d\n",
 			    ret);
 
+#ifndef CONFIG_CNSS2_X86
 	ret = device_init_wakeup(&plat_priv->plat_dev->dev, true);
 	if (ret)
 		cnss_pr_err("Failed to init platform device wakeup source, err = %d\n",
 			    ret);
+#endif
 
 	INIT_WORK(&plat_priv->recovery_work, cnss_recovery_work_handler);
 	init_completion(&plat_priv->power_up_complete);
@@ -3360,11 +3427,14 @@ static int cnss_misc_init(struct cnss_plat_data *plat_priv)
 	init_completion(&plat_priv->daemon_connected);
 	mutex_init(&plat_priv->dev_lock);
 	mutex_init(&plat_priv->driver_ops_lock);
+
+#ifndef CONFIG_CNSS2_X86
 	plat_priv->recovery_ws =
 		wakeup_source_register(&plat_priv->plat_dev->dev,
 				       "CNSS_FW_RECOVERY");
 	if (!plat_priv->recovery_ws)
 		cnss_pr_err("Failed to setup FW recovery wake source\n");
+#endif
 
 	ret = cnss_plat_ipc_register(CNSS_PLAT_IPC_DAEMON_QMI_CLIENT_V01,
 				     cnss_daemon_connection_update_cb,
@@ -3385,13 +3455,33 @@ static void cnss_misc_deinit(struct cnss_plat_data *plat_priv)
 	complete_all(&plat_priv->cal_complete);
 	complete_all(&plat_priv->power_up_complete);
 	complete_all(&plat_priv->daemon_connected);
+#ifndef CONFIG_CNSS2_X86
 	device_init_wakeup(&plat_priv->plat_dev->dev, false);
+#endif
 	unregister_reboot_notifier(&plat_priv->reboot_nb);
 	unregister_pm_notifier(&cnss_pm_notifier);
 	del_timer(&plat_priv->fw_boot_timer);
 	wakeup_source_unregister(plat_priv->recovery_ws);
 }
 
+#ifdef CONFIG_CNSS2_X86
+static void cnss_init_control_params(struct cnss_plat_data *plat_priv)
+{
+	plat_priv->ctrl_params.quirks = quirks;
+
+	plat_priv->cbc_enabled = false;
+
+	plat_priv->ctrl_params.mhi_timeout = CNSS_MHI_TIMEOUT_DEFAULT;
+	plat_priv->ctrl_params.mhi_m2_timeout = CNSS_MHI_M2_TIMEOUT_DEFAULT;
+	plat_priv->ctrl_params.qmi_timeout = CNSS_QMI_TIMEOUT_DEFAULT;
+	plat_priv->ctrl_params.bdf_type = CNSS_BDF_TYPE_DEFAULT;
+	plat_priv->ctrl_params.time_sync_period = CNSS_TIME_SYNC_PERIOD_DEFAULT;
+	/* Set adsp_pc_enabled default value to true as ADSP pc is always
+	 * enabled by default
+	 */
+	plat_priv->adsp_pc_enabled = false;
+}
+#else
 static void cnss_init_control_params(struct cnss_plat_data *plat_priv)
 {
 	plat_priv->ctrl_params.quirks = CNSS_QUIRKS_DEFAULT;
@@ -3439,6 +3529,7 @@ static bool cnss_use_fw_path_with_prefix(struct cnss_plat_data *plat_priv)
 	       of_property_read_bool(plat_priv->plat_dev->dev.of_node,
 				     "qcom,same-dt-multi-dev"));
 }
+#endif
 
 static const struct platform_device_id cnss_platform_id_table[] = {
 	{ .name = "qca6174", .driver_data = QCA6174_DEVICE_ID, },
@@ -3480,6 +3571,8 @@ static int cnss_probe(struct platform_device *plat_dev)
 {
 	int ret = 0;
 	struct cnss_plat_data *plat_priv;
+
+#ifndef CONFIG_CNSS2_X86
 	const struct of_device_id *of_id;
 	const struct platform_device_id *device_id;
 	int retry = 0;
@@ -3514,15 +3607,37 @@ static int cnss_probe(struct platform_device *plat_dev)
 		cnss_use_fw_path_with_prefix(plat_priv);
 	cnss_set_plat_priv(plat_dev, plat_priv);
 	platform_set_drvdata(plat_dev, plat_priv);
+#else
+	int retry = 0;
+
+	if (plat_env) {
+		cnss_pr_err("Driver is already initialized!\n");
+		ret = -EEXIST;
+		goto out;
+	}
+
+	plat_priv = kzalloc(sizeof(*plat_priv), GFP_KERNEL);
+	if (!plat_priv) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	cnss_set_plat_priv(plat_dev, plat_priv);
+	cnss_init_control_params(plat_priv);
+	plat_priv->bus_type = CNSS_BUS_PCI;
+#endif
+
 	INIT_LIST_HEAD(&plat_priv->vreg_list);
 	INIT_LIST_HEAD(&plat_priv->clk_list);
 
+#ifndef CONFIG_CNSS2_X86
 	cnss_get_pm_domain_info(plat_priv);
 	cnss_get_wlaon_pwr_ctrl_info(plat_priv);
 	cnss_get_tcs_info(plat_priv);
 	cnss_get_cpr_info(plat_priv);
 	cnss_aop_mbox_init(plat_priv);
 	cnss_init_control_params(plat_priv);
+#endif
 
 	ret = cnss_get_resources(plat_priv);
 	if (ret)
@@ -3615,7 +3730,9 @@ unreg_esoc:
 free_res:
 	cnss_put_resources(plat_priv);
 reset_ctx:
+#ifndef CONFIG_CNSS2_X86
 	platform_set_drvdata(plat_dev, NULL);
+#endif
 	cnss_set_plat_priv(plat_dev, NULL);
 out:
 	return ret;
@@ -3623,8 +3740,11 @@ out:
 
 static int cnss_remove(struct platform_device *plat_dev)
 {
+#ifdef CONFIG_CNSS2_X86
+	struct cnss_plat_data *plat_priv = plat_env;
+#else
 	struct cnss_plat_data *plat_priv = platform_get_drvdata(plat_dev);
-
+#endif
 	cnss_genl_exit();
 	cnss_unregister_ims_service(plat_priv);
 	cnss_unregister_coex_service(plat_priv);
@@ -3639,15 +3759,19 @@ static int cnss_remove(struct platform_device *plat_dev)
 	cnss_unregister_esoc(plat_priv);
 	cnss_put_resources(plat_priv);
 
+#ifndef CONFIG_CNSS2_X86
 	if (!IS_ERR_OR_NULL(plat_priv->mbox_chan))
 		mbox_free_channel(plat_priv->mbox_chan);
 
 	platform_set_drvdata(plat_dev, NULL);
+#endif
+
 	plat_env = NULL;
 
 	return 0;
 }
 
+#ifndef CONFIG_CNSS2_X86
 static struct platform_driver cnss_platform_driver = {
 	.probe  = cnss_probe,
 	.remove = cnss_remove,
@@ -3682,16 +3806,25 @@ static bool cnss_is_valid_dt_node_found(void)
 
 	return false;
 }
+#endif
 
 static int __init cnss_initialize(void)
 {
 	int ret = 0;
 
+#ifndef CONFIG_CNSS2_X86
 	if (!cnss_is_valid_dt_node_found())
 		return -ENODEV;
+#endif
 
 	cnss_debug_init();
+
+#ifdef CONFIG_CNSS2_X86
+	ret = cnss_probe(NULL);
+#else
 	ret = platform_driver_register(&cnss_platform_driver);
+#endif
+
 	if (ret)
 		cnss_debug_deinit();
 
@@ -3700,7 +3833,12 @@ static int __init cnss_initialize(void)
 
 static void __exit cnss_exit(void)
 {
+#ifdef CONFIG_CNSS2_X86
+	cnss_remove(NULL);
+#else
 	platform_driver_unregister(&cnss_platform_driver);
+#endif
+
 	cnss_debug_deinit();
 }
 
