@@ -50,7 +50,7 @@
 #define CNSS_EVENT_PENDING		2989
 #define CE_MSI_NAME			"CE"
 
-#define FW_SRAM_DUMP_PATH			"/var/crash/fw_sram_dump.bin"
+#define FW_SRAM_DUMP_PATH			"/var/crash/q6_sram.bin"
 #define FW_SRAM_START_QCA6390		0x01400000
 #define FW_SRAM_END_QCA6390			0x0171ffff
 #define FW_SRAM_START_QCA6490		0x01400000

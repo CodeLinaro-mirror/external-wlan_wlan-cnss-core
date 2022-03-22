@@ -211,9 +211,9 @@ static struct paging_header_t paging_header;
 /*paging dump 1 seg for header, save version, seg_num, each seg address, size*/
 static char paging_dump_header[512];
 
-static int fw_paging_dump(struct mhi_device_ctxt *mhi_dev_ctxt,
-			 struct bhie_vec_table *fw_table,
-			 char *file_full_path)
+int fw_paging_dump(struct mhi_device_ctxt *mhi_dev_ctxt,
+		   struct bhie_vec_table *fw_table,
+		   char *file_full_path)
 {
 	struct file *fp = NULL;
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))

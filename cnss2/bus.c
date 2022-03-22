@@ -262,6 +262,8 @@ void cnss_bus_collect_dump_info(struct cnss_plat_data *plat_priv)
 		if (ret) {
 			cnss_pr_err("Failed to complete RDDM, err = %d\n", ret);
 			cnss_dump_fw_sram_to_file(plat_priv);
+			cnss_pci_dump_fw_remote_mem_to_file(plat_priv->bus_priv);
+			cnss_pci_dump_fw_paging_to_file(plat_priv->bus_priv);
 			break;
 		}
 		return cnss_pci_collect_dump_info(plat_priv->bus_priv);

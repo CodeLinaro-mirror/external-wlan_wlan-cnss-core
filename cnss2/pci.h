@@ -143,6 +143,8 @@ int cnss_pci_fw_sram_dump_to_file(struct cnss_pci_data *pci_priv,
 		uint32_t fw_sram_start,
 		uint32_t fw_sram_end,
 		const char *fw_sram_dump_path);
+int cnss_pci_dump_fw_remote_mem_to_file(struct cnss_pci_data *pci_priv);
+int cnss_pci_dump_fw_paging_to_file(struct cnss_pci_data *pci_priv);
 u32 cnss_pci_get_wake_msi(struct cnss_pci_data *pci_priv);
 int cnss_pci_dev_crash_shutdown(struct cnss_pci_data *pci_priv);
 int cnss_pci_call_driver_probe(struct cnss_pci_data *pci_priv);
@@ -181,6 +183,18 @@ static inline int cnss_pci_fw_sram_dump_to_file(struct cnss_pci_data *pci_priv,
 		uint32_t fw_sram_start,
 		uint32_t fw_sram_end,
 		const char *fw_sram_dump_path)
+{
+	return 0;
+}
+
+static inline
+int cnss_pci_dump_fw_remote_mem_to_file(struct cnss_pci_data *pci_priv)
+{
+	return 0;
+}
+
+static inline
+int cnss_pci_dump_fw_paging_to_file(struct cnss_pci_data *pci_priv)
 {
 	return 0;
 }

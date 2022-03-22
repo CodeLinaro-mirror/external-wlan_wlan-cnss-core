@@ -831,4 +831,10 @@ void mhi_reset_pcie_rxvecstatus(struct mhi_device_ctxt *mhi_dev_ctxt);
 void mhi_set_pcie_mhictrl_reset(struct mhi_device_ctxt *mhi_dev_ctxt);
 #endif
 
+int fw_paging_dump(struct mhi_device_ctxt *mhi_dev_ctxt,
+		   struct bhie_vec_table *fw_table,
+		   char *file_full_path);
+int fw_remote_mem_dump(struct mhi_device_ctxt *mhi_dev_ctxt,
+		       struct fw_remote_mem *fw_mem,
+		       char *file_full_path);
 #endif

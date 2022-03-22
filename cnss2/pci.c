@@ -83,6 +83,10 @@ MODULE_PARM_DESC(fbc_bypass,
 		 "Bypass firmware download when loading WLAN driver");
 #endif
 
+static bool rddm_support = 1;
+module_param(rddm_support, bool, 0600);
+MODULE_PARM_DESC(rddm_support, "RDDM support or not");
+
 struct cnss_pci_reg {
 	char *name;
 	u32 offset;
@@ -2331,6 +2335,23 @@ out:
 	return status;
 }
 
+int cnss_pci_dump_fw_remote_mem_to_file(struct cnss_pci_data *pci_priv)
+{
+	struct mhi_device_ctxt *mhi_dev_ctxt = pci_priv->mhi_dev.mhi_dev_ctxt;
+	struct bhi_ctxt_t *bhi_ctxt = &mhi_dev_ctxt->bhi_ctxt;
+
+	return fw_remote_mem_dump(mhi_dev_ctxt, &bhi_ctxt->fw_mem, "/var/crash/remote.bin");
+}
+
+int cnss_pci_dump_fw_paging_to_file(struct cnss_pci_data *pci_priv)
+{
+	struct mhi_device_ctxt *mhi_dev_ctxt = pci_priv->mhi_dev.mhi_dev_ctxt;
+	struct bhi_ctxt_t *bhi_ctxt = &mhi_dev_ctxt->bhi_ctxt;
+	struct bhie_vec_table *fw_table = &bhi_ctxt->fw_table;
+
+	return fw_paging_dump(mhi_dev_ctxt, fw_table, "/var/crash/paging.bin");
+}
+
 static void cnss_mhi_notify_status(enum MHI_CB_REASON reason, void *priv)
 {
 	struct cnss_pci_data *pci_priv = priv;
@@ -2396,20 +2417,22 @@ static int cnss_pci_register_mhi(struct cnss_pci_data *pci_priv)
 
 	mhi_dev->pm_runtime_get = cnss_mhi_pm_runtime_get;
 	mhi_dev->pm_runtime_put_noidle = cnss_mhi_pm_runtime_put_noidle;
-	mhi_dev->support_rddm = true;
+	if (rddm_support) {
+		mhi_dev->support_rddm = true;
 #ifdef CONFIG_NAPIER_X86
 #ifdef CONFIG_CNSS_QCA6490
-	mhi_dev->rddm_size = 0x420000;
+		mhi_dev->rddm_size = 0x420000;
 #else
-	if (pci_dev->device == QCN7605_DEVICE_ID)
-		mhi_dev->rddm_size = 0x300000;
-	else
-		mhi_dev->rddm_size = 0x400000;
+		if (pci_dev->device == QCN7605_DEVICE_ID)
+			mhi_dev->rddm_size = 0x300000;
+		else
+			mhi_dev->rddm_size = 0x400000;
 #endif
-	pr_err("rddm size %zx", mhi_dev->rddm_size);
+		pr_err("rddm size %zx", mhi_dev->rddm_size);
 #else
-	mhi_dev->rddm_size = pci_priv->plat_priv->ramdump_info_v2.ramdump_size;
+		mhi_dev->rddm_size = pci_priv->plat_priv->ramdump_info_v2.ramdump_size;
 #endif
+	}
 	mhi_dev->status_cb = cnss_mhi_notify_status;
 
 	ret = mhi_register_device(mhi_dev, MHI_NODE_NAME, pci_priv);
