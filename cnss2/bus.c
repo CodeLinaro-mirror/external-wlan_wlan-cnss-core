@@ -161,6 +161,22 @@ int cnss_bus_load_m3(struct cnss_plat_data *plat_priv)
 	}
 }
 
+int cnss_bus_free_m3(struct cnss_plat_data *plat_priv)
+{
+	if (!plat_priv)
+		return -ENODEV;
+
+	switch (plat_priv->bus_type) {
+	case CNSS_BUS_PCI:
+		cnss_pci_free_m3_mem(plat_priv->bus_priv);
+		return 0;
+	default:
+		cnss_pr_err("Unsupported bus type: %d\n",
+			    plat_priv->bus_type);
+		return -EINVAL;
+	}
+}
+
 int cnss_bus_alloc_fw_mem(struct cnss_plat_data *plat_priv)
 {
 	if (!plat_priv)

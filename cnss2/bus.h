@@ -52,6 +52,7 @@ struct cnss_plat_data *cnss_bus_dev_to_plat_priv(struct device *dev);
 int cnss_bus_init(struct cnss_plat_data *plat_priv);
 void cnss_bus_deinit(struct cnss_plat_data *plat_priv);
 int cnss_bus_load_m3(struct cnss_plat_data *plat_priv);
+int cnss_bus_free_m3(struct cnss_plat_data *plat_priv);
 int cnss_bus_alloc_fw_mem(struct cnss_plat_data *plat_priv);
 int cnss_bus_get_wake_irq(struct cnss_plat_data *plat_priv);
 int cnss_bus_force_fw_assert_hdlr(struct cnss_plat_data *plat_priv);
