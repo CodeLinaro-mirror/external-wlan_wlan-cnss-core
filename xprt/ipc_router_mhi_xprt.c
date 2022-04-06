@@ -808,6 +808,7 @@ static void ipc_router_mhi_config_deinit(
 	mhi_xprtp->ch_hndl.in_chan_enabled = false;
 	mutex_unlock(&mhi_xprtp->ch_hndl.state_lock);
 	flush_workqueue(mhi_xprtp->wq);
+	destroy_workqueue(mhi_xprtp->wq);
 	kfree(mhi_xprtp);
 	mhi_xprtp = NULL;
 }
