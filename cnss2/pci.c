@@ -964,6 +964,8 @@ int cnss_pci_register_driver_hdlr(struct cnss_pci_data *pci_priv,
 	if (ret) {
 		clear_bit(CNSS_DRIVER_LOADING, &plat_priv->driver_state);
 		pci_priv->driver_ops = NULL;
+	} else {
+		cnss_pci_free_m3_mem(pci_priv);
 	}
 
 	return ret;
