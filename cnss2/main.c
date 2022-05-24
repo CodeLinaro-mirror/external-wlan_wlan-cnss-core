@@ -3602,6 +3602,7 @@ static int cnss_probe(struct platform_device *plat_dev)
 	plat_priv->plat_dev = plat_dev;
 	plat_priv->device_id = device_id->driver_data;
 	plat_priv->bus_type = cnss_get_bus_type(plat_priv->device_id);
+	plat_priv->driver_mode = CNSS_DRIVER_MODE_MAX;
 	plat_priv->use_nv_mac = cnss_use_nv_mac(plat_priv);
 	plat_priv->use_fw_path_with_prefix =
 		cnss_use_fw_path_with_prefix(plat_priv);
@@ -3625,6 +3626,7 @@ static int cnss_probe(struct platform_device *plat_dev)
 	cnss_set_plat_priv(plat_dev, plat_priv);
 	cnss_init_control_params(plat_priv);
 	plat_priv->bus_type = CNSS_BUS_PCI;
+	plat_priv->driver_mode = CNSS_DRIVER_MODE_MAX;
 #endif
 
 	INIT_LIST_HEAD(&plat_priv->vreg_list);

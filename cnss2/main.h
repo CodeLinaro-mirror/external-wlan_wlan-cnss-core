@@ -554,6 +554,8 @@ struct cnss_plat_data {
 	struct fw_remote_mem remote_mem[BHI_WLFW_MAX_NUM_MEM_SEG_V01];
 	struct fw_remote_crash_data remote_crash_data;
 	struct mhi_fw_crash_data fw_crash_data;
+
+	enum cnss_driver_mode driver_mode;
 };
 
 #if IS_ENABLED(CONFIG_ARCH_QCOM)
