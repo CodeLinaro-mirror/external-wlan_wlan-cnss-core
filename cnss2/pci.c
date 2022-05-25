@@ -6688,6 +6688,7 @@ struct pci_driver cnss_pci_driver = {
 	.id_table = cnss_pci_id_table,
 	.probe    = cnss_pci_probe,
 	.remove   = cnss_pci_remove,
+	.shutdown = cnss_pci_shutdown,
 	.driver = {
 		.pm = &cnss_pm_ops,
 	},
