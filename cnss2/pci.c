@@ -2864,7 +2864,10 @@ static void cnss_pci_remove(struct pci_dev *pci_dev)
 #endif
 	cnss_unregister_ramdump(plat_priv);
 	cnss_unregister_subsys(plat_priv);
-	plat_priv->bus_priv = NULL;
+	if (plat_priv->bus_priv) {
+		kfree(plat_priv->bus_priv);
+		plat_priv->bus_priv = NULL;
+	}
 }
 
 #ifdef CONFIG_NAPIER_X86
