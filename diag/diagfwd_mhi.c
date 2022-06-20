@@ -691,6 +691,12 @@ static void diag_mhi_dev_exit(int dev)
 	mhi_close(mhi_info->id);
 	if (mhi_info->mempool_init)
 		diagmem_exit(driver, mhi_info->mempool);
+
+        if (mhi_deregister_channel(mhi_info->read_ch.hdl))
+                pr_err("diag_mhi_dev_exit: failed to deregister channel\n");
+
+        if (mhi_deregister_channel(mhi_info->write_ch.hdl))
+                pr_err("diag_mhi_dev_exit: failed to deregister channel\n");
 }
 
 int diag_mhi_init()

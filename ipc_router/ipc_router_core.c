@@ -4174,6 +4174,7 @@ static void msm_ipc_router_remove_xprt(struct msm_ipc_router_xprt *xprt)
 {
 	struct msm_ipc_router_xprt_info *xprt_info;
 	struct rr_packet *temp_pkt, *pkt;
+	struct ipc_rtr_log_ctx *rtr_log_ctx;
 
 	if (xprt && xprt->priv) {
 		xprt_info = xprt->priv;
@@ -4203,6 +4204,16 @@ static void msm_ipc_router_remove_xprt(struct msm_ipc_router_xprt *xprt)
 
 		ipc_router_put_xprt_info_ref(xprt_info);
 		wait_for_completion(&xprt_info->ref_complete);
+
+		mutex_lock(&log_ctx_list_lock_lha0);
+		list_for_each_entry(rtr_log_ctx, &log_ctx_list, list) {
+			if (!strncmp(rtr_log_ctx->log_ctx_name, xprt->name, strlen(xprt->name))){
+				list_del(&rtr_log_ctx->list);
+				break;
+			}
+		}
+		kfree(rtr_log_ctx);
+		mutex_unlock(&log_ctx_list_lock_lha0);
 
 		xprt->priv = 0;
 		kfree(xprt_info);

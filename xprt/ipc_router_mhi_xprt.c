@@ -676,6 +676,9 @@ static void mhi_xprt_disable_event(struct ipc_router_mhi_xprt_work *xprt_work)
 {
 	struct ipc_router_mhi_xprt *mhi_xprtp = xprt_work->mhi_xprtp;
 	bool notify = false;
+        struct sk_buff *skb;
+        struct sk_buff *skb_tmp;
+        void *skb_data;
 
 	if (xprt_work->chan_id == mhi_xprtp->ch_hndl.out_chan_id) {
 		mutex_lock(&mhi_xprtp->ch_hndl.state_lock);
@@ -693,6 +696,14 @@ static void mhi_xprt_disable_event(struct ipc_router_mhi_xprt_work *xprt_work)
 		/* Queue a read work to remove any partially read packets */
 		queue_work(mhi_xprtp->wq, &mhi_xprtp->read_work);
 		flush_workqueue(mhi_xprtp->wq);
+                skb_queue_walk_safe(&mhi_xprtp->ch_hndl.in_skbq, skb, skb_tmp) {
+                        skb_unlink(skb, &mhi_xprtp->ch_hndl.in_skbq);
+                        skb_data = ipc_router_mhi_xprt_find_addr_map(
+                                &mhi_xprtp->rx_addr_map_list,
+                                &mhi_xprtp->rx_addr_map_list_lock,
+                                skb->data);
+                        kfree_skb(skb);
+                }
 	}
 
 	if (notify) {
