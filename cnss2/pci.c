@@ -195,6 +195,8 @@ static int cnss_set_pci_config_space(struct cnss_pci_data *pci_priv, bool save)
 	if (save) {
 		if (link_down_or_recovery) {
 			pci_priv->saved_state = NULL;
+                } else if (test_bit(CNSS_DRIVER_UNLOADING, &plat_priv->driver_state)) {
+                        pci_load_and_free_saved_state(pci_dev, &pci_priv->saved_state);
 		} else {
 			pci_save_state(pci_dev);
 			pci_priv->saved_state = pci_store_saved_state(pci_dev);
@@ -2855,6 +2857,10 @@ static void cnss_pci_remove(struct pci_dev *pci_dev)
 	default:
 		break;
 	}
+
+        if (pci_priv->default_state) {
+                pci_load_and_free_saved_state(pci_dev, &pci_priv->default_state);
+        }
 
 	cnss_pci_disable_bus(pci_priv);
 #ifndef CONFIG_NAPIER_X86
