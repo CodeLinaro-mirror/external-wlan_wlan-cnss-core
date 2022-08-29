@@ -1892,13 +1892,30 @@ static int cnss_pci_get_msi_assignment(struct cnss_pci_data *pci_priv)
 	return 0;
 }
 
+static int cnss_pci_config_msi_data(struct cnss_pci_data *pci_priv)
+{
+	struct msi_desc *msi_desc;
+	struct pci_dev *pci_dev = pci_priv->pci_dev;
+
+	msi_desc = irq_get_msi_desc(pci_dev->irq);
+	if (!msi_desc) {
+		cnss_pr_err("msi_desc is NULL!\n");
+		return -EINVAL;
+	}
+
+	pci_priv->msi_ep_base_data = msi_desc->msg.data;
+
+	cnss_pr_err("MSI base data is %d\n", pci_priv->msi_ep_base_data);
+
+	return 0;
+}
+
 static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 {
 	int ret = 0;
 	struct pci_dev *pci_dev = pci_priv->pci_dev;
 	int num_vectors;
 	struct cnss_msi_config *msi_config;
-	struct msi_desc *msi_desc;
 
 	ret = cnss_pci_get_msi_assignment(pci_priv);
 	if (ret) {
@@ -1924,22 +1941,8 @@ static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 		goto reset_msi_config;
 	}
 
-	msi_desc = irq_get_msi_desc(pci_dev->irq);
-	if (!msi_desc) {
-		cnss_pr_err("msi_desc is NULL!\n");
-		ret = -EINVAL;
+	if (cnss_pci_config_msi_data(pci_priv))
 		goto disable_msi;
-	}
-
-	pci_priv->msi_ep_base_data = msi_desc->msg.data;
-#ifndef CONFIG_NAPIER_X86
-	if (!pci_priv->msi_ep_base_data) {
-		cnss_pr_err("Got 0 MSI base data!\n");
-		CNSS_ASSERT(0);
-	}
-#endif
-
-	cnss_pr_dbg("MSI base data is %d\n", pci_priv->msi_ep_base_data);
 
 	return 0;
 
@@ -2812,6 +2815,9 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 		ret = cnss_pci_register_mhi(pci_priv);
 		if (ret) {
 			cnss_pci_disable_msi(pci_priv);
+			goto disable_bus;
+		}
+		if (cnss_pci_config_msi_data(pci_priv)) {
 			goto disable_bus;
 		}
 #ifndef CONFIG_PCIE_EMULATION
