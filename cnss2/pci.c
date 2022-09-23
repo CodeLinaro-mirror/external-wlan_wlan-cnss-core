@@ -4832,7 +4832,19 @@ static int cnss_pci_get_one_msi_irq_array_size(struct cnss_pci_data *pci_priv)
 {
 	return MHI_IRQ_NUMBER;
 }
+
+static bool cnss_pci_is_force_one_msi(struct cnss_pci_data *pci_priv)
+{
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
+
+	return test_bit(FORCE_ONE_MSI, &plat_priv->ctrl_params.quirks);
+}
 #else
+static int cnss_pci_get_one_msi_assignment(struct cnss_pci_data *pci_priv)
+{
+	return 0;
+}
+
 static bool cnss_pci_fallback_one_msi(struct cnss_pci_data *pci_priv,
 				      int *num_vectors)
 {
@@ -4848,6 +4860,11 @@ static int cnss_pci_get_one_msi_irq_array_size(struct cnss_pci_data *pci_priv)
 {
 	return 0;
 }
+
+static bool cnss_pci_is_force_one_msi(struct cnss_pci_data *pci_priv)
+{
+	return false;
+}
 #endif
 
 static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
@@ -4861,7 +4878,12 @@ static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 	if (pci_priv->device_id == QCA6174_DEVICE_ID)
 		return 0;
 
-	ret = cnss_pci_get_msi_assignment(pci_priv);
+	if (cnss_pci_is_force_one_msi(pci_priv)) {
+		ret = cnss_pci_get_one_msi_assignment(pci_priv);
+		cnss_pr_dbg("force one msi\n");
+	} else {
+		ret = cnss_pci_get_msi_assignment(pci_priv);
+	}
 	if (ret) {
 		cnss_pr_err("Failed to get MSI assignment, err = %d\n", ret);
 		goto out;
