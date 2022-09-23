@@ -2088,6 +2088,36 @@ static int cnss_wlan_adsp_pc_enable(struct cnss_pci_data *pci_priv,
 }
 #endif
 
+#ifdef CONFIG_ONE_MSI_VECTOR
+static bool cnss_pci_is_one_msi(struct cnss_pci_data *pci_priv)
+{
+	return pci_priv && pci_priv->msi_config &&
+	       (pci_priv->msi_config->total_vectors == 1);
+}
+#else
+static bool cnss_pci_is_one_msi(struct cnss_pci_data *pci_priv)
+{
+	return false;
+}
+#endif
+
+static int cnss_pci_config_msi_data(struct cnss_pci_data *pci_priv)
+{
+	struct msi_desc *msi_desc;
+	struct pci_dev *pci_dev = pci_priv->pci_dev;
+
+	msi_desc = irq_get_msi_desc(pci_dev->irq);
+	if (!msi_desc) {
+		cnss_pr_err("msi_desc is NULL!\n");
+		return -EINVAL;
+	}
+
+	pci_priv->msi_ep_base_data = msi_desc->msg.data;
+	cnss_pr_dbg("MSI base data is %d\n", pci_priv->msi_ep_base_data);
+
+	return 0;
+}
+
 int cnss_pci_start_mhi(struct cnss_pci_data *pci_priv)
 {
 	int ret = 0;
@@ -2138,6 +2168,16 @@ int cnss_pci_start_mhi(struct cnss_pci_data *pci_priv)
 		 */
 		set_bit(CNSS_MHI_POWER_ON, &pci_priv->mhi_state);
 		ret = cnss_pci_handle_mhi_poweron_timeout(pci_priv);
+	}
+	/* kernel may allocate a dummy vector before request_irq and
+	 * then allocate a real vector when request_irq is called.
+	 * So get msi_data here again to avoid spurious interrupt
+	 * as msi_data will configured to srngs.
+	 */
+	if (cnss_pci_is_one_msi(pci_priv)) {
+		if (ret)
+			return ret;
+		ret = cnss_pci_config_msi_data(pci_priv);
 	}
 
 	return ret;
@@ -4822,12 +4862,6 @@ static bool cnss_pci_fallback_one_msi(struct cnss_pci_data *pci_priv,
 	return true;
 }
 
-static bool cnss_pci_is_one_msi(struct cnss_pci_data *pci_priv)
-{
-	return pci_priv && pci_priv->msi_config &&
-	       (pci_priv->msi_config->total_vectors == 1);
-}
-
 static int cnss_pci_get_one_msi_irq_array_size(struct cnss_pci_data *pci_priv)
 {
 	return MHI_IRQ_NUMBER;
@@ -4851,11 +4885,6 @@ static bool cnss_pci_fallback_one_msi(struct cnss_pci_data *pci_priv,
 	return false;
 }
 
-static bool cnss_pci_is_one_msi(struct cnss_pci_data *pci_priv)
-{
-	return false;
-}
-
 static int cnss_pci_get_one_msi_irq_array_size(struct cnss_pci_data *pci_priv)
 {
 	return 0;
@@ -4873,7 +4902,6 @@ static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 	struct pci_dev *pci_dev = pci_priv->pci_dev;
 	int num_vectors;
 	struct cnss_msi_config *msi_config;
-	struct msi_desc *msi_desc;
 
 	if (pci_priv->device_id == QCA6174_DEVICE_ID)
 		return 0;
@@ -4909,15 +4937,8 @@ static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 		goto reset_msi_config;
 	}
 
-	msi_desc = irq_get_msi_desc(pci_dev->irq);
-	if (!msi_desc) {
-		cnss_pr_err("msi_desc is NULL!\n");
-		ret = -EINVAL;
+	if (cnss_pci_config_msi_data(pci_priv))
 		goto free_msi_vector;
-	}
-
-	pci_priv->msi_ep_base_data = msi_desc->msg.data;
-	cnss_pr_dbg("MSI base data is %d\n", pci_priv->msi_ep_base_data);
 
 	return 0;
 
