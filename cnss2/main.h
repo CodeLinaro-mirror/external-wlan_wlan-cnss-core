@@ -550,6 +550,7 @@ struct cnss_plat_data {
 	const char *vreg_ol_cpr, *vreg_ipa;
 	bool adsp_pc_enabled;
 	u64 feature_list;
+	struct kobject *wifi_kobj;
 
 	struct fw_remote_mem remote_mem[BHI_WLFW_MAX_NUM_MEM_SEG_V01];
 	struct fw_remote_crash_data remote_crash_data;

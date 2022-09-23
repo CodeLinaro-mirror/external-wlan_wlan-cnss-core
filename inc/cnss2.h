@@ -280,4 +280,5 @@ extern int cnss_get_mem_segment_info(enum cnss_remote_mem_type type,
 				     struct cnss_mem_segment segment[],
 				     u32 segment_count);
 extern int cnss_get_pci_slot(struct device *dev);
+extern struct kobject *cnss_get_wifi_kobj(struct device *dev);
 #endif /* _NET_CNSS2_H */
