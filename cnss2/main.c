@@ -38,6 +38,10 @@
 #include "cnss_module.h"
 #include "mhi.h"
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0))
+#include <linux/panic_notifier.h>
+#endif
+
 #define CNSS_DUMP_FORMAT_VER		0x11
 #define CNSS_DUMP_FORMAT_VER_V2		0x22
 #define CNSS_DUMP_MAGIC_VER_V2		0x42445953
