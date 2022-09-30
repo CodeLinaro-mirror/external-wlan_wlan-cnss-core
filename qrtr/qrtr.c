@@ -14,7 +14,7 @@
 #include <net/sock.h>
 
 #include "qrtr.h"
-
+#include <linux/version.h>
 #define QRTR_PROTO_VER_1 1
 #define QRTR_PROTO_VER_2 3
 
@@ -748,6 +748,17 @@ static int qrtr_port_assign(struct qrtr_sock *ipc, int *port)
 	return 0;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+void static ipc_sk_error_report(struct qrtr_sock *ipc)
+{
+	sk_error_report(&ipc->sk);
+}
+#else
+void static ipc_sk_error_report(struct qrtr_sock *ipc)
+{
+	ipc->sk.sk_error_report(&ipc->sk);
+}
+#endif
 /* Reset all non-control ports */
 static void qrtr_reset_ports(void)
 {
@@ -758,7 +769,7 @@ static void qrtr_reset_ports(void)
 	xa_for_each_start(&qrtr_ports, index, ipc, 1) {
 		sock_hold(&ipc->sk);
 		ipc->sk.sk_err = ENETRESET;
-		sk_error_report(&ipc->sk);
+		ipc_sk_error_report(ipc);
 		sock_put(&ipc->sk);
 	}
 	rcu_read_unlock();
@@ -1162,14 +1173,22 @@ static int qrtr_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 		rc = put_user(len, (int __user *)argp);
 		break;
 	case SIOCGIFADDR:
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
 		if (get_user_ifreq(&ifr, NULL, argp)) {
+#else
+		if (copy_from_user(&ifr, argp, sizeof(ifr))) {
+#endif
 			rc = -EFAULT;
 			break;
 		}
 
 		sq = (struct sockaddr_qrtr *)&ifr.ifr_addr;
 		*sq = ipc->us;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
 		if (put_user_ifreq(&ifr, argp)) {
+#else
+		if (copy_to_user(argp, &ifr, sizeof(ifr))) {
+#endif
 			rc = -EFAULT;
 			break;
 		}
