@@ -1675,6 +1675,12 @@ int cnss_pci_is_device_down(struct device *dev)
 }
 EXPORT_SYMBOL(cnss_pci_is_device_down);
 
+int cnss_pci_get_reg_dump(struct device *dev, u8 *buf, u32 len)
+{
+	return 0;
+}
+EXPORT_SYMBOL(cnss_pci_get_reg_dump);
+
 void cnss_pci_lock_reg_window(struct device *dev, unsigned long *flags)
 {
 	spin_lock_bh(&pci_reg_window_lock);

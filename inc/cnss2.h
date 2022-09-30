@@ -220,6 +220,7 @@ extern void cnss_device_crashed(struct device *dev);
 extern int cnss_pci_prevent_l1(struct device *dev);
 extern void cnss_pci_allow_l1(struct device *dev);
 extern int cnss_pci_link_down(struct device *dev);
+extern int cnss_pci_get_reg_dump(struct device *dev, u8 *buf, u32 len);
 extern int cnss_pci_is_device_down(struct device *dev);
 extern void cnss_schedule_recovery(struct device *dev,
 				   enum cnss_recovery_reason reason);
