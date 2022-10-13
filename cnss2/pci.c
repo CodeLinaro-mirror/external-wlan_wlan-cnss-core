@@ -2876,6 +2876,7 @@ retry:
 
 	cnss_pci_set_wlaon_pwr_ctrl(pci_priv, false, false, false);
 	cnss_pci_sw_reset(pci_priv->pci_dev, true);
+	cnss_pci_show_hw_revision(pci_priv);
 
 	timeout = cnss_get_timeout(plat_priv, CNSS_TIMEOUT_QMI);
 
@@ -6906,6 +6907,16 @@ void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on)
 void cnss_pci_shutdown(struct pci_dev *pdev)
 {
 	cnss_pci_sw_reset(pdev, false);
+}
+
+void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv)
+{
+	u32 val;
+
+	val = mhi_reg_read_remap(pci_priv,
+				 pci_priv->bar,
+				 PCIE_HW_REVISION_REG);
+	cnss_pr_info("HW Revision(JTAGID): 0x%x\n", val);
 }
 
 struct pci_driver cnss_pci_driver = {

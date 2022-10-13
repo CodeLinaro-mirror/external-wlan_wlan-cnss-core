@@ -265,6 +265,7 @@ int cnss_pci_get_iova_ipa(struct cnss_pci_data *pci_priv, u64 *addr,
 			  u64 *size);
 
 void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on);
+void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv);
 
 #define PCIE_TXVECDB (0x360)
 #define PCIE_TXVECSTATUS (0x368)
@@ -327,5 +328,7 @@ void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on);
 #define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG4_REG 0x01E0C634
 #define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG4_VAL 0xFF
 #define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG_MSK  0x000000FF
+
+#define PCIE_HW_REVISION_REG 0x01A10010
 
 #endif /* _CNSS_PCI_H */
