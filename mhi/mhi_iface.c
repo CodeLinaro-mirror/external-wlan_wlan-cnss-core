@@ -110,6 +110,7 @@ int mhi_ctxt_init(struct mhi_device_ctxt *mhi_dev_ctxt)
 				mhi_dev_ctxt->ev_ring_props[j].mhi_handler_ptr,
 #ifdef CONFIG_ONE_MSI_VECTOR
 				IRQF_SHARED |
+				IRQF_NOBALANCING |
 #endif
 				IRQF_NO_SUSPEND,
 				"mhi_drv",
