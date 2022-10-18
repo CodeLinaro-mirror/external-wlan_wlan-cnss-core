@@ -6043,5 +6043,10 @@ static int __init wlfw_init(void)
 }
 module_init(wlfw_init);
 
+static void __exit wlfw_exit(void)
+{
+}
+module_exit(wlfw_exit);
+
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("WLAN FW QMI service");
