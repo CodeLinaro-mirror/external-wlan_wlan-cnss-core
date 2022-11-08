@@ -1385,14 +1385,10 @@ static void cnss_recovery_work_handler(struct work_struct *work)
 	cnss_bus_dev_ramdump(plat_priv);
 #endif
 
-	if (!plat_priv->recovery_enabled) {
-#ifndef CONFIG_CNSS2_X86
+	if (!test_bit(ENABLE_SSR, &plat_priv->ctrl_params.quirks)) {
 		panic("subsys-restart: Resetting the SoC wlan crashed\n");
-#else
-		//cnss_pr_err("Skip recovery, return\n");
-		//return 0;
-		cnss_pr_err("Do recovery, continue...\n");
-#endif
+		cnss_pr_err("Skip recovery, return\n");
+		return;
 	}
 
 	cnss_bus_dev_shutdown(plat_priv);

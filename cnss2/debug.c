@@ -732,6 +732,9 @@ static int cnss_show_quirks_state(struct seq_file *s,
 		case FORCE_ONE_MSI:
 			seq_puts(s, "FORCE_ONE_MSI");
 			continue;
+		case ENABLE_SSR:
+			seq_puts(s, "ENABLE_SSR");
+			continue;
 		}
 
 		seq_printf(s, "UNKNOWN-%d", i);
