@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/mhi.h>
@@ -128,9 +128,23 @@ static struct mhi_driver qcom_mhi_qrtr_driver = {
 	},
 };
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int qrtr_mhi_init(void)
+{
+	return mhi_driver_register(&qcom_mhi_qrtr_driver);
+}
+
+void qrtr_mhi_deinit(void)
+{
+	mhi_driver_unregister(&qcom_mhi_qrtr_driver);
+}
+#endif
+
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_mhi_driver(qcom_mhi_qrtr_driver);
 
 MODULE_AUTHOR("Chris Lew <clew@codeaurora.org>");
 MODULE_AUTHOR("Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>");
 MODULE_DESCRIPTION("Qualcomm Technologies Inc IPC-Router MHI interface driver");
 MODULE_LICENSE("GPL v2");
+#endif

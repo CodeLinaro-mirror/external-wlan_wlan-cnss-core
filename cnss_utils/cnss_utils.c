@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2017, 2019, 2021 The Linux Foundation. All rights reserved. */
+/*
+ * Copyright (c) 2017, 2019, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
 
 #define pr_fmt(fmt) "cnss_utils: " fmt
 
@@ -472,7 +475,11 @@ static bool cnss_utils_is_valid_dt_node_found(void)
 }
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int cnss_utils_init(void)
+#else
 static int __init cnss_utils_init(void)
+#endif
 {
 	struct cnss_utils_priv *priv = NULL;
 
@@ -495,14 +502,20 @@ static int __init cnss_utils_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void cnss_utils_exit(void)
+#else
 static void __exit cnss_utils_exit(void)
+#endif
 {
 	kfree(cnss_utils_priv);
 	cnss_utils_priv = NULL;
 }
 
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(cnss_utils_init);
 module_exit(cnss_utils_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("CNSS Utilities Driver");
+#endif

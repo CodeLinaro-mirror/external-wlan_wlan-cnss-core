@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2012,2014-2017,2019-2021 The Linux Foundation. All rights reserved. */
+/* Copyright (c) 2012,2014-2017,2019-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
 
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -282,7 +284,11 @@ static bool cnss_prealloc_is_valid_dt_node_found(void)
 }
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int cnss_prealloc_init(void)
+#else
 static int __init cnss_prealloc_init(void)
+#endif
 {
 #ifndef CONFIG_CNSS2_X86
 	if (!cnss_prealloc_is_valid_dt_node_found())
@@ -292,11 +298,16 @@ static int __init cnss_prealloc_init(void)
 	return cnss_pool_init();
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void cnss_prealloc_exit(void)
+#else
 static void __exit cnss_prealloc_exit(void)
+#endif
 {
 	cnss_pool_deinit();
 }
 
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(cnss_prealloc_init);
 module_exit(cnss_prealloc_exit);
-
+#endif

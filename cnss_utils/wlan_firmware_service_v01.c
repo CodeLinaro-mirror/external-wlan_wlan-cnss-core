@@ -6037,16 +6037,25 @@ static bool wlfw_is_valid_dt_node_found(void)
 	return false;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int wlfw_init(void)
+#else
 static int __init wlfw_init(void)
+#endif
 {
 	return 0;
 }
-module_init(wlfw_init);
-
+#ifdef CONFIG_WLAN_CNSS_CORE
+void wlfw_deinit(void)
+#else
 static void __exit wlfw_exit(void)
+#endif
 {
 }
-module_exit(wlfw_exit);
+#ifndef CONFIG_WLAN_CNSS_CORE
+module_init(wlfw_init);
+module_exit(wlfw_deinit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("WLAN FW QMI service");
+#endif

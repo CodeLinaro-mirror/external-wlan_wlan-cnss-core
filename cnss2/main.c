@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -3847,7 +3847,11 @@ static bool cnss_is_valid_dt_node_found(void)
 }
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int cnss_initialize(void)
+#else
 static int __init cnss_initialize(void)
+#endif
 {
 	int ret = 0;
 
@@ -3870,7 +3874,11 @@ static int __init cnss_initialize(void)
 	return ret;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void cnss_exit(void)
+#else
 static void __exit cnss_exit(void)
+#endif
 {
 #ifdef CONFIG_CNSS2_X86
 	cnss_remove(NULL);
@@ -3881,8 +3889,10 @@ static void __exit cnss_exit(void)
 	cnss_debug_deinit();
 }
 
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(cnss_initialize);
 module_exit(cnss_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("CNSS2 Platform Driver");
+#endif

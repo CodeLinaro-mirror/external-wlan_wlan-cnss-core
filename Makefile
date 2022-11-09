@@ -1,6 +1,25 @@
 KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
+interface_type ?= pcie
+emulation_build ?= 0
+unified_driver ?= 0
 M ?= $(shell pwd)
 
+ifeq ($(unified_driver), 1)
+KBUILD_OPTIONS += ROOTDIR=$(shell cd $(KERNEL_SRC); readlink -e $(M))
+KBUILD_OPTIONS += MODNAME?=wlan_cnss_core_$(interface_type)
+KBUILD_OPTIONS += WLAN_CNSSCORE=m
+KBUILD_OPTIONS += CONFIG_WLAN_CNSS_CORE=y
+KBUILD_OPTIONS += CONFIG_CNSS_OUT_OF_TREE=y
+KBUILD_OPTIONS += CONFIG_QRTR=y CONFIG_QRTR_MHI=y CONFIG_CNSS_UTILS=y CONFIG_CNSS2=y CONFIG_CNSS2_QMI=y \
+                  CONFIG_CNSS2_DEBUG=y CONFIG_CNSS2_X86=y CONFIG_QCOM_QMI_HELPERS=y CONFIG_CNSS_QMI_SVC=y
+ifeq ($(interface_type), pcie)
+KBUILD_OPTIONS += CONFIG_CNSS2_PCIE=y CONFIG_MHI_BUS=y CONFIG_MHI_BUS_DEBUG=y
+ifeq ($(emulation_build), 1)
+KBUILD_OPTIONS += CONFIG_PCIE_EMULATION=y
+endif
+endif
+
+else #unified_driver 0
 # $(WLAN_PLATFORM_ROOT) has to be a absolute path
 ifeq ($(WLAN_PLATFORM_ROOT),)
 WLAN_PLATFORM_ROOT = $(shell pwd)
@@ -26,6 +45,7 @@ KBUILD_OPTIONS += CONFIG_WCNSS_MEM_PRE_ALLOC=m
 KBUILD_OPTIONS += CONFIG_CNSS_UTILS=m
 KBUILD_OPTIONS += CONFIG_CNSS2_X86=y
 endif
+endif #unified_driver end
 
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(M) modules $(KBUILD_OPTIONS)

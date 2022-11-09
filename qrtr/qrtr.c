@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2015, Sony Mobile Communications Inc.
  * Copyright (c) 2013, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/netlink.h>
@@ -1302,7 +1302,11 @@ static const struct net_proto_family qrtr_family = {
 	.create	= qrtr_create,
 };
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int qrtr_proto_init(void)
+#else
 static int __init qrtr_proto_init(void)
+#endif
 {
 	int rc;
 
@@ -1326,16 +1330,23 @@ err_proto:
 	proto_unregister(&qrtr_proto);
 	return rc;
 }
-postcore_initcall(qrtr_proto_init);
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void qrtr_proto_fini(void)
+#else
 static void __exit qrtr_proto_fini(void)
+#endif
 {
 	qrtr_ns_remove();
 	sock_unregister(qrtr_family.family);
 	proto_unregister(&qrtr_proto);
 }
+
+#ifndef CONFIG_WLAN_CNSS_CORE
+postcore_initcall(qrtr_proto_init);
 module_exit(qrtr_proto_fini);
 
 MODULE_DESCRIPTION("Qualcomm Technologies Inc IPC-router driver");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS_NETPROTO(PF_QIPCRTR);
+#endif

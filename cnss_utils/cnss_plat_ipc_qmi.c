@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -938,7 +938,11 @@ static bool cnss_plat_ipc_is_valid_dt_node_found(void)
 
 static DECLARE_WORK(cnss_plat_ipc_init_work, cnss_plat_ipc_init_fn);
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int cnss_plat_ipc_qmi_svc_init(void)
+#else
 static int __init cnss_plat_ipc_qmi_svc_init(void)
+#endif
 {
 	if (!cnss_plat_ipc_is_valid_dt_node_found())
 		return -ENODEV;
@@ -956,7 +960,11 @@ static int __init cnss_plat_ipc_qmi_svc_init(void)
  *
  * Return: None
  */
+#ifdef CONFIG_WLAN_CNSS_CORE
+int cnss_plat_ipc_qmi_svc_exit(void)
+#else
 static void __exit cnss_plat_ipc_qmi_svc_exit(void)
+#endif
 {
 	struct cnss_plat_ipc_qmi_svc_ctx *svc = &plat_ipc_qmi_svc;
 
@@ -971,7 +979,9 @@ static void __exit cnss_plat_ipc_qmi_svc_exit(void)
 	cnss_plat_ipc_logging_deinit();
 }
 
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(cnss_plat_ipc_qmi_svc_init);
 module_exit(cnss_plat_ipc_qmi_svc_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("CNSS Platform IPC QMI Service");
+#endif
