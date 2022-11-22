@@ -2394,7 +2394,7 @@ static void cnss_qcom_devcd_freev(void *data)
 	kfree(desc);
 }
 
-static int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
+int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
 				gfp_t gfp)
 {
 	struct cnss_qcom_ramdump_desc *desc;
