@@ -2980,7 +2980,7 @@ int cnss_request_firmware_direct(struct cnss_plat_data *plat_priv,
 #endif
 }
 
-#if IS_ENABLED(CONFIG_INTERCONNECT)
+#if !defined(CONFIG_CNSS2_X86) && IS_ENABLED(CONFIG_INTERCONNECT)
 /**
  * cnss_register_bus_scale() - Setup interconnect voting data
  * @plat_priv: Platform data structure
@@ -3113,7 +3113,7 @@ static int cnss_register_bus_scale(struct cnss_plat_data *plat_priv)
 }
 
 static void cnss_unregister_bus_scale(struct cnss_plat_data *plat_priv) {}
-#endif /* CONFIG_INTERCONNECT */
+#endif /* !CONFIG_CNSS2_X86 && CONFIG_INTERCONNECT */
 
 void cnss_daemon_connection_update_cb(void *cb_ctx, bool status)
 {

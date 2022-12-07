@@ -1059,7 +1059,7 @@ static int cnss_pci_force_wake_put(struct cnss_pci_data *pci_priv)
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_INTERCONNECT)
+#if !defined(CONFIG_CNSS2_X86) && IS_ENABLED(CONFIG_INTERCONNECT)
 /**
  * cnss_setup_bus_bandwidth() - Setup interconnect vote for given bandwidth
  * @plat_priv: Platform private data struct
