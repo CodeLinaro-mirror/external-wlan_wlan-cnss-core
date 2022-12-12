@@ -18,6 +18,10 @@ ifeq ($(CONFIG_ONE_MSI_VECTOR),y)
 KBUILD_CPPFLAGS += -DCONFIG_ONE_MSI_VECTOR
 endif
 
+ifeq ($(CONFIG_DUMP_FW_TO_FILE),y)
+KBUILD_CPPFLAGS += -DCONFIG_DUMP_FW_TO_FILE
+endif
+
 # CONFIG_CNSS_PLAT_IPC_QMI_SVC should never be "y" here since it
 # can be only compiled as a module from out-of-kernel-tree source.
 ifeq ($(CONFIG_CNSS_PLAT_IPC_QMI_SVC),m)

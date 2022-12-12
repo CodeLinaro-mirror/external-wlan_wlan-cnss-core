@@ -3,6 +3,13 @@
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#ifdef CONFIG_DUMP_FW_TO_FILE
+#include <linux/export.h>
+#include <linux/rtc.h>
+#include <linux/fs.h>
+#include <linux/version.h>
+#endif
+
 #include <linux/devcoredump.h>
 #include <linux/dma-direction.h>
 #include <linux/mhi.h>
@@ -181,6 +188,89 @@ cnss_coredump_build(struct mhi_fw_crash_data *crash_data,
 int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
 				gfp_t gfp);
 
+#ifdef CONFIG_DUMP_FW_TO_FILE
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#define vfs_write kernel_write
+#endif
+
+static int get_time_of_the_day_in_hr_min_sec(char *tbuf, int len)
+{
+	struct timespec64 tv;
+	struct rtc_time tm;
+	int time_len = 0;
+
+	ktime_get_real_ts64(&tv);
+	/* Convert rtc to local time */
+	tv.tv_sec -= sys_tz.tz_minuteswest * 60;
+	rtc_time_to_tm(tv.tv_sec, &tm);
+	time_len = scnprintf(tbuf, len,
+		"%04d-%02d-%02d-%02d-%02d-%02d-",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec);
+	return time_len;
+}
+
+#define BUF_SIZE 64
+static int dump_fw_to_file(struct cnss_dump_file_data *dump)
+{
+	char file_full_path[BUF_SIZE];
+	char time_buf[24];
+	int len = 0;
+	struct file *fp;
+	mm_segment_t fs;
+	loff_t pos;
+	int status = 0;
+
+	memset(file_full_path, 0, sizeof(file_full_path));
+	len = get_time_of_the_day_in_hr_min_sec(time_buf, sizeof(time_buf));
+	len = scnprintf(file_full_path,
+			sizeof(file_full_path),
+			"/var/crash/Trieste%s.bin",
+			time_buf);
+	cnss_pr_err("enter\n");
+	fp = filp_open(file_full_path, O_RDWR | O_CREAT, 0644);
+	if (IS_ERR(fp)) {
+		cnss_pr_err("create file:%s error\n",
+			file_full_path);
+		return -EIO;
+	}
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	cnss_pr_err("to write file:%s, mem: 0x%p, size: 0x%x\n",
+		file_full_path,
+		dump,
+		(unsigned int)(dump->len));
+	status = vfs_write(fp,
+			   (const char __user *)(dump),
+			   dump->len,
+			   &pos);
+	if (status < 0) {
+		cnss_pr_err("write file:%s error\n",
+			file_full_path);
+		return status;
+	}
+
+	/* flush write to file */
+	vfs_fsync(fp, 0);
+
+	status = filp_close(fp, NULL);
+	if (status < 0) {
+		cnss_pr_err("close file: %s, error\n",
+			file_full_path);
+		return status;
+	}
+	set_fs(fs);
+	cnss_pr_err("exit\n");
+	return status;
+}
+#else
+static int dump_fw_to_file(struct cnss_dump_file_data *dump)
+{
+	return 0;
+}
+#endif
+
 static int cnss_coredump_submit(struct cnss_pci_data *pci_priv)
 {
 	struct cnss_dump_file_data *dump;
@@ -190,6 +280,7 @@ static int cnss_coredump_submit(struct cnss_pci_data *pci_priv)
 	if (!dump)
 		return -ENODATA;
 
+	dump_fw_to_file(dump);
 	cnss_qcom_devcd_dump(pci_priv->mhi_ctrl->cntrl_dev, dump, le32_to_cpu(dump->len), GFP_KERNEL);
 
 	return 0;
