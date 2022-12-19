@@ -2791,7 +2791,7 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 			pci_read_config_byte(pci_dev, 0x1F4, &aspm_state);
 			cnss_pr_err("L1SS status changed to: 0x%x", aspm_state);
 		}
-		/* fall-thru */
+		fallthrough;
 	case QCA6290_EMULATION_DEVICE_ID:
 	case QCA6290_DEVICE_ID:
 		/*
@@ -2807,7 +2807,7 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 			pci_read_config_byte(pci_dev, 0x80, &aspm_state);
 			cnss_pr_err("ASPM status changed to: %x", aspm_state);
 		}
-		/* fall-thru */
+		fallthrough;
 	case QCN7605_DEVICE_ID:
 		ret = cnss_pci_enable_msi(pci_priv);
 		if (ret)

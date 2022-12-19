@@ -168,7 +168,6 @@ struct ipc_router_mhi_xprt_config {
 };
 
 #define MODULE_NAME "ipc_router_mhi_xprt"
-static DEFINE_MUTEX(mhi_xprt_list_lock_lha1);
 static LIST_HEAD(mhi_xprt_list);
 
 /*
