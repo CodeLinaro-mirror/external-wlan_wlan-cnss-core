@@ -515,9 +515,11 @@ int cnss_wlfw_tgt_cap_send_sync(struct cnss_plat_data *plat_priv)
 				    plat_priv->dev_mem_info[i].size);
 		}
 	}
-	if (resp->fw_caps_valid)
+	if (resp->fw_caps_valid) {
 		plat_priv->fw_pcie_gen_switch =
 			!!(resp->fw_caps & QMI_WLFW_HOST_PCIE_GEN_SWITCH_V01);
+		plat_priv->fw_caps = resp->fw_caps;
+	}
 
 	cnss_pr_dbg("Target capability: chip_id: 0x%x, chip_family: 0x%x, board_id: 0x%x, soc_id: 0x%x, otp_version: 0x%x\n",
 		    plat_priv->chip_info.chip_id,
