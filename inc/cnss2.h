@@ -296,6 +296,10 @@ extern int cnss_get_mem_seg_count(enum cnss_remote_mem_type type, u32 *seg);
 extern int cnss_get_mem_segment_info(enum cnss_remote_mem_type type,
 				     struct cnss_mem_segment segment[],
 				     u32 segment_count);
+extern int cnss_audio_smmu_map(struct device *dev, phys_addr_t paddr,
+			       dma_addr_t iova, size_t size);
+extern void cnss_audio_smmu_unmap(struct device *dev, dma_addr_t iova,
+				 size_t size);
 extern int cnss_get_pci_slot(struct device *dev);
 extern struct kobject *cnss_get_wifi_kobj(struct device *dev);
 extern bool cnss_get_fw_cap(struct device *dev, enum cnss_fw_caps fw_cap);
