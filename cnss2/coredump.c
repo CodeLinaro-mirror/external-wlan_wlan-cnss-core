@@ -202,7 +202,11 @@ static int get_time_of_the_day_in_hr_min_sec(char *tbuf, int len)
 	ktime_get_real_ts64(&tv);
 	/* Convert rtc to local time */
 	tv.tv_sec -= sys_tz.tz_minuteswest * 60;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
+	rtc_time64_to_tm(tv.tv_sec, &tm);
+#else
 	rtc_time_to_tm(tv.tv_sec, &tm);
+#endif
 	time_len = scnprintf(tbuf, len,
 		"%04d-%02d-%02d-%02d-%02d-%02d-",
 		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
@@ -217,7 +221,9 @@ static int dump_fw_to_file(struct cnss_dump_file_data *dump)
 	char time_buf[24];
 	int len = 0;
 	struct file *fp;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
 	mm_segment_t fs;
+#endif
 	loff_t pos;
 	int status = 0;
 
@@ -234,8 +240,10 @@ static int dump_fw_to_file(struct cnss_dump_file_data *dump)
 			file_full_path);
 		return -EIO;
 	}
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
 	fs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 	pos = 0;
 	cnss_pr_err("to write file:%s, mem: 0x%p, size: 0x%x\n",
 		file_full_path,
@@ -260,7 +268,9 @@ static int dump_fw_to_file(struct cnss_dump_file_data *dump)
 			file_full_path);
 		return status;
 	}
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
 	set_fs(fs);
+#endif
 	cnss_pr_err("exit\n");
 	return status;
 }
