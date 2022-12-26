@@ -27,6 +27,12 @@
 #define CNSS_MAX_FILE_NAME		20
 #define CNSS_MAX_TIMESTAMP_LEN		32
 
+#ifndef fallthrough
+
+#define fallthrough do {} while (0) /* fallthrough */
+
+#endif
+
 /*
  * Temporary change for compilation, will be removed
  * after WLAN host driver switched to use new APIs
