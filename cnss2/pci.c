@@ -1587,7 +1587,7 @@ int cnss_pci_alloc_fw_mem(struct cnss_pci_data *pci_priv)
 	struct cnss_fw_mem *fw_mem = plat_priv->fw_mem;
 	int i;
 	size_t alloc_size;
-	const uint32_t align = FW_MEM_DEFAULT_ALIGNMENT - 1;
+	const uint64_t align = FW_MEM_DEFAULT_ALIGNMENT - 1;
 
 	for (i = 0; i < plat_priv->fw_mem_seg_len; i++) {
 		if (!fw_mem[i].va && fw_mem[i].size) {
@@ -1632,7 +1632,7 @@ static void cnss_pci_free_fw_mem(struct cnss_pci_data *pci_priv)
 	struct cnss_fw_mem *fw_mem = plat_priv->fw_mem;
 	int i;
 	size_t alloc_size;
-	const uint32_t align = FW_MEM_DEFAULT_ALIGNMENT - 1;
+	const uint64_t align = FW_MEM_DEFAULT_ALIGNMENT - 1;
 
 	for (i = 0; i < plat_priv->fw_mem_seg_len; i++) {
 		if (fw_mem[i].pre_aligned && fw_mem[i].size) {
