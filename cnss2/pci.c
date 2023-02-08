@@ -6400,7 +6400,8 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 		cnss_pci_wake_gpio_init(pci_priv);
 #ifdef CONFIG_CNSS2_X86
 		/* check if it's really needed to disable aspm */
-		cnss_pci_disable_aspm(pci_priv);
+		if (!test_bit(ENABLE_PCI_LINK_PS, &plat_priv->ctrl_params.quirks))
+			cnss_pci_disable_aspm(pci_priv);
 #endif
 		break;
 	default:

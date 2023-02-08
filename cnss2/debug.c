@@ -735,6 +735,9 @@ static int cnss_show_quirks_state(struct seq_file *s,
 		case ENABLE_SSR:
 			seq_puts(s, "ENABLE_SSR");
 			continue;
+		case ENABLE_PCI_LINK_PS:
+			seq_puts(s, "ENABLE_PCI_LINK_PS");
+			continue;
 		}
 
 		seq_printf(s, "UNKNOWN-%d", i);
