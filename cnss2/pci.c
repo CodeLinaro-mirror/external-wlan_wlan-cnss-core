@@ -5504,6 +5504,36 @@ static void cnss_pci_send_hang_event(struct cnss_pci_data *pci_priv)
 	kfree(hang_event.hang_event_data);
 	hang_event.hang_event_data = NULL;
 }
+#ifdef CONFIG_CNSS2_SSR_DRIVER_DUMP
+void cnss_pci_collect_host_dump_info(struct cnss_pci_data *pci_priv)
+{
+	struct cnss_ssr_driver_dump_entry ssr_entry[CNSS_HOST_DUMP_TYPE_MAX] = {0};
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
+	size_t num_entries_loaded = 0;
+	int x;
+	int ret = -1;
+
+	if (pci_priv->driver_ops &&
+	    pci_priv->driver_ops->collect_driver_dump) {
+		ret = pci_priv->driver_ops->collect_driver_dump(pci_priv->pci_dev,
+								ssr_entry,
+								&num_entries_loaded);
+	}
+
+	if (!ret) {
+		for (x = 0; x < num_entries_loaded; x++) {
+			cnss_pr_info("Idx:%d, ptr: %p, name: %s, size: %d\n",
+				     x, ssr_entry[x].buffer_pointer,
+				     ssr_entry[x].region_name,
+				     ssr_entry[x].buffer_size);
+		}
+
+		cnss_do_host_ramdump(plat_priv, ssr_entry, num_entries_loaded);
+	} else {
+		cnss_pr_info("Host SSR elf dump collection feature disabled\n");
+	}
+}
+#endif
 
 void cnss_pci_collect_dump_info(struct cnss_pci_data *pci_priv, bool in_panic)
 {
@@ -5673,9 +5703,21 @@ void cnss_pci_clear_dump_info(struct cnss_pci_data *pci_priv)
 
 void cnss_pci_device_crashed(struct cnss_pci_data *pci_priv)
 {
-	if (!pci_priv)
-		return;
+	struct cnss_plat_data *plat_priv;
 
+	if (!pci_priv) {
+		cnss_pr_err("pci_priv is NULL\n");
+		return;
+	}
+
+	plat_priv = pci_priv->plat_priv;
+	if (!plat_priv) {
+		cnss_pr_err("plat_priv is NULL\n");
+		return;
+	}
+
+	if (plat_priv->recovery_enabled)
+		cnss_pci_collect_host_dump_info(pci_priv);
 	cnss_device_crashed(&pci_priv->pci_dev->dev);
 }
 

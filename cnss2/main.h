@@ -264,6 +264,14 @@ struct cnss_dump_meta_info {
 	struct cnss_dump_entry entry[CNSS_FW_DUMP_TYPE_MAX];
 };
 
+struct cnss_host_dump_meta_info {
+	u32 magic;
+	u32 version;
+	u32 chipset;
+	u32 total_entries;
+	struct cnss_dump_entry entry[CNSS_HOST_DUMP_TYPE_MAX];
+};
+
 enum cnss_driver_event_type {
 	CNSS_DRIVER_EVENT_SERVER_ARRIVE,
 	CNSS_DRIVER_EVENT_SERVER_EXIT,
@@ -637,6 +645,9 @@ int cnss_register_ramdump(struct cnss_plat_data *plat_priv);
 void cnss_unregister_ramdump(struct cnss_plat_data *plat_priv);
 int cnss_do_ramdump(struct cnss_plat_data *plat_priv);
 int cnss_do_elf_ramdump(struct cnss_plat_data *plat_priv);
+int cnss_do_host_ramdump(struct cnss_plat_data *plat_priv,
+			 struct cnss_ssr_driver_dump_entry *ssr_entry,
+			 size_t num_entries_loaded);
 void cnss_set_pin_connect_status(struct cnss_plat_data *plat_priv);
 int cnss_get_cpr_info(struct cnss_plat_data *plat_priv);
 int cnss_update_cpr_info(struct cnss_plat_data *plat_priv);
