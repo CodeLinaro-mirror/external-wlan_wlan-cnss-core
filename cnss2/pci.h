@@ -331,4 +331,7 @@ void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv);
 
 #define PCIE_HW_REVISION_REG 0x01A10010
 
+int cnss_pci_set_therm_cdev_state(struct cnss_pci_data *pci_priv,
+				  unsigned long thermal_state,
+				  int tcdev_id);
 #endif /* _CNSS_PCI_H */
