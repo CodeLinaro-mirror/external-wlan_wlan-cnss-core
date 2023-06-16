@@ -2430,14 +2430,6 @@ int cnss_do_ramdump(struct cnss_plat_data *plat_priv)
 	return 0;
 }
 
-/* Using completion event inside dynamically allocated ramdump_desc
- * may result a race between freeing the event after setting it to
- * complete inside dev coredump free callback and the thread that is
- * waiting for completion.
- */
-DECLARE_COMPLETION(dump_done);
-#define TIMEOUT_SAVE_DUMP_MS 30000
-
 #define SIZEOF_ELF_STRUCT(__xhdr)					\
 static inline size_t sizeof_elf_##__xhdr(unsigned char class)		\
 {									\
@@ -2479,7 +2471,6 @@ struct cnss_qcom_dump_segment {
 
 struct cnss_qcom_ramdump_desc {
 	void *data;
-	struct completion dump_done;
 };
 
 static ssize_t cnss_qcom_devcd_readv(char *buffer, loff_t offset, size_t count,
@@ -2497,7 +2488,6 @@ static void cnss_qcom_devcd_freev(void *data)
 
 	cnss_pr_dbg("Free dump data for dev coredump\n");
 
-	complete(&dump_done);
 	vfree(desc->data);
 	kfree(desc);
 }
@@ -2506,26 +2496,18 @@ int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
 				gfp_t gfp)
 {
 	struct cnss_qcom_ramdump_desc *desc;
-	unsigned int timeout = TIMEOUT_SAVE_DUMP_MS;
-	int ret;
+	int ret = 0;
 
 	desc = kmalloc(sizeof(*desc), GFP_KERNEL);
 	if (!desc)
 		return -ENOMEM;
 
 	desc->data = data;
-	reinit_completion(&dump_done);
 
 	dev_coredumpm(dev, NULL, desc, datalen, gfp,
 		      cnss_qcom_devcd_readv, cnss_qcom_devcd_freev);
 
-	ret = wait_for_completion_timeout(&dump_done,
-					  msecs_to_jiffies(timeout));
-	if (!ret)
-		cnss_pr_err("Timeout waiting (%dms) for saving dump to file system\n",
-			    timeout);
-
-	return ret ? 0 : -ETIMEDOUT;
+	return ret;
 }
 
 /* Since the elf32 and elf64 identification is identical apart from
