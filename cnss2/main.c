@@ -2492,6 +2492,24 @@ static void cnss_qcom_devcd_freev(void *data)
 	kfree(desc);
 }
 
+#define QCA_DUMP_BIN_PATH "/usr/sbin/qca-dump"
+
+static int cnss_run_dump_script(char *qca_dump_bin_path)
+{
+	int ret;
+
+	char *cmd_argv[] = {qca_dump_bin_path, NULL};
+	char *cmd_envp[] = {NULL};
+
+	ret = call_usermodehelper(cmd_argv[0], cmd_argv, cmd_envp, UMH_WAIT_PROC);
+	if (!ret)
+		cnss_pr_info("%s succeed", qca_dump_bin_path);
+	else
+		cnss_pr_err("failed to call usermodehelper: %d\n", ret);
+
+	return ret;
+}
+
 int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
 				gfp_t gfp)
 {
@@ -2506,6 +2524,8 @@ int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
 
 	dev_coredumpm(dev, NULL, desc, datalen, gfp,
 		      cnss_qcom_devcd_readv, cnss_qcom_devcd_freev);
+
+	cnss_run_dump_script(QCA_DUMP_BIN_PATH);
 
 	return ret;
 }
