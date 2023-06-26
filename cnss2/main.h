@@ -310,4 +310,6 @@ int cnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list,
 				 u16 *ch_count, u16 buf_len);
 int cnss_wlan_set_dfs_nol(const void *info, u16 info_len);
 int cnss_wlan_get_dfs_nol(void *info, u16 info_len);
+size_t cnss_get_platform_name(struct cnss_plat_data *plat_priv,
+			      char *buf, const size_t buf_len);
 #endif /* _CNSS_MAIN_H */

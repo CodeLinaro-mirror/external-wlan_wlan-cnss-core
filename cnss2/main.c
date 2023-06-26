@@ -144,6 +144,35 @@ static struct notifier_block cnss_pm_notifier = {
 	.notifier_call = cnss_pm_notify,
 };
 
+size_t cnss_get_platform_name(struct cnss_plat_data *plat_priv,
+			      char *buf, const size_t buf_len)
+{
+	if (unlikely(!plat_priv || !buf || !buf_len))
+		return 0;
+
+	if (of_property_read_bool(plat_priv->plat_dev->dev.of_node,
+				  "platform-name-required")) {
+		struct device_node *root;
+
+		root = of_find_node_by_path("/");
+		if (root) {
+			const char *model;
+			size_t model_len;
+
+			model = of_get_property(root, "model", NULL);
+			if (model) {
+				model_len = strlcpy(buf, model, buf_len);
+				cnss_pr_dbg("Platform name: %s (%zu)\n",
+					    buf, model_len);
+
+				return model_len;
+			}
+		}
+	}
+
+	return 0;
+}
+
 static void cnss_pm_stay_awake(struct cnss_plat_data *plat_priv)
 {
 	if (atomic_inc_return(&plat_priv->pm_count) != 1)
