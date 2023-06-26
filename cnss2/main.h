@@ -678,4 +678,6 @@ int cnss_save_buf_to_file(char *buf, u32 buf_len, char *file_name);
 #define FW_SRAM_DUMP "fw_sram"
 #define HOST_RAM_DUMP "host_ram"
 int cnss_invoke_qca_dump_app(char *type);
+size_t cnss_get_platform_name(struct cnss_plat_data *plat_priv,
+			      char *buf, const size_t buf_len);
 #endif /* _CNSS_MAIN_H */
