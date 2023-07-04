@@ -1910,6 +1910,21 @@ static int cnss_pci_config_msi_data(struct cnss_pci_data *pci_priv)
 	return 0;
 }
 
+#ifdef CONFIG_ONE_MSI_VECTOR
+static int cnss_pci_irq_set_affinity_hint(struct cnss_pci_data *pci_priv,
+					  unsigned int vec,
+					  const struct cpumask *cpumask)
+{
+	int ret;
+	struct pci_dev *pci_dev = pci_priv->pci_dev;
+
+	ret = irq_set_affinity_hint(pci_irq_vector(pci_dev, vec),
+				    cpumask);
+
+	return ret;
+}
+#endif
+
 static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 {
 	int ret = 0;
@@ -1941,12 +1956,33 @@ static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 		goto reset_msi_config;
 	}
 
+#ifdef CONFIG_ONE_MSI_VECTOR
+	/* With VT-d disabled on x86 platform, only one pci irq vector is
+	 * allocated. Once suspend the irq may be migrated to CPU0 if it was
+	 * affine to other CPU with one new msi vector re-allocated.
+	 * The observation cause the issue about no irq handler for vector
+	 * once resume.
+	 * The fix is to set irq vector affinity to CPU0 before calling
+	 * request_irq to avoid the irq migration.
+	 */
+	ret = cnss_pci_irq_set_affinity_hint(pci_priv,
+					     0,
+					     cpumask_of(0));
+	if (ret) {
+		cnss_pr_err("Failed to affinize irq vector to CPU0\n");
+		goto disable_msi;
+	}
+#endif
+
 	if (cnss_pci_config_msi_data(pci_priv))
 		goto disable_msi;
 
 	return 0;
 
 disable_msi:
+#ifdef CONFIG_ONE_MSI_VECTOR
+	cnss_pci_irq_set_affinity_hint(pci_priv, 0, NULL);
+#endif
 	pci_disable_msi(pci_priv->pci_dev);
 reset_msi_config:
 	pci_priv->msi_config = NULL;
@@ -1956,6 +1992,9 @@ out:
 
 static void cnss_pci_disable_msi(struct cnss_pci_data *pci_priv)
 {
+#ifdef CONFIG_ONE_MSI_VECTOR
+	cnss_pci_irq_set_affinity_hint(pci_priv, 0, NULL);
+#endif
 	pci_disable_msi(pci_priv->pci_dev);
 }
 
