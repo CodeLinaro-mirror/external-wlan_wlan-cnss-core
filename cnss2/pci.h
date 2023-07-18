@@ -266,6 +266,7 @@ int cnss_pci_get_iova_ipa(struct cnss_pci_data *pci_priv, u64 *addr,
 
 void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on);
 void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv);
+int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv);
 
 #define PCIE_TXVECDB (0x360)
 #define PCIE_TXVECSTATUS (0x368)
@@ -330,6 +331,9 @@ void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv);
 #define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG_MSK  0x000000FF
 
 #define PCIE_HW_REVISION_REG 0x01A10010
+
+#define KIWI_PCIE_FW_SRAM_IO_START 0x01400000
+#define KIWI_PCIE_FW_SRAM_IO_END 0x0177ffff
 
 int cnss_pci_set_therm_cdev_state(struct cnss_pci_data *pci_priv,
 				  unsigned long thermal_state,

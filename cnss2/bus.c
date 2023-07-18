@@ -207,6 +207,21 @@ int cnss_bus_force_fw_assert_hdlr(struct cnss_plat_data *plat_priv)
 	}
 }
 
+int cnss_bus_dump_fw_sram(struct cnss_plat_data *plat_priv)
+{
+	if (!plat_priv)
+		return -ENODEV;
+
+	switch (plat_priv->bus_type) {
+	case CNSS_BUS_PCI:
+		return cnss_pci_dump_fw_sram(plat_priv->bus_priv);
+	default:
+		cnss_pr_err("Unsupported bus type: %d\n",
+			    plat_priv->bus_type);
+		return -EINVAL;
+	}
+}
+
 int cnss_bus_qmi_send_get(struct cnss_plat_data *plat_priv)
 {
 	if (!plat_priv)
