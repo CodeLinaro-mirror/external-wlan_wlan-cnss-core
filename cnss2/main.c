@@ -3635,7 +3635,7 @@ static void cnss_init_control_params(struct cnss_plat_data *plat_priv)
 {
 	plat_priv->ctrl_params.quirks = quirks;
 
-	plat_priv->cbc_enabled = false;
+	plat_priv->cbc_enabled = test_bit(ENABLE_CBC, &plat_priv->ctrl_params.quirks);
 
 	plat_priv->ctrl_params.mhi_timeout = CNSS_MHI_TIMEOUT_DEFAULT;
 	plat_priv->ctrl_params.mhi_m2_timeout = CNSS_MHI_M2_TIMEOUT_DEFAULT;

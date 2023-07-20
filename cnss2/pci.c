@@ -6479,6 +6479,12 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 	 *cnss_pci_register_driver_hdlr(pci_priv, NULL);
 	 */
 
+	if (plat_priv->cbc_enabled) {
+		cnss_driver_event_post(plat_priv,
+				CNSS_DRIVER_EVENT_COLD_BOOT_CAL_START,
+				0, NULL);
+	}
+
 	return 0;
 
 unreg_mhi:

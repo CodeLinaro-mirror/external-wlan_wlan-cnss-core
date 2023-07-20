@@ -355,6 +355,7 @@ enum cnss_debug_quirks {
 	FORCE_ONE_MSI,
 	ENABLE_SSR,
 	ENABLE_PCI_LINK_PS,
+	ENABLE_CBC,
 };
 
 enum cnss_bdf_type {

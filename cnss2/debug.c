@@ -741,6 +741,9 @@ static int cnss_show_quirks_state(struct seq_file *s,
 		case ENABLE_PCI_LINK_PS:
 			seq_puts(s, "ENABLE_PCI_LINK_PS");
 			continue;
+		case ENABLE_CBC:
+			seq_puts(s, "ENABLE_CBC");
+			continue;
 		}
 
 		seq_printf(s, "UNKNOWN-%d", i);
