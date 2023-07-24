@@ -597,3 +597,20 @@ int cnss_bus_set_therm_cdev_state(struct cnss_plat_data *plat_priv,
 		return -EINVAL;
 	}
 }
+
+int cnss_bus_update_time_sync_period(struct cnss_plat_data *plat_priv,
+				     unsigned int time_sync_period)
+{
+	if (!plat_priv)
+		return -ENODEV;
+
+	switch (plat_priv->bus_type) {
+	case CNSS_BUS_PCI:
+		return cnss_pci_update_time_sync_period(plat_priv->bus_priv,
+							time_sync_period);
+	default:
+		cnss_pr_err("Unsupported bus type: %d\n",
+			    plat_priv->bus_type);
+		return -EINVAL;
+	}
+}

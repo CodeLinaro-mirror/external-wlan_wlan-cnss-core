@@ -2466,6 +2466,25 @@ int cnss_pci_set_therm_cdev_state(struct cnss_pci_data *pci_priv,
 							 tcdev_id);
 }
 
+int cnss_pci_update_time_sync_period(struct cnss_pci_data *pci_priv,
+				     unsigned int time_sync_period)
+{
+	struct cnss_plat_data *plat_priv;
+
+	if (!pci_priv)
+		return -ENODEV;
+
+	plat_priv = pci_priv->plat_priv;
+
+	cnss_pci_stop_time_sync_update(pci_priv);
+	plat_priv->ctrl_params.time_sync_period = time_sync_period;
+	cnss_pci_start_time_sync_update(pci_priv);
+	cnss_pr_dbg("WLAN time sync period %u ms\n",
+		    plat_priv->ctrl_params.time_sync_period);
+
+	return 0;
+}
+
 int cnss_pci_call_driver_probe(struct cnss_pci_data *pci_priv)
 {
 	int ret = 0;
