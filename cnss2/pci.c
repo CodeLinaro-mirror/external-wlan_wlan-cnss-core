@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/cma.h>
@@ -5703,21 +5703,12 @@ void cnss_pci_clear_dump_info(struct cnss_pci_data *pci_priv)
 
 void cnss_pci_device_crashed(struct cnss_pci_data *pci_priv)
 {
-	struct cnss_plat_data *plat_priv;
-
 	if (!pci_priv) {
 		cnss_pr_err("pci_priv is NULL\n");
 		return;
 	}
 
-	plat_priv = pci_priv->plat_priv;
-	if (!plat_priv) {
-		cnss_pr_err("plat_priv is NULL\n");
-		return;
-	}
-
-	if (plat_priv->recovery_enabled)
-		cnss_pci_collect_host_dump_info(pci_priv);
+	cnss_pci_collect_host_dump_info(pci_priv);
 	cnss_device_crashed(&pci_priv->pci_dev->dev);
 }
 
