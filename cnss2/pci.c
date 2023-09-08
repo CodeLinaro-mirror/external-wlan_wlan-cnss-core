@@ -5890,10 +5890,8 @@ static char *cnss_mhi_notify_status_to_str(enum mhi_callback status)
 		return "FATAL_ERROR";
 	case MHI_CB_EE_MISSION_MODE:
 		return "MISSION_MODE";
-#if IS_ENABLED(CONFIG_MHI_BUS_MISC)
 	case MHI_CB_FALLBACK_IMG:
 		return "FW_FALLBACK";
-#endif
 	default:
 		return "UNKNOWN";
 	}
@@ -5994,7 +5992,6 @@ static void cnss_mhi_notify_status(struct mhi_controller *mhi_ctrl,
 		cnss_pci_update_status(pci_priv, CNSS_FW_DOWN);
 		cnss_reason = CNSS_REASON_RDDM;
 		break;
-#if IS_ENABLED(CONFIG_MHI_BUS_MISC)
 	case MHI_CB_FALLBACK_IMG:
 		/* for kiwi_v2 binary fallback is used, skip path fallback here */
 		if (!(pci_priv->device_id == KIWI_DEVICE_ID &&
@@ -6003,7 +6000,6 @@ static void cnss_mhi_notify_status(struct mhi_controller *mhi_ctrl,
 			cnss_pci_update_fw_name(pci_priv);
 		}
 		return;
-#endif
 	default:
 		cnss_pr_err("Unsupported MHI status cb reason: %d\n", reason);
 		return;
@@ -6143,9 +6139,7 @@ static int cnss_pci_register_mhi(struct cnss_pci_data *pci_priv)
 	mhi_ctrl->cntrl_dev = &pci_dev->dev;
 
 	mhi_ctrl->fw_image = plat_priv->firmware_name;
-#if IS_ENABLED(CONFIG_MHI_BUS_MISC)
 	mhi_ctrl->fallback_fw_image = plat_priv->fw_fallback_name;
-#endif
 
 	mhi_ctrl->regs = pci_priv->bar;
 	mhi_ctrl->reg_len = pci_resource_len(pci_priv->pci_dev, PCI_BAR_NUM);
