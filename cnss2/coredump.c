@@ -191,6 +191,7 @@ static int cnss_coredump_submit(struct cnss_pci_data *pci_priv)
 
 	cnss_save_buf_to_file((char *)dump, dump->len, "/var/crash/Trieste%s.bin");
 	cnss_qcom_devcd_dump(pci_priv->mhi_ctrl->cntrl_dev, dump, le32_to_cpu(dump->len), GFP_KERNEL);
+	cnss_invoke_qca_dump_app(FW_RDDM_DUMP);
 
 	return 0;
 }

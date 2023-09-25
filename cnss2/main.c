@@ -2546,8 +2546,6 @@ int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
 	dev_coredumpm(dev, NULL, desc, datalen, gfp,
 		      cnss_qcom_devcd_readv, cnss_qcom_devcd_freev);
 
-	cnss_invoke_qca_dump_app(FW_RDDM_DUMP);
-
 	return ret;
 }
 
@@ -2807,6 +2805,7 @@ int cnss_do_host_ramdump(struct cnss_plat_data *plat_priv,
 	seg->size = sizeof(meta_info);
 	list_add(&seg->node, &head);
 	ret = qcom_elf_dump(&head, new_device, ELF_CLASS);
+	cnss_invoke_qca_dump_app(HOST_RAM_DUMP);
 	while (!list_empty(&head)) {
 		seg = list_first_entry(&head, struct qcom_dump_segment, node);
 		list_del(&seg->node);
