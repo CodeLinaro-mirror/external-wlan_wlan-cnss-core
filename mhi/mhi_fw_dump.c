@@ -241,26 +241,6 @@ int fw_paging_dump(struct mhi_device_ctxt *mhi_dev_ctxt,
 	}
 
 	pos = 0;
-	paging_header.version = 0;
-	paging_header.seg_num = fw_table->segment_count-1;
-	memcpy(paging_dump_header, &paging_header, sizeof(paging_header));
-	buf = fw_table->bhie_mem_info[paging_header.seg_num].aligned;
-	size = fw_table->bhie_mem_info[paging_header.seg_num].size;
-	memcpy(paging_dump_header+sizeof(paging_header), buf, size);
-	status = vfs_write(fp,
-			paging_dump_header,
-			sizeof(paging_dump_header),
-			&pos);
-	if (status < 0) {
-		mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
-			"write file:%s error\n", file_full_path);
-		return status;
-	}
-	mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
-			"to write file:%s, mem: 0x%p, size: 0x%x\n",
-			file_full_path,
-			paging_dump_header,
-			(unsigned int)sizeof(paging_dump_header));
 	for (seg = 0; seg < fw_table->segment_count-1; seg++) {
 		buf = fw_table->bhie_mem_info[seg].aligned;
 		size = fw_table->bhie_mem_info[seg].size;
