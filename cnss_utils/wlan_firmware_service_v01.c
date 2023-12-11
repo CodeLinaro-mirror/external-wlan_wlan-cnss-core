@@ -6083,29 +6083,6 @@ struct qmi_elem_info wlfw_phy_cap_resp_msg_v01_ei[] = {
 };
 EXPORT_SYMBOL(wlfw_phy_cap_resp_msg_v01_ei);
 
-/**
- * wlfw_is_valid_dt_node_found - Check if valid device tree node present
- *
- * Valid device tree node means a node with "qcom,wlan" property present and
- * "status" property not disabled.
- *
- * Return: true if valid device tree node found, false if not found
- */
-static bool wlfw_is_valid_dt_node_found(void)
-{
-	struct device_node *dn = NULL;
-
-	for_each_node_with_property(dn, "qcom,wlan") {
-		if (of_device_is_available(dn))
-			break;
-	}
-
-	if (dn)
-		return true;
-
-	return false;
-}
-
 #ifdef CONFIG_WLAN_CNSS_CORE
 int wlfw_init(void)
 #else
