@@ -2525,6 +2525,7 @@ static void cnss_qcom_devcd_freev(void *data)
 	kfree(desc);
 }
 
+#ifdef CONFIG_DUMP_FW_BY_UMH
 int cnss_invoke_qca_dump_app(char *type)
 {
 	int ret;
@@ -2540,6 +2541,12 @@ int cnss_invoke_qca_dump_app(char *type)
 
 	return ret;
 }
+#else
+int cnss_invoke_qca_dump_app(char *type)
+{
+	return 0;
+}
+#endif
 
 int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
 				gfp_t gfp)
