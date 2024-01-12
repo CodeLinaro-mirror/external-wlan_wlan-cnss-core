@@ -7013,7 +7013,7 @@ void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on)
 }
 void cnss_pci_shutdown(struct pci_dev *pdev)
 {
-	cnss_pci_sw_reset(pdev, false);
+	cnss_pr_info("pci shutdown\n");
 }
 
 void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv)
