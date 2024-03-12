@@ -322,6 +322,7 @@ static struct qmi_svc_clnt_conn *add_svc_clnt_conn(
 	conn_h->clnt_addr = kmalloc(clnt_addr_len, GFP_KERNEL);
 	if (!conn_h->clnt_addr) {
 		pr_err("%s: Error allocating clnt_addr\n", __func__);
+		kfree(conn_h);
 		return NULL;
 	}
 
@@ -1774,6 +1775,7 @@ int qmi_connect_to_service(struct qmi_handle *handle,
 	if (rc <= 0) {
 		pr_err("%s: Server %08x:%08x not found\n",
 			__func__, service_id, instance_id);
+		kfree(svc_dest_addr);
 		return -ENODEV;
 	}
 	svc_dest_addr->addrtype = MSM_IPC_ADDR_ID;
@@ -1782,6 +1784,7 @@ int qmi_connect_to_service(struct qmi_handle *handle,
 	mutex_lock(&handle->handle_lock);
 	if (handle->handle_reset) {
 		mutex_unlock(&handle->handle_lock);
+		kfree(svc_dest_addr);
 		return -ENETRESET;
 	}
 	handle->dest_info = svc_dest_addr;

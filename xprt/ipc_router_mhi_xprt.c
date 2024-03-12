@@ -279,6 +279,7 @@ int mhi_xprt_queue_in_buffers(struct ipc_router_mhi_xprt *mhi_xprtp,
 					skb->data) < 0) {
 			IPC_RTR_ERR("%s: Could not map %d SKB address\n",
 					__func__, (i + 1));
+			kfree_skb(skb);
 			break;
 		}
 		mutex_lock(&mhi_xprtp->ch_hndl.in_skbq_lock);

@@ -481,8 +481,10 @@ int cnss_wlfw_respond_mem_send_sync(struct cnss_plat_data *plat_priv)
 		return -ENOMEM;
 
 	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
-	if (!resp)
+	if (!resp) {
+		kfree(req);
 		return -ENOMEM;
+	}
 
 	req->mem_seg_len = plat_priv->fw_mem_seg_len;
 	for (i = 0; i < req->mem_seg_len; i++) {
