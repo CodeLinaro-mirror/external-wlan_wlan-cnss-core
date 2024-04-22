@@ -172,7 +172,7 @@ enum cnss_driver_state {
 	CNSS_QMI_WLFW_CONNECTED,
 	CNSS_FW_MEM_READY,
 	CNSS_FW_READY,
-	CNSS_COLD_BOOT_CAL,
+	CNSS_IN_COLD_BOOT_CAL,
 	CNSS_DRIVER_LOADING,
 	CNSS_DRIVER_UNLOADING,
 	CNSS_DRIVER_PROBED,
@@ -181,6 +181,8 @@ enum cnss_driver_state {
 	CNSS_DEV_ERR_NOTIFY,
 	CNSS_DRIVER_DEBUG,
 	CNSS_DEV_REMOVED,
+	CNSS_COLD_BOOT_CAL_DONE,
+	CNSS_PCI_PROBE_DONE,
 };
 
 struct cnss_recovery_data {
@@ -212,6 +214,7 @@ enum cnss_debug_quirks {
 	USE_CORE_ONLY_FW,
 	SKIP_RECOVERY,
 	ENABLE_PCI_LINK_PS,
+	ENABLE_CBC,
 };
 
 enum cnss_bdf_type {
@@ -249,6 +252,7 @@ struct cnss_plat_data {
 	spinlock_t event_lock; /* spinlock for driver work event handling */
 	struct work_struct event_work;
 	struct workqueue_struct *event_wq;
+	struct delayed_work wlan_reg_driver_work;
 	struct qmi_handle *qmi_wlfw_clnt;
 	struct work_struct qmi_recv_msg_work;
 	struct notifier_block qmi_wlfw_clnt_nb;

@@ -495,7 +495,7 @@ int cnss_pci_call_driver_remove(struct cnss_pci_data *pci_priv)
 
 	plat_priv = pci_priv->plat_priv;
 
-	if (test_bit(CNSS_COLD_BOOT_CAL, &plat_priv->driver_state) ||
+	if (test_bit(CNSS_IN_COLD_BOOT_CAL, &plat_priv->driver_state) ||
 	    test_bit(CNSS_FW_BOOT_RECOVERY, &plat_priv->driver_state) ||
 	    test_bit(CNSS_DRIVER_DEBUG, &plat_priv->driver_state)) {
 		cnss_pr_dbg("Skip driver remove\n");
@@ -910,11 +910,34 @@ int cnss_pci_dev_ramdump(struct cnss_pci_data *pci_priv)
 }
 #endif
 
+static void cnss_wlan_reg_driver_work(struct work_struct *work)
+{
+	struct cnss_plat_data *plat_priv =
+	container_of(work, struct cnss_plat_data, wlan_reg_driver_work.work);
+	struct cnss_pci_data *pci_priv = plat_priv->bus_priv;
+
+	if (test_bit(CNSS_COLD_BOOT_CAL_DONE, &plat_priv->driver_state)) {
+		goto reg_driver;
+	} else {
+		cnss_pr_err("Timeout waiting for calibration to complete\n");
+		del_timer(&plat_priv->fw_boot_timer);
+		cnss_driver_event_post(plat_priv,
+				       CNSS_DRIVER_EVENT_COLD_BOOT_CAL_DONE,
+				       0, NULL);
+	}
+reg_driver:
+	cnss_driver_event_post(plat_priv,
+			       CNSS_DRIVER_EVENT_REGISTER_DRIVER,
+			       CNSS_EVENT_SYNC_UNINTERRUPTIBLE,
+			       pci_priv->driver_ops);
+}
+
 int cnss_wlan_register_driver(struct cnss_wlan_driver *driver_ops)
 {
 	int ret = 0;
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(NULL);
 	struct cnss_pci_data *pci_priv;
+	unsigned int timeout;
 
 	if (!plat_priv) {
 		cnss_pr_err("plat_priv is NULL\n");
@@ -932,6 +955,25 @@ int cnss_wlan_register_driver(struct cnss_wlan_driver *driver_ops)
 		return -EEXIST;
 	}
 
+	if (!test_bit(ENABLE_CBC, &quirks) ||
+	    test_bit(CNSS_COLD_BOOT_CAL_DONE, &plat_priv->driver_state))
+		goto register_driver;
+
+	pci_priv->driver_ops = driver_ops;
+	/* If Cold Boot Calibration is enabled, it is the 1st step in init
+	 * sequence.CBC is done on file system_ready trigger. Qcacld will be
+	 * loaded from vendor_modprobe.sh at early boot and must be deferred
+	 * until CBC is complete
+	 */
+	timeout = cnss_get_qmi_timeout() + 60000 * 2;
+	INIT_DELAYED_WORK(&plat_priv->wlan_reg_driver_work,
+			  cnss_wlan_reg_driver_work);
+	schedule_delayed_work(&plat_priv->wlan_reg_driver_work,
+			      msecs_to_jiffies(timeout));
+	cnss_pr_info("WLAN register driver deferred for Calibration\n");
+	return 0;
+
+register_driver:
 	ret = cnss_driver_event_post(plat_priv,
 				     CNSS_DRIVER_EVENT_REGISTER_DRIVER,
 				     CNSS_EVENT_SYNC_UNINTERRUPTIBLE,
@@ -2865,6 +2907,13 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 			cnss_pr_err("Failed to suspend PCI link, err = %d\n",
 				    ret);
 		cnss_power_off_device(plat_priv);
+		set_bit(CNSS_PCI_PROBE_DONE, &plat_priv->driver_state);
+
+		if (test_bit(ENABLE_CBC, &quirks)) {
+			cnss_driver_event_post(plat_priv,
+					CNSS_DRIVER_EVENT_COLD_BOOT_CAL_START,
+					0, NULL);
+		}
 #endif
 		break;
 	default:

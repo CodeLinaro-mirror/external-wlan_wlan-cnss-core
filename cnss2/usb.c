@@ -235,7 +235,7 @@ int cnss_usb_call_driver_remove(struct cnss_usb_data *usb_priv)
 #ifndef CONFIG_USB_EMULATION
 	struct cnss_plat_data *plat_priv = usb_priv->plat_priv;
 
-	if (test_bit(CNSS_COLD_BOOT_CAL, &plat_priv->driver_state) ||
+	if (test_bit(CNSS_IN_COLD_BOOT_CAL, &plat_priv->driver_state) ||
 	    test_bit(CNSS_FW_BOOT_RECOVERY, &plat_priv->driver_state) ||
 	    test_bit(CNSS_DRIVER_DEBUG, &plat_priv->driver_state)) {
 		cnss_pr_dbg("Skip driver remove\n");

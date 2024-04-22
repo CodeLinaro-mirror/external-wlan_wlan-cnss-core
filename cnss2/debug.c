@@ -79,8 +79,8 @@ static int cnss_stats_show_state(struct seq_file *s,
 		case CNSS_FW_READY:
 			seq_puts(s, "FW_READY");
 			continue;
-		case CNSS_COLD_BOOT_CAL:
-			seq_puts(s, "COLD_BOOT_CAL");
+		case CNSS_IN_COLD_BOOT_CAL:
+			seq_puts(s, "IN_COLD_BOOT_CAL");
 			continue;
 		case CNSS_DRIVER_LOADING:
 			seq_puts(s, "DRIVER_LOADING");
@@ -105,6 +105,12 @@ static int cnss_stats_show_state(struct seq_file *s,
 			continue;
 		case CNSS_DEV_REMOVED:
 			seq_puts(s, "DEV_REMOVED");
+			continue;
+		case CNSS_COLD_BOOT_CAL_DONE:
+			seq_puts(s, "COLD_BOOT_CAL_DONE");
+			continue;
+		case CNSS_PCI_PROBE_DONE:
+			seq_puts(s, "PCI PROBE DONE");
 			continue;
 		}
 

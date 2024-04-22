@@ -55,6 +55,9 @@
 #define CNSS_EVENT_PENDING		2989
 #define CE_MSI_NAME			"CE"
 
+#define CNSS_CAL_START_PROBE_WAIT_RETRY_MAX 100
+#define CNSS_CAL_START_PROBE_WAIT_MS	500
+
 #define FW_SRAM_START_QCA6390		0x01400000
 #define FW_SRAM_END_QCA6390			0x0171ffff
 #define FW_SRAM_START_QCA6490		0x01400000
@@ -653,7 +656,7 @@ static int cnss_fw_ready_hdlr(struct cnss_plat_data *plat_priv)
 	if (enable_waltest) {
 		ret = cnss_wlfw_wlan_mode_send_sync(plat_priv,
 						    QMI_WLFW_WALTEST_V01);
-	} else if (test_bit(CNSS_COLD_BOOT_CAL, &plat_priv->driver_state)) {
+	} else if (test_bit(CNSS_IN_COLD_BOOT_CAL, &plat_priv->driver_state)) {
 
 #ifdef CONFIG_USB_EMULATION
 		is_done = true;
@@ -1432,12 +1435,51 @@ cnss_export_symbol(cnss_qmi_send);
 static int cnss_cold_boot_cal_start_hdlr(struct cnss_plat_data *plat_priv)
 {
 	int ret = 0;
-	cnss_pr_err("%s %d  \n",__func__,__LINE__);
-	set_bit(CNSS_COLD_BOOT_CAL, &plat_priv->driver_state);
-	ret = cnss_bus_dev_powerup(plat_priv);
-	if (ret)
-		clear_bit(CNSS_COLD_BOOT_CAL, &plat_priv->driver_state);
+	u32 retry = 0;
 
+	if (test_bit(CNSS_COLD_BOOT_CAL_DONE, &plat_priv->driver_state)) {
+		cnss_pr_dbg("Calibration complete. Ignore calibration req\n");
+		goto out;
+	} else if (test_bit(CNSS_IN_COLD_BOOT_CAL, &plat_priv->driver_state)) {
+		cnss_pr_dbg("Calibration in progress. Ignore new calibration req\n");
+		goto out;
+	}
+
+	if (test_bit(CNSS_DRIVER_LOADING, &plat_priv->driver_state) ||
+	    test_bit(CNSS_DRIVER_PROBED, &plat_priv->driver_state) ||
+	    test_bit(CNSS_FW_READY, &plat_priv->driver_state)) {
+		cnss_pr_err("WLAN in mission mode before cold boot calibration\n");
+		CNSS_ASSERT(0);
+		return -EINVAL;
+	}
+
+	while (retry++ < CNSS_CAL_START_PROBE_WAIT_RETRY_MAX) {
+		if (test_bit(CNSS_PCI_PROBE_DONE, &plat_priv->driver_state))
+			break;
+		msleep(CNSS_CAL_START_PROBE_WAIT_MS);
+
+		if (retry == CNSS_CAL_START_PROBE_WAIT_RETRY_MAX) {
+			cnss_pr_err("Calibration start failed as PCI probe not complete\n");
+			CNSS_ASSERT(0);
+			ret = -EINVAL;
+			goto mark_cal_fail;
+		}
+	}
+
+	set_bit(CNSS_IN_COLD_BOOT_CAL, &plat_priv->driver_state);
+	ret = cnss_bus_dev_powerup(plat_priv);
+
+mark_cal_fail:
+	if (ret) {
+		clear_bit(CNSS_IN_COLD_BOOT_CAL, &plat_priv->driver_state);
+		/* Set CBC done in driver state to mark attempt and note error
+		 * since calibration cannot be retried at boot.
+		 */
+		plat_priv->cal_done = false;
+		set_bit(CNSS_COLD_BOOT_CAL_DONE, &plat_priv->driver_state);
+	}
+
+out:
 	return ret;
 }
 
@@ -1456,6 +1498,12 @@ static int cnss_cold_boot_cal_done_hdlr(struct cnss_plat_data *plat_priv)
 		goto skip_shutdown;
 	}
 #else
+	if (!test_bit(CNSS_IN_COLD_BOOT_CAL, &plat_priv->driver_state) ||
+	    test_bit(CNSS_COLD_BOOT_CAL_DONE, &plat_priv->driver_state)) {
+		cnss_pr_err("In CBC or CBC already done, ignore\n");
+		goto out;
+	}
+
 	plat_priv->cal_done = true;
 #ifndef FW_FPGA_ONLY_TEST_BYPASS
 	cnss_wlfw_wlan_mode_send_sync(plat_priv, QMI_WLFW_OFF_V01);
@@ -1469,7 +1517,14 @@ static int cnss_cold_boot_cal_done_hdlr(struct cnss_plat_data *plat_priv)
 #endif
 
 skip_shutdown:
-	clear_bit(CNSS_COLD_BOOT_CAL, &plat_priv->driver_state);
+	clear_bit(CNSS_IN_COLD_BOOT_CAL, &plat_priv->driver_state);
+	set_bit(CNSS_COLD_BOOT_CAL_DONE, &plat_priv->driver_state);
+
+	if (cancel_delayed_work_sync(&plat_priv->wlan_reg_driver_work)) {
+		cnss_pr_dbg("Schedule WLAN driver load\n");
+		schedule_delayed_work(&plat_priv->wlan_reg_driver_work, 0);
+	}
+out:	
 	return 0;
 }
 
@@ -2021,7 +2076,8 @@ static ssize_t cnss_fs_ready_store(struct device *dev,
 		return count;
 	}
 
-	if (fs_ready == FILE_SYSTEM_READY) {
+	if (fs_ready == FILE_SYSTEM_READY &&
+		test_bit(ENABLE_CBC, &quirks)) {
 		cnss_driver_event_post(pci_priv->plat_priv,
 				       CNSS_DRIVER_EVENT_COLD_BOOT_CAL_START,
 				       true, NULL);
@@ -2039,7 +2095,7 @@ static int cnss_create_sysfs(struct cnss_plat_data *plat_priv)
 
 	if (!pci_priv || !pci_priv->pci_dev) {
 		cnss_pr_err("PCI device not probed yet\n");
-		goto out;
+		return 0;
 	}
 
 	ret = device_create_file(&pci_priv->pci_dev->dev, &dev_attr_fs_ready);
@@ -2229,22 +2285,13 @@ static int cnss_probe(struct platform_device *plat_dev)
 	if (ret)
 		goto reset_ctx;
 
-	if (!test_bit(SKIP_DEVICE_BOOT, &quirks)) {
-		ret = cnss_power_on_device(plat_priv);
-		if (ret)
-			goto free_res;
-
-		ret = cnss_bus_init(plat_priv);
-		if (ret)
-			goto power_off;
-	}
 
 	ret = cnss_register_esoc(plat_priv);
 	if (ret)
-		goto deinit_bus;
+		goto free_res;
 
 	ret = cnss_register_bus_scale(plat_priv);
-	if (ret)
+	if (ret) 
 		goto unreg_esoc;
 
 	ret = cnss_create_sysfs(plat_priv);
@@ -2269,10 +2316,20 @@ static int cnss_probe(struct platform_device *plat_dev)
 	if (ret)
 		cnss_pr_warn("cnss debugfs create failed");
 
+	if (!test_bit(SKIP_DEVICE_BOOT, &quirks)) {
+		ret = cnss_power_on_device(plat_priv);
+		if (ret)
+			goto remove_debugfs;
+
+		ret = cnss_bus_init(plat_priv);
+		if (ret)
+			goto power_off;
+	}
+
 	if (plat_priv->bus_type == CNSS_BUS_USB) {
 		ret = cnss_alloc_caldb_mem(plat_priv);
 		if (ret)
-			goto remove_debugfs;
+			goto deinit_bus;
 	}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
 	timer_setup(&plat_priv->fw_boot_timer,
@@ -2297,6 +2354,12 @@ static int cnss_probe(struct platform_device *plat_dev)
 
 	return 0;
 
+deinit_bus:
+	if (!test_bit(SKIP_DEVICE_BOOT, &quirks))
+		cnss_bus_deinit(plat_priv);
+power_off:
+	if (!test_bit(SKIP_DEVICE_BOOT, &quirks))
+		cnss_power_off_device(plat_priv);
 remove_debugfs:
 	cnss_debugfs_destroy(plat_priv);
 	cnss_qmi_deinit(plat_priv);
@@ -2308,12 +2371,6 @@ unreg_bus_scale:
 	cnss_unregister_bus_scale(plat_priv);
 unreg_esoc:
 	cnss_unregister_esoc(plat_priv);
-deinit_bus:
-	if (!test_bit(SKIP_DEVICE_BOOT, &quirks))
-		cnss_bus_deinit(plat_priv);
-power_off:
-	if (!test_bit(SKIP_DEVICE_BOOT, &quirks))
-		cnss_power_off_device(plat_priv);
 free_res:
 	cnss_put_resources(plat_priv);
 reset_ctx:
