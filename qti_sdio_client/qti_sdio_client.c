@@ -41,6 +41,7 @@
 #endif
 #include <linux/kthread.h>
 #include <linux/completion.h>
+#include <linux/version.h>
 
 #define	DATA_ALIGNMENT			4
 #define	MAX_CLIENTS			5
@@ -175,6 +176,12 @@ struct kthread_worker kworker;
 struct task_struct *task;
 struct list_head data_avail_list;
 static struct completion read_complete;
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
+#define init_kthread_work kthread_init_work
+#define init_kthread_worker kthread_init_worker
+#define queue_kthread_work kthread_queue_work
+#endif
 
 void qti_client_queue_rx(int id, u8 *buf, unsigned int bytes)
 {
