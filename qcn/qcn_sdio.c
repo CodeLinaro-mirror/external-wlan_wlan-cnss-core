@@ -808,6 +808,7 @@ static void qcn_sdio_remove(struct sdio_func *func)
 
 static const struct sdio_device_id qcn_sdio_devices[] = {
 	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCN_BASE | 0x0))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCN_V2))},
 	{},
 };
 
