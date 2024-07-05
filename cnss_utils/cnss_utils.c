@@ -505,6 +505,7 @@ out:
 	return ret;
 }
 
+#ifndef CONFIG_CNSS2_X86
 /**
  * cnss_utils_is_valid_dt_node_found - Check if valid device tree node present
  *
@@ -527,6 +528,7 @@ static bool cnss_utils_is_valid_dt_node_found(void)
 
 	return false;
 }
+#endif
 
 #ifdef CONFIG_FEATURE_SMEM_MAILBOX
 static void cnss_utils_smem_mailbox_init(void)
@@ -557,8 +559,10 @@ static int __init cnss_utils_init(void)
 {
 	struct cnss_utils_priv *priv = NULL;
 
+#ifndef CONFIG_CNSS2_X86
 	if (!cnss_utils_is_valid_dt_node_found())
 		return -ENODEV;
+#endif
 
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv)

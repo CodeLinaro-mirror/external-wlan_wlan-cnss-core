@@ -221,6 +221,7 @@ void cnss_assign_prealloc_pool(unsigned long device_id)
 	case MANGO_DEVICE_ID:
 	case PEACH_DEVICE_ID:
 	case KIWI_DEVICE_ID:
+	case COLOGNE_DEVICE_ID:
 	default:
 		cnss_pools = cnss_pools_default;
 		cnss_prealloc_pool_size = ARRAY_SIZE(cnss_pools_default);
@@ -476,7 +477,7 @@ int wcnss_prealloc_put(void *mem)
 		if (!cnss_pools[i].pool_ptrs) {
 			pr_err("%s mempool table is null\n",
 			       cnss_pools[i].name);
-			break;
+			return 0;
 		}
 		spin_lock_irqsave(&pool_table_lock, irq_flags);
 		ret = wcnss_free_pool_table_slot(cnss_pools[i], mem);
@@ -500,6 +501,7 @@ EXPORT_SYMBOL(wcnss_prealloc_check_memory_leak);
 int wcnss_pre_alloc_reset(void) { return -EOPNOTSUPP; }
 EXPORT_SYMBOL(wcnss_pre_alloc_reset);
 
+#ifndef CONFIG_CNSS2_X86
 /**
  * cnss_prealloc_is_valid_dt_node_found - Check if valid device tree node
  *                                        present
@@ -523,11 +525,14 @@ static bool cnss_prealloc_is_valid_dt_node_found(void)
 
 	return false;
 }
+#endif
 
 static int __init cnss_prealloc_init(void)
 {
+#ifndef CONFIG_CNSS2_X86
 	if (!cnss_prealloc_is_valid_dt_node_found())
 		return -ENODEV;
+#endif
 
 	return 0;
 }

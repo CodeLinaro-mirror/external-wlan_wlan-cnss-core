@@ -7104,6 +7104,8 @@ struct qmi_elem_info wlfw_driver_async_data_ind_msg_v01_ei[] = {
 };
 EXPORT_SYMBOL(wlfw_driver_async_data_ind_msg_v01_ei);
 
+
+#ifndef CONFIG_CNSS2_X86
 /**
  * wlfw_is_valid_dt_node_found - Check if valid device tree node present
  *
@@ -7126,12 +7128,14 @@ static bool wlfw_is_valid_dt_node_found(void)
 
 	return false;
 }
+#endif
 
 static int __init wlfw_init(void)
 {
+#ifndef CONFIG_CNSS2_X86
 	if (!wlfw_is_valid_dt_node_found())
 		return -ENODEV;
-
+#endif
 	return 0;
 }
 

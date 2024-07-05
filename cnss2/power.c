@@ -9,7 +9,9 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/pinctrl/consumer.h>
+#ifndef CONFIG_CNSS2_X86
 #include <linux/pinctrl/qcom-pinctrl.h>
+#endif
 #include <linux/regulator/consumer.h>
 #if IS_ENABLED(CONFIG_QCOM_COMMAND_DB)
 #include <soc/qcom/cmd-db.h>
@@ -18,7 +20,9 @@
 #include "main.h"
 #include "debug.h"
 #include "bus.h"
+#ifndef CONFIG_CNSS2_X86
 #include <linux/soc/qcom/qcom_aoss.h>
+#endif
 
 #if IS_ENABLED(CONFIG_ARCH_QCOM)
 static struct cnss_vreg_cfg cnss_vreg_list[] = {
@@ -47,11 +51,13 @@ static struct cnss_clk_cfg cnss_clk_list[] = {
 	{"rf_clk", 0, 0},
 };
 #else
+#ifndef CONFIG_CNSS2_X86
 static struct cnss_vreg_cfg cnss_vreg_list[] = {
 };
 
 static struct cnss_clk_cfg cnss_clk_list[] = {
 };
+#endif
 #endif
 
 #define CNSS_VREG_INFO_SIZE		ARRAY_SIZE(cnss_vreg_list)
@@ -128,6 +134,7 @@ enum cnss_aop_tcs_seq_param {
 	CNSS_TCS_SEQ_MAX
 };
 
+#ifndef CONFIG_CNSS2_X86
 static int cnss_get_vreg_single(struct cnss_plat_data *plat_priv,
 				struct cnss_vreg_info *vreg)
 {
@@ -1238,6 +1245,48 @@ void cnss_power_off_device(struct cnss_plat_data *plat_priv)
 	plat_priv->powered_on = false;
 }
 
+#else
+
+int cnss_get_vreg_type(struct cnss_plat_data *plat_priv,
+		       enum cnss_vreg_type type)
+{
+	return 0;
+
+}	
+int cnss_get_input_gpio_value(struct cnss_plat_data *plat_priv, int gpio_num)
+{
+	return 0;
+}
+
+int cnss_power_on_device(struct cnss_plat_data *plat_priv , bool reset)
+{
+	if (plat_priv->powered_on) {
+		cnss_pr_dbg("Already powered up");
+		return 0;
+	}
+
+	plat_priv->powered_on = true;
+
+	return 0;
+}
+
+void cnss_power_off_device(struct cnss_plat_data *plat_priv)
+{
+	if (!plat_priv->powered_on) {
+		cnss_pr_dbg("Already powered down");
+		return;
+	}
+	plat_priv->powered_on = false;
+};
+
+int cnss_vreg_unvote_type(struct cnss_plat_data *plat_priv,
+			  enum cnss_vreg_type type)
+{
+	return 0;
+}
+
+#endif
+
 bool cnss_is_device_powered_on(struct cnss_plat_data *plat_priv)
 {
 	return plat_priv->powered_on;
@@ -1446,6 +1495,7 @@ cnss_mbox_send_msg(struct cnss_plat_data *plat_priv, char *mbox_msg)
 }
 #endif
 
+#ifndef CONFIG_CNSS2_X86
 /**
  * cnss_qmp_init: Initialize direct QMP interface
  * @plat_priv: Pointer to cnss platform data
@@ -1508,7 +1558,9 @@ cnss_qmp_send_msg(struct cnss_plat_data *plat_priv, char *mbox_msg)
 
 	return ret;
 }
+#endif
 
+#ifndef CONFIG_CNSS2_X86
 /**
  * cnss_aop_interface_init: Initialize AOP interface: either mbox channel or direct QMP
  * @plat_priv: Pointer to cnss platform data
@@ -1580,6 +1632,12 @@ int cnss_aop_send_msg(struct cnss_plat_data *plat_priv, char *mbox_msg)
 		cnss_pr_err("Failed to send AOP msg: %d\n", ret);
 	return ret;
 }
+#else
+int cnss_aop_send_msg(struct cnss_plat_data *plat_priv, char *mbox_msg)
+{
+	return 0;
+}
+#endif
 
 static inline bool cnss_aop_interface_ready(struct cnss_plat_data *plat_priv)
 {

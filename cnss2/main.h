@@ -479,6 +479,31 @@ struct cnss_dms_data {
 	u8 mac[QMI_WLFW_MAC_ADDR_SIZE_V01];
 };
 
+struct fw_remote_mem {
+	size_t size;
+	void *vaddr;
+};
+
+struct fw_remote_crash_data {
+	u8 *remote_buf;
+	size_t remote_buf_len;
+};
+
+struct mhi_fw_crash_data {
+	u8 *paging_dump_buf;
+	size_t paging_dump_buf_len;
+	u8 *ramdump_buf;
+	size_t ramdump_buf_len;
+};
+
+struct mhi_vec_entry {
+	u64 dma_addr;
+	u64 size;
+};
+
+/*same with QMI_WLFW_MAX_NUM_MEM_SEG_V01*/
+#define BHI_WLFW_MAX_NUM_MEM_SEG_V01 52
+
 enum cnss_timeout_type {
 	CNSS_TIMEOUT_QMI,
 	CNSS_TIMEOUT_POWER_UP,
@@ -650,6 +675,10 @@ struct cnss_plat_data {
 	bool no_bwscale;
 	bool sleep_clk;
 	struct wlchip_serial_id_v01 serial_id;
+
+	struct fw_remote_mem remote_mem[BHI_WLFW_MAX_NUM_MEM_SEG_V01];
+	struct fw_remote_crash_data remote_crash_data;
+	struct mhi_fw_crash_data fw_crash_data;
 };
 
 #if IS_ENABLED(CONFIG_ARCH_QCOM)

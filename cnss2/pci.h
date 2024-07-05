@@ -9,7 +9,9 @@
 
 #include <linux/cma.h>
 #include <linux/iommu.h>
+#ifdef CONFIG_CNSS2_SMMU_DB_SUPPORT
 #include <linux/qcom-iommu-util.h>
+#endif
 #include <linux/mhi.h>
 #if IS_ENABLED(CONFIG_MHI_BUS_MISC)
 #include <linux/mhi_misc.h>
@@ -186,6 +188,7 @@ struct cnss_pci_data {
 	bool drv_supported;
 	bool is_smmu_fault;
 	unsigned long long smmu_fault_timestamp[SMMU_CB_MAX];
+	struct work_struct rddm_worker;
 };
 
 static inline void cnss_set_pci_priv(struct pci_dev *pci_dev, void *data)
@@ -338,4 +341,68 @@ int cnss_pci_get_user_msi_assignment(struct cnss_pci_data *pci_priv,
 				     u32 *user_base_data,
 				     u32 *base_vector);
 void cnss_register_iommu_fault_handler_irq(struct cnss_pci_data *pci_priv);
+
+void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on);
+
+#define PCIE_TXVECDB (0x360)
+#define PCIE_TXVECSTATUS (0x368)
+#define PCIE_RXVECDB (0x394)
+#define PCIE_RXVECSTATUS (0x39C)
+
+#define PCIE_SOC_GLOBAL_RESET (0x3008)
+#define PCIE_SOC_GLOBAL_RESET_V (1 << 0)
+
+#define ACCESS_ALWAYS_OFF 0xFE0
+#define PCIE_REMAP_1M_BAR_CTRL (0x310c)
+
+#define MHISTATUS (0x48)
+#define MHISTATUS_MHISTATE_MASK 0x0000ff00
+#define MHISTATUS_MHISTATE_SHIFT 0x8
+#define MHISTATUS_SYSERR_MASK 0x4
+#define MHISTATUS_SYSERR_SHIFT 0x2
+#define MHISTATUS_READY_MASK 0x1
+#define MHISTATUS_READY_SHIFT 0x0
+
+#define MHICTRL (0x38)
+#define MHICTRL_MHISTATE_MASK 0x0000FF00
+#define MHICTRL_MHISTATE_SHIFT 0x8
+#define MHICTRL_RESET_MASK 0x2
+#define MHICTRL_RESET_SHIFT 0x1
+
+#define PCIE_Q6_COOKIE_ADDR         (0x01F80500)
+#define PCIE_Q6_COOKIE_DATA         (0xC0000000)
+
+#define HOST_RESET_REG                    0x1E40314
+#define HOST_RESET_ADDR                   0xB0
+#define HOST_RESET_PATTERN                0XFFFFFFFF
+#define PCIE_PCIE_PARF_LTSSM              0X1E081B0
+#define PARM_LTSSM_VALUE                  0x111
+
+#define PCIE_SOC_WAKE_PCIE_LOCAL_REG 0x3004
+
+#define GCC_GCC_PCIE_HOT_RST              0X1E402BC
+#define GCC_GCC_PCIE_HOT_RST_VAL          0x10
+
+#define PCIE_PCIE_INT_ALL_CLEAR           0X1E08228
+#define PCIE_SMLH_REQ_RST_LINK_DOWN       0x2
+#define PCIE_INT_CLEAR_ALL                0xFFFFFFFF
+
+#define PCIE_PCIE_INT_ALL_CLEAR           0X1E08228
+#define PCIE_SMLH_REQ_RST_LINK_DOWN       0x2
+#define PCIE_INT_CLEAR_ALL                0xFFFFFFFF
+
+#define QFPROM_PWR_CTRL_VDD4BLOW_MASK     0x4
+#define QFPROM_PWR_CTRL_SHUTDOWN_MASK     0x1
+
+#define PCIE_QSERDES_COM_SYSCLK_EN_SEL_REG      0x01E0C0AC
+#define PCIE_QSERDES_COM_SYSCLK_EN_SEL_VAL      0x10
+#define PCIE_QSERDES_COM_SYSCLK_EN_SEL_MSK      0xFFFFFFFF
+#define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG1_REG 0x01E0C628
+#define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG1_VAL 0x02
+#define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG2_REG 0x01E0C62C
+#define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG2_VAL 0x52
+#define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG4_REG 0x01E0C634
+#define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG4_VAL 0xFF
+#define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG_MSK  0x000000FF
+
 #endif /* _CNSS_PCI_H */
