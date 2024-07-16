@@ -86,6 +86,12 @@ ifeq ($(CONFIG_SLATE_MODULE_ENABLED), y)
 KBUILD_CPPFLAGS += -DSLATE_MODULE_ENABLED
 endif
 
+ifeq ($(CONFIG_FULL_CORE_TECH),y)
+obj-$(CONFIG_QRTR) += qrtr/
+obj-$(CONFIG_QRTR_MHI) += qrtr/
+obj-$(CONFIG_MHI_BUS) += mhi/
+obj-$(CONFIG_QCOM_QMI_HELPERS) += qti/
+endif
 obj-$(CONFIG_CNSS2) += cnss2/
 obj-$(CONFIG_CNSS_GENL) += cnss_genl/
 obj-$(CONFIG_WCNSS_MEM_PRE_ALLOC) += cnss_prealloc/
