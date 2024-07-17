@@ -2124,12 +2124,10 @@ void cnss_recovery_handler(struct cnss_plat_data *plat_priv)
 	cnss_bus_dev_ramdump(plat_priv);
 #endif
 
-	if (!plat_priv->recovery_enabled) {
-#ifndef CONFIG_CNSS2_X86
+	if (!test_bit(ENABLE_SSR, &plat_priv->ctrl_params.quirks)) {
 		panic("subsys-restart: Resetting the SoC wlan crashed\n");
-#else
-		cnss_pr_err("Do recovery, continue...\n");
-#endif
+		cnss_pr_err("Skip recovery, return\n");
+		return;
 	}
 
 	cnss_bus_dev_shutdown(plat_priv);
@@ -5095,7 +5093,7 @@ static void cnss_init_control_params(struct cnss_plat_data *plat_priv)
 {
 	plat_priv->ctrl_params.quirks = quirks;
 
-	plat_priv->cbc_enabled = false;
+	plat_priv->cbc_enabled = test_bit(ENABLE_CBC, &plat_priv->ctrl_params.quirks);
 
 	plat_priv->ctrl_params.mhi_timeout = CNSS_MHI_TIMEOUT_DEFAULT;
 	plat_priv->ctrl_params.mhi_m2_timeout = CNSS_MHI_M2_TIMEOUT_DEFAULT;
