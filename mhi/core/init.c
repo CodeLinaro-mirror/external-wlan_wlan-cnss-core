@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -1410,20 +1409,30 @@ struct bus_type mhi_bus_type = {
 	.dev_groups = mhi_dev_groups,
 };
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int mhi_init(void)
+#else
 static int __init mhi_init(void)
+#endif
 {
 	mhi_debugfs_init();
 	return bus_register(&mhi_bus_type);
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void mhi_exit(void)
+#else
 static void __exit mhi_exit(void)
+#endif
 {
 	mhi_debugfs_exit();
 	bus_unregister(&mhi_bus_type);
 }
 
+#ifndef CONFIG_WLAN_CNSS_CORE
 postcore_initcall(mhi_init);
 module_exit(mhi_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("MHI Host Interface");
+#endif

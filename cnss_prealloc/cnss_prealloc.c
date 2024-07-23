@@ -527,7 +527,11 @@ static bool cnss_prealloc_is_valid_dt_node_found(void)
 }
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int cnss_prealloc_init(void)
+#else
 static int __init cnss_prealloc_init(void)
+#endif
 {
 #ifndef CONFIG_CNSS2_X86
 	if (!cnss_prealloc_is_valid_dt_node_found())
@@ -537,11 +541,17 @@ static int __init cnss_prealloc_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void cnss_prealloc_exit(void)
+#else
 static void __exit cnss_prealloc_exit(void)
+#endif
 {
 	return;
 }
 
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(cnss_prealloc_init);
 module_exit(cnss_prealloc_exit);
+#endif
 

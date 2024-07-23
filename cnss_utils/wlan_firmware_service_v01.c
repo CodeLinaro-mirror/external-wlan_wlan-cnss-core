@@ -7130,7 +7130,11 @@ static bool wlfw_is_valid_dt_node_found(void)
 }
 #endif
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int wlfw_init(void)
+#else
 static int __init wlfw_init(void)
+#endif
 {
 #ifndef CONFIG_CNSS2_X86
 	if (!wlfw_is_valid_dt_node_found())
@@ -7139,6 +7143,18 @@ static int __init wlfw_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void wlfw_deinit(void)
+#else
+static void __exit wlfw_deinit(void)
+#endif
+{
+}
+
+#ifndef CONFIG_WLAN_CNSS_CORE
 module_init(wlfw_init);
+module_exit(wlfw_deinit);
+
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("WLAN FW QMI service");
+#endif
