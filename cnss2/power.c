@@ -24,6 +24,7 @@
 #include <linux/soc/qcom/qcom_aoss.h>
 #endif
 
+#ifndef CONFIG_CNSS2_X86
 #if IS_ENABLED(CONFIG_ARCH_QCOM)
 static struct cnss_vreg_cfg cnss_vreg_list[] = {
 	{"vdd-wlan-core", 1300000, 1300000, 0, 0, 0},
@@ -51,7 +52,6 @@ static struct cnss_clk_cfg cnss_clk_list[] = {
 	{"rf_clk", 0, 0},
 };
 #else
-#ifndef CONFIG_CNSS2_X86
 static struct cnss_vreg_cfg cnss_vreg_list[] = {
 };
 
