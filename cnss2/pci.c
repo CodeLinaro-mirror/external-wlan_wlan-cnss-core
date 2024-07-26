@@ -6771,8 +6771,7 @@ void cnss_pci_device_crashed(struct cnss_pci_data *pci_priv)
 		return;
 	}
 
-	if (plat_priv->recovery_enabled)
-		cnss_pci_collect_host_dump_info(pci_priv);
+	cnss_pci_collect_host_dump_info(pci_priv);
 
 	/* Call recovery handler in the DRIVER_RECOVERY event context
 	 * instead of scheduling work. In that way complete recovery
