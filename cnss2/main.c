@@ -715,6 +715,7 @@ bool cnss_audio_is_direct_link_supported(struct device *dev)
 EXPORT_SYMBOL(cnss_audio_is_direct_link_supported);
 
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
 void cnss_request_pm_qos(struct device *dev, u32 qos_val)
 {
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
@@ -736,6 +737,30 @@ void cnss_remove_pm_qos(struct device *dev)
 	cpu_latency_qos_remove_request(&plat_priv->qos_request);
 }
 EXPORT_SYMBOL(cnss_remove_pm_qos);
+#else
+void cnss_request_pm_qos(struct device *dev, u32 qos_val)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+
+	if (!plat_priv)
+		return;
+
+	pm_qos_add_request(&plat_priv->qos_request, PM_QOS_CPU_DMA_LATENCY,
+			   qos_val);
+}
+EXPORT_SYMBOL(cnss_request_pm_qos);
+
+void cnss_remove_pm_qos(struct device *dev)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+
+	if (!plat_priv)
+		return;
+
+	pm_qos_remove_request(&plat_priv->qos_request);
+}
+EXPORT_SYMBOL(cnss_remove_pm_qos);
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)) */
 
 int cnss_wlan_enable(struct device *dev,
 		     struct cnss_wlan_enable_cfg *config,
