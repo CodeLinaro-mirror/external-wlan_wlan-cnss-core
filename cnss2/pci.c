@@ -6019,11 +6019,7 @@ static int cnss_pci_enable_bus(struct cnss_pci_data *pci_priv)
 	case MANGO_DEVICE_ID:
 	case PEACH_DEVICE_ID:
 	case COLOGNE_DEVICE_ID:
-#ifdef CONFIG_CNSS2_X86
-		pci_priv->dma_bit_mask = PCI_DMA_MASK_32_BIT;
-#else
 		pci_priv->dma_bit_mask = PCI_DMA_MASK_36_BIT;
-#endif
 		break;
 	default:
 		pci_priv->dma_bit_mask = PCI_DMA_MASK_32_BIT;
