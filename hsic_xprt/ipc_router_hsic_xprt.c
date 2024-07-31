@@ -563,6 +563,8 @@ static int msm_ipc_router_hsic_driver_register(
 
 		hsic_xprtp->driver.driver.name = hsic_xprtp->ch_name;
 		hsic_xprtp->driver.driver.owner = THIS_MODULE;
+		hsic_xprtp->driver.driver.probe_type =
+			PROBE_PREFER_ASYNCHRONOUS;
 		hsic_xprtp->driver.probe = msm_ipc_router_hsic_remote_probe;
 		hsic_xprtp->driver.remove = msm_ipc_router_hsic_remote_remove;
 
