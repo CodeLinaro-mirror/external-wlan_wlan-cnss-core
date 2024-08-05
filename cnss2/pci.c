@@ -7819,6 +7819,8 @@ static void cnss_pci_suspend_pwroff(struct pci_dev *pci_dev)
 }
 #endif
 
+int cnss_create_sysfs(struct cnss_plat_data *plat_priv);
+
 static int cnss_pci_probe(struct pci_dev *pci_dev,
 			  const struct pci_device_id *id)
 {
@@ -7826,7 +7828,7 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 	struct cnss_pci_data *pci_priv;
 	struct device *dev = &pci_dev->dev;
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(NULL);
-	
+
 	cnss_pr_err("PCI is probing, vendor ID: 0x%x, device ID: 0x%x \n",
 		    id->vendor, pci_dev->device);
 	if (!plat_priv) {
@@ -7967,6 +7969,9 @@ probe_done:
 				CNSS_DRIVER_EVENT_COLD_BOOT_CAL_START,
 				0, NULL);
 	}
+	ret = cnss_create_sysfs(plat_priv);
+	if (ret)
+		cnss_pr_err("Failed to create sysfs");
 
 	return 0;
 

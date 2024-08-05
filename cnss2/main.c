@@ -35,6 +35,7 @@
 #include "reg.h"
 #ifdef CONFIG_CNSS2_X86
 #include "coredump.h"
+#include "pci.h"
 #endif
 
 #ifdef CONFIG_CNSS_HW_SECURE_DISABLE
@@ -4279,6 +4280,7 @@ void cnss_daemon_connection_update_cb(void *cb_ctx, bool status)
 	}
 }
 
+#ifndef CONFIG_CNSS2_X86
 static ssize_t enable_hds_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
@@ -4304,7 +4306,7 @@ static ssize_t enable_hds_store(struct device *dev,
 
 	return count;
 }
-
+#endif
 static ssize_t recovery_show(struct device *dev,
 			     struct device_attribute *attr,
 			     char *buf)
@@ -4344,6 +4346,7 @@ static ssize_t recovery_show(struct device *dev,
 	return curr_len;
 }
 
+#ifndef CONFIG_CNSS2_X86
 static ssize_t tme_opt_file_download_show(struct device *dev,
 			     struct device_attribute *attr, char *buf)
 {
@@ -4360,6 +4363,7 @@ static ssize_t tme_opt_file_download_show(struct device *dev,
 	curr_len += buf_written;
 	return curr_len;
 }
+#endif
 
 static ssize_t time_sync_period_show(struct device *dev,
 				     struct device_attribute *attr,
@@ -4498,7 +4502,8 @@ static ssize_t recovery_store(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	unsigned int recovery = 0;
 
 	if (!plat_priv)
@@ -4521,11 +4526,13 @@ static ssize_t recovery_store(struct device *dev,
 	return count;
 }
 
+#ifndef CONFIG_CNSS2_X86
 static ssize_t shutdown_store(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 
 	cnss_pr_dbg("Received shutdown notification\n");
 	if (plat_priv) {
@@ -4539,13 +4546,15 @@ static ssize_t shutdown_store(struct device *dev,
 
 	return count;
 }
+#endif
 
 static ssize_t fs_ready_store(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
 	int fs_ready = 0;
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 
 	if (sscanf(buf, "%du", &fs_ready) != 1)
 		return -EINVAL;
@@ -4577,7 +4586,8 @@ static ssize_t qdss_trace_start_store(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count)
 {
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 
 	wlfw_qdss_trace_start(plat_priv);
 	cnss_pr_dbg("Received QDSS start command\n");
@@ -4588,7 +4598,8 @@ static ssize_t qdss_trace_stop_store(struct device *dev,
 				     struct device_attribute *attr,
 				     const char *buf, size_t count)
 {
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	u32 option = 0;
 
 	if (sscanf(buf, "%du", &option) != 1)
@@ -4603,18 +4614,21 @@ static ssize_t qdss_conf_download_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
 {
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 
 	cnss_wlfw_qdss_dnld_send_sync(plat_priv);
 	cnss_pr_dbg("Received QDSS download config command\n");
 	return count;
 }
 
+#ifndef CONFIG_CNSS2_X86
 static ssize_t tme_opt_file_download_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
 {
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	char cmd[5];
 
 	if (sscanf(buf, "%s", cmd) != 1)
@@ -4647,12 +4661,14 @@ runtime_pm_put:
 		cnss_bus_runtime_pm_put(plat_priv);
 	return count;
 }
+#endif
 
 static ssize_t hw_trace_override_store(struct device *dev,
 				       struct device_attribute *attr,
 				       const char *buf, size_t count)
 {
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	int tmp = 0;
 
 	if (sscanf(buf, "%du", &tmp) != 1)
@@ -4663,11 +4679,13 @@ static ssize_t hw_trace_override_store(struct device *dev,
 	return count;
 }
 
+#ifndef CONFIG_CNSS2_X86
 static ssize_t charger_mode_store(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
 {
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	int tmp = 0;
 
 	if (sscanf(buf, "%du", &tmp) != 1)
@@ -4677,31 +4695,36 @@ static ssize_t charger_mode_store(struct device *dev,
 	cnss_pr_dbg("Received Charger Mode: %d\n", tmp);
 	return count;
 }
+#endif
 
 static DEVICE_ATTR_WO(fs_ready);
-static DEVICE_ATTR_WO(shutdown);
 static DEVICE_ATTR_RW(recovery);
-static DEVICE_ATTR_WO(enable_hds);
 static DEVICE_ATTR_WO(qdss_trace_start);
 static DEVICE_ATTR_WO(qdss_trace_stop);
 static DEVICE_ATTR_WO(qdss_conf_download);
-static DEVICE_ATTR_RW(tme_opt_file_download);
 static DEVICE_ATTR_WO(hw_trace_override);
-static DEVICE_ATTR_WO(charger_mode);
 static DEVICE_ATTR_RW(time_sync_period);
+#ifndef CONFIG_CNSS2_X86
+static DEVICE_ATTR_WO(shutdown);
+static DEVICE_ATTR_WO(enable_hds);
+static DEVICE_ATTR_RW(tme_opt_file_download);
+static DEVICE_ATTR_WO(charger_mode);
+#endif
 
 static struct attribute *cnss_attrs[] = {
 	&dev_attr_fs_ready.attr,
-	&dev_attr_shutdown.attr,
 	&dev_attr_recovery.attr,
-	&dev_attr_enable_hds.attr,
 	&dev_attr_qdss_trace_start.attr,
 	&dev_attr_qdss_trace_stop.attr,
 	&dev_attr_qdss_conf_download.attr,
-	&dev_attr_tme_opt_file_download.attr,
 	&dev_attr_hw_trace_override.attr,
-	&dev_attr_charger_mode.attr,
 	&dev_attr_time_sync_period.attr,
+#ifndef CONFIG_CNSS2_X86
+	&dev_attr_shutdown.attr,
+	&dev_attr_enable_hds.attr,
+	&dev_attr_tme_opt_file_download.attr,
+	&dev_attr_charger_mode.attr,
+#endif
 	NULL,
 };
 
@@ -4711,7 +4734,8 @@ static struct attribute_group cnss_attr_group = {
 
 static int cnss_create_sysfs_link(struct cnss_plat_data *plat_priv)
 {
-	struct device *dev = &plat_priv->plat_dev->dev;
+	struct cnss_pci_data *pci_priv = plat_priv->bus_priv;
+	struct device *dev = &pci_priv->pci_dev->dev;
 	int ret;
 	char cnss_name[CNSS_FS_NAME_SIZE];
 	char shutdown_name[32];
@@ -4770,7 +4794,7 @@ static void cnss_remove_sysfs_link(struct cnss_plat_data *plat_priv)
 	sysfs_remove_link(kernel_kobj, cnss_name);
 }
 
-static int cnss_create_sysfs(struct cnss_plat_data *plat_priv)
+int cnss_create_sysfs(struct cnss_plat_data *plat_priv)
 {
 	int ret = 0;
 #ifdef CONFIG_CNSS2_X86
@@ -4780,10 +4804,13 @@ static int cnss_create_sysfs(struct cnss_plat_data *plat_priv)
 		cnss_pr_err("PCI device not probed yet\n");
 		return 0;
 	}
-#endif
 
+	ret = devm_device_add_group(&pci_priv->pci_dev->dev,
+				    &cnss_attr_group);
+#else
 	ret = devm_device_add_group(&plat_priv->plat_dev->dev,
 				    &cnss_attr_group);
+#endif
 	if (ret) {
 		cnss_pr_err("Failed to create cnss device group, err = %d\n",
 			    ret);
@@ -4826,11 +4853,21 @@ static void cnss_remove_sysfs(struct cnss_plat_data *plat_priv)
 #else
 static void cnss_remove_sysfs(struct cnss_plat_data *plat_priv)
 {
+#ifdef CONFIG_CNSS2_X86
+	struct cnss_pci_data *pci_priv = plat_priv->bus_priv;
+        if (!pci_priv)
+                return;
+#else
 	if (!plat_priv->plat_dev)
 		return;
+#endif
 
 	cnss_remove_sysfs_link(plat_priv);
+#ifdef CONFIG_CNSS2_X86
+	devm_device_remove_group(&pci_priv->pci_dev->dev, &cnss_attr_group);
+#else
 	devm_device_remove_group(&plat_priv->plat_dev->dev, &cnss_attr_group);
+#endif
 }
 #endif
 
@@ -5716,13 +5753,10 @@ static int cnss_probe(struct platform_device *plat_dev)
 	if (ret)
 		goto unreg_esoc;
 
-	ret = cnss_create_sysfs(plat_priv);
-	if (ret)
-		goto unreg_bus_scale;
 
 	ret = cnss_event_work_init(plat_priv);
 	if (ret)
-		goto remove_sysfs;
+		goto unreg_bus_scale;
 
 	ret = cnss_dms_init(plat_priv);
 	if (ret)
@@ -5768,8 +5802,6 @@ deinit_dms:
 	cnss_dms_deinit(plat_priv);
 deinit_event_work:
 	cnss_event_work_deinit(plat_priv);
-remove_sysfs:
-	cnss_remove_sysfs(plat_priv);
 unreg_bus_scale:
 	cnss_unregister_bus_scale(plat_priv);
 unreg_esoc:
