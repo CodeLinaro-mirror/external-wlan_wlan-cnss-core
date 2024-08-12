@@ -592,9 +592,6 @@ void cnss_pm_stay_awake(struct cnss_plat_data *plat_priv)
 	if (atomic_inc_return(&plat_priv->pm_count) != 1)
 		return;
 
-	cnss_pr_dbg("PM stay awake, state: 0x%lx, count: %d\n",
-		    plat_priv->driver_state,
-		    atomic_read(&plat_priv->pm_count));
 	if (plat_priv->plat_dev)
 		pm_stay_awake(&plat_priv->plat_dev->dev);
 }
@@ -608,9 +605,6 @@ void cnss_pm_relax(struct cnss_plat_data *plat_priv)
 	if (r != 0)
 		return;
 
-	cnss_pr_dbg("PM relax, state: 0x%lx, count: %d\n",
-		    plat_priv->driver_state,
-		    atomic_read(&plat_priv->pm_count));
 	if (plat_priv->plat_dev)
 		pm_relax(&plat_priv->plat_dev->dev);
 }
@@ -1391,9 +1385,10 @@ int cnss_driver_event_post(struct cnss_plat_data *plat_priv,
 	if (!plat_priv)
 		return -ENODEV;
 
-	cnss_pr_dbg("Posting event: %s(%d)%s, state: 0x%lx flags: 0x%0x\n",
-		    cnss_driver_event_to_str(type), type,
-		    flags ? "-sync" : "", plat_priv->driver_state, flags);
+	if (type != CNSS_DRIVER_EVENT_FW_MEM_FILE_SAVE)
+		cnss_pr_dbg("Posting event: %s(%d)%s, state: 0x%lx flags: 0x%0x\n",
+			    cnss_driver_event_to_str(type), type,
+			    flags ? "-sync" : "", plat_priv->driver_state, flags);
 
 	if (type >= CNSS_DRIVER_EVENT_MAX) {
 		cnss_pr_err("Invalid Event type: %d, can't post", type);
@@ -2886,10 +2881,11 @@ static void cnss_driver_event_work(struct work_struct *work)
 		list_del(&event->list);
 		spin_unlock_irqrestore(&plat_priv->event_lock, flags);
 
-		cnss_pr_dbg("Processing driver event: %s%s(%d), state: 0x%lx\n",
-			    cnss_driver_event_to_str(event->type),
-			    event->sync ? "-sync" : "", event->type,
-			    plat_priv->driver_state);
+		if (event->type != CNSS_DRIVER_EVENT_FW_MEM_FILE_SAVE)
+			cnss_pr_dbg("Processing driver event: %s%s(%d), state: 0x%lx\n",
+				    cnss_driver_event_to_str(event->type),
+				    event->sync ? "-sync" : "", event->type,
+				    plat_priv->driver_state);
 
 		switch (event->type) {
 		case CNSS_DRIVER_EVENT_SERVER_ARRIVE:
