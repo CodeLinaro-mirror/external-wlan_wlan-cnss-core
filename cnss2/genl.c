@@ -21,6 +21,13 @@
 #define CNSS_GENL_DATA_LEN_MAX (15 * 1024)
 #define CNSS_GENL_STR_LEN_MAX 16
 
+#ifdef CONFIG_CNSS2_X86
+#include <linux/export.h>
+#include <linux/rtc.h>
+#include <linux/fs.h>
+#include <linux/version.h>
+#endif
+
 enum {
 	CNSS_GENL_ATTR_MSG_UNSPEC,
 	CNSS_GENL_ATTR_MSG_TYPE,
@@ -87,6 +94,62 @@ static struct genl_family cnss_genl_family = {
 	.n_mcgrps = ARRAY_SIZE(cnss_genl_mcast_grp),
 };
 
+#ifdef CONFIG_CNSS2_X86
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#define vfs_write kernel_write
+#endif
+#define BUF_SIZE 64
+int cnss_genl_send_msg(void *buff, u8 type, char *file_name, u32 total_size)
+{
+	char file_full_path[BUF_SIZE];
+	struct file *fp;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
+	mm_segment_t fs;
+#endif
+	loff_t pos;
+	int status = 0;
+
+	scnprintf(file_full_path,
+			sizeof(file_full_path),
+			"/var/crash/Trieste-%s",
+			file_name);
+	fp = filp_open(file_full_path, O_RDWR | O_CREAT | O_APPEND, 0644);
+	if (IS_ERR(fp)) {
+		cnss_pr_err("create file:%s error\n",
+			file_full_path);
+		return -EIO;
+	}
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+#endif
+	pos = 0;
+	status = vfs_write(fp,
+			   (const char __user *)(buff),
+			   total_size,
+			   &pos);
+	if (status < 0) {
+		cnss_pr_err("write file:%s error\n",
+			file_full_path);
+		return status;
+	}
+
+	/* flush write to file */
+	vfs_fsync(fp, 0);
+
+	status = filp_close(fp, NULL);
+	if (status < 0) {
+		cnss_pr_err("close file: %s, error\n",
+			file_full_path);
+		return status;
+	}
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
+	set_fs(fs);
+#endif
+	return status;
+}
+
+#else
 static int cnss_genl_send_data(u8 type, char *file_name, u32 total_size,
 			       u32 seg_id, u8 end, u32 data_len, u8 *msg_buff)
 {
@@ -198,6 +261,7 @@ int cnss_genl_send_msg(void *buff, u8 type, char *file_name, u32 total_size)
 
 	return ret;
 }
+#endif
 
 int cnss_genl_init(void)
 {
