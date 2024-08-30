@@ -311,6 +311,8 @@ static ssize_t cnss_dev_boot_debug_write(struct file *fp,
 			cnss_pr_dbg("Force set cold boot cal done status\n");
 			set_bit(CNSS_COLD_BOOT_CAL_DONE,
 				&plat_priv->driver_state);
+		} else if (sysfs_streq(cmd, "dump_fw_sram")) {
+			cnss_dump_fw_sram(&pci_priv->pci_dev->dev);
 		} else {
 			cnss_pr_err("Device boot debugfs command is invalid\n");
 			ret = -EINVAL;
@@ -337,6 +339,7 @@ static int cnss_dev_boot_debug_show(struct seq_file *s, void *data)
 	seq_puts(s, "shutdown: full power off sequence to shutdown device\n");
 	seq_puts(s, "assert: trigger firmware assert\n");
 	seq_puts(s, "set_cbc_done: Set cold boot calibration done status\n");
+	seq_puts(s, "dump_fw_sram: dump fw sram via IO\n");
 	seq_puts(s, "\npdc_update usage:");
 	seq_puts(s, "1. echo pdc_update {class: wlan_pdc ss: <pdc_ss>, res: <vreg>.<mode>, <seq>: <val>} > <debugfs_path>/cnss/dev_boot\n");
 	seq_puts(s, "2. echo pdc_update {class: wlan_pdc ss: <pdc_ss>, res: pdc, enable: <val>} > <debugfs_path>/cnss/dev_boot\n");

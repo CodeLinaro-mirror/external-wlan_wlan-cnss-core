@@ -32,6 +32,14 @@ ifeq ($(CONFIG_CNSS2_X86),y)
 KBUILD_CPPFLAGS += -DCONFIG_CNSS2_X86
 endif
 
+ifeq ($(CONFIG_DUMP_FW_TO_FILE),y)
+KBUILD_CPPFLAGS += -DCONFIG_DUMP_FW_TO_FILE
+endif
+
+ifeq ($(CONFIG_DUMP_FW_BY_UMH),y)
+KBUILD_CPPFLAGS += -DCONFIG_DUMP_FW_BY_UMH
+endif
+
 # CONFIG_CNSS_PLAT_IPC_QMI_SVC should never be "y" here since it
 # can be only compiled as a module from out-of-kernel-tree source.
 ifeq ($(CONFIG_CNSS_PLAT_IPC_QMI_SVC),m)

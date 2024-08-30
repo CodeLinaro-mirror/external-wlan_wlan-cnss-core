@@ -26,6 +26,13 @@
 #include <soc/qcom/minidump.h>
 #endif
 
+#ifdef CONFIG_DUMP_FW_TO_FILE
+#include <linux/export.h>
+#include <linux/rtc.h>
+#include <linux/fs.h>
+#include <linux/version.h>
+#endif
+
 #include "cnss_plat_ipc_qmi.h"
 #include "cnss_utils.h"
 #include "main.h"
@@ -2449,6 +2456,20 @@ int cnss_force_fw_assert(struct device *dev)
 }
 EXPORT_SYMBOL(cnss_force_fw_assert);
 
+int cnss_dump_fw_sram(struct device *dev)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+
+	if (!plat_priv) {
+		cnss_pr_err("plat_priv is NULL\n");
+		return -ENODEV;
+	}
+
+	cnss_bus_dump_fw_sram(plat_priv);
+
+	return 0;
+}
+
 int cnss_force_collect_rddm(struct device *dev)
 {
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
@@ -3261,6 +3282,29 @@ static void cnss_qcom_devcd_freev(void *data)
 	kfree(desc);
 }
 
+#ifdef CONFIG_DUMP_FW_BY_UMH
+int cnss_invoke_qca_dump_app(char *type)
+{
+	int ret;
+
+	char *cmd_argv[] = {QCA_DUMP_BIN_PATH, type, NULL};
+	char *cmd_envp[] = {NULL};
+
+	ret = call_usermodehelper(cmd_argv[0], cmd_argv, cmd_envp, UMH_WAIT_PROC);
+	if (!ret)
+		cnss_pr_info("%s succeed", QCA_DUMP_BIN_PATH);
+	else
+		cnss_pr_err("failed to call usermodehelper: %d\n", ret);
+
+	return ret;
+}
+#else
+int cnss_invoke_qca_dump_app(char *type)
+{
+	return 0;
+}
+#endif
+
 int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
 				gfp_t gfp)
 {
@@ -3673,7 +3717,7 @@ int cnss_do_host_ramdump(struct cnss_plat_data *plat_priv,
 	list_add(&seg->node, &head);
 
 	ret = qcom_elf_dump(&head, new_device, ELF_CLASS);
-
+	cnss_invoke_qca_dump_app(HOST_RAM_DUMP);
 skip_host_dump:
 	while (!list_empty(&head)) {
 		seg = list_first_entry(&head, struct qcom_dump_segment, node);
@@ -5630,6 +5674,99 @@ int cnss_get_curr_therm_cdev_state(struct device *dev,
 	return -EINVAL;
 }
 EXPORT_SYMBOL(cnss_get_curr_therm_cdev_state);
+
+#ifdef CONFIG_DUMP_FW_TO_FILE
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#define vfs_write kernel_write
+#endif
+
+static int get_time_of_the_day_in_hr_min_sec(char *tbuf, int len)
+{
+	struct timespec64 tv;
+	struct rtc_time tm;
+	int time_len = 0;
+
+	ktime_get_real_ts64(&tv);
+	/* Convert rtc to local time */
+	tv.tv_sec -= sys_tz.tz_minuteswest * 60;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
+	rtc_time64_to_tm(tv.tv_sec, &tm);
+#else
+	rtc_time_to_tm(tv.tv_sec, &tm);
+#endif
+	time_len = scnprintf(tbuf, len,
+		"-%04d-%02d-%02d-%02d-%02d-%02d",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec);
+	return time_len;
+}
+
+#define BUF_SIZE 64
+int cnss_save_buf_to_file(char *buf, u32 buf_len, char *file_name)
+{
+	char file_full_path[BUF_SIZE];
+	char time_buf[24];
+	int len = 0;
+	struct file *fp;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
+	mm_segment_t fs;
+#endif
+	loff_t pos;
+	int status = 0;
+
+	memset(file_full_path, 0, sizeof(file_full_path));
+	len = get_time_of_the_day_in_hr_min_sec(time_buf, sizeof(time_buf));
+	len = scnprintf(file_full_path,
+			sizeof(file_full_path),
+			file_name,
+			time_buf);
+	cnss_pr_err("enter\n");
+	fp = filp_open(file_full_path, O_RDWR | O_CREAT, 0644);
+	if (IS_ERR(fp)) {
+		cnss_pr_err("create file:%s error\n",
+			    file_full_path);
+		return -EIO;
+	}
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+#endif
+	pos = 0;
+	cnss_pr_err("to write file:%s, mem: 0x%p, size: 0x%x\n",
+		    file_full_path,
+		    buf,
+		    buf_len);
+	status = vfs_write(fp,
+			   (const char __user *)(buf),
+			   buf_len,
+			   &pos);
+	if (status < 0) {
+		cnss_pr_err("write file:%s error\n",
+			    file_full_path);
+		return status;
+	}
+
+	/* flush write to file */
+	vfs_fsync(fp, 0);
+
+	status = filp_close(fp, NULL);
+	if (status < 0) {
+		cnss_pr_err("close file: %s, error\n",
+			    file_full_path);
+		return status;
+	}
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
+	set_fs(fs);
+#endif
+	cnss_pr_err("exit\n");
+	return status;
+}
+#else
+int cnss_save_buf_to_file(char *buf, u32 buf_len, char *file_name)
+{
+	return 0;
+}
+#endif
 
 static int cnss_probe(struct platform_device *plat_dev)
 {

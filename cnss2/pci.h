@@ -343,6 +343,7 @@ int cnss_pci_get_user_msi_assignment(struct cnss_pci_data *pci_priv,
 void cnss_register_iommu_fault_handler_irq(struct cnss_pci_data *pci_priv);
 
 void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on);
+int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv);
 
 #define PCIE_TXVECDB (0x360)
 #define PCIE_TXVECSTATUS (0x368)
@@ -404,5 +405,8 @@ void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on);
 #define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG4_REG 0x01E0C634
 #define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG4_VAL 0xFF
 #define PCIE_USB3_PCS_MISC_OSC_DTCT_CONFIG_MSK  0x000000FF
+
+#define KIWI_PCIE_FW_SRAM_IO_START 0x01400000
+#define KIWI_PCIE_FW_SRAM_IO_END 0x0177ffff
 
 #endif /* _CNSS_PCI_H */
