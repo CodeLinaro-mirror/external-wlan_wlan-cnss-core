@@ -344,6 +344,7 @@ void cnss_register_iommu_fault_handler_irq(struct cnss_pci_data *pci_priv);
 
 void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on);
 int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv);
+void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv);
 
 #define PCIE_TXVECDB (0x360)
 #define PCIE_TXVECSTATUS (0x368)
@@ -354,7 +355,8 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv);
 #define PCIE_SOC_GLOBAL_RESET_V (1 << 0)
 
 #define ACCESS_ALWAYS_OFF 0xFE0
-#define PCIE_REMAP_1M_BAR_CTRL (0x310c)
+#define COLOGNE_PCIE_REMAP_1M_BAR_CTRL (0x3278)
+#define KIWI_PCIE_REMAP_1M_BAR_CTRL (0x310c)
 
 #define MHISTATUS (0x48)
 #define MHISTATUS_MHISTATE_MASK 0x0000ff00
@@ -408,5 +410,8 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv);
 
 #define KIWI_PCIE_FW_SRAM_IO_START 0x01400000
 #define KIWI_PCIE_FW_SRAM_IO_END 0x0177ffff
+
+#define KIWI_PCIE_HW_REVISION_REG	0x01A10010
+#define COLOGNE_PCIE_HW_REVISION_REG	0x01A85010
 
 #endif /* _CNSS_PCI_H */

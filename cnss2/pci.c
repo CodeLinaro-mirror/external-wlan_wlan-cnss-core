@@ -3590,6 +3590,8 @@ retry:
 	}
 
 	cnss_pci_set_wlaon_pwr_ctrl(pci_priv, false, false, false);
+	cnss_pci_show_hw_revision(pci_priv);
+
 	timeout = cnss_get_timeout(plat_priv, CNSS_TIMEOUT_QMI);
 
 	ret = cnss_pci_start_mhi(pci_priv);
@@ -8163,13 +8165,26 @@ static const struct dev_pm_ops cnss_pm_ops = {
 			   cnss_pci_runtime_idle)
 };
 
-static inline void mhi_reg_select_window(void __iomem *io_addr, u32 offset)
+static inline void mhi_reg_select_window(struct cnss_pci_data *pci_priv,
+			void __iomem *io_addr, u32 offset)
 {
 	u32 window = (offset >> WINDOW_SHIFT) & WINDOW_VALUE_MASK;
 
-	iowrite32(WINDOW_ENABLE_BIT | window,
-		  io_addr + PCIE_REMAP_1M_BAR_CTRL);
-	wmb();
+	switch (pci_priv->device_id) {
+	case KIWI_DEVICE_ID:
+		iowrite32(WINDOW_ENABLE_BIT | window,
+			  io_addr + KIWI_PCIE_REMAP_1M_BAR_CTRL);
+		wmb();
+		break;
+	case COLOGNE_DEVICE_ID:
+		iowrite32(WINDOW_ENABLE_BIT | window,
+			  io_addr + COLOGNE_PCIE_REMAP_1M_BAR_CTRL);
+		wmb();
+		break;
+	default:
+		return;
+	}
+
 }
 
 u32 mhi_reg_read_remap(struct cnss_pci_data *pci_priv,
@@ -8182,7 +8197,7 @@ u32 mhi_reg_read_remap(struct cnss_pci_data *pci_priv,
 	if (io_offset < MAX_UNWINDOWED_ADDRESS) {
 		val = ioread32(io_addr + io_offset);
 	} else {
-		mhi_reg_select_window(io_addr, io_offset);
+		mhi_reg_select_window(pci_priv, io_addr, io_offset);
 		val = ioread32(io_addr + WINDOW_START +
 			       (io_offset & WINDOW_RANGE_MASK));
 	}
@@ -8206,7 +8221,7 @@ void mhi_reg_write_remap(struct cnss_pci_data *pci_priv,
 	if (io_offset < MAX_UNWINDOWED_ADDRESS) {
 		iowrite32(val, io_addr + io_offset);
 	} else {
-		mhi_reg_select_window(io_addr, io_offset);
+		mhi_reg_select_window(pci_priv, io_addr, io_offset);
 		iowrite32(val, io_addr + WINDOW_START +
 			  (io_offset & WINDOW_RANGE_MASK));
 	}
@@ -8605,6 +8620,28 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv)
 	cnss_invoke_qca_dump_app(FW_SRAM_DUMP);
 
 	return 0;
+}
+
+void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv)
+{
+	u32 val;
+
+	switch (pci_priv->device_id) {
+	case KIWI_DEVICE_ID:
+		val = mhi_reg_read_remap(pci_priv,
+					 pci_priv->bar,
+					 KIWI_PCIE_HW_REVISION_REG);
+		cnss_pr_info("HW Revision(JTAGID): 0x%x\n", val);
+		break;
+	case COLOGNE_DEVICE_ID:
+		val = mhi_reg_read_remap(pci_priv,
+					 pci_priv->bar,
+					 COLOGNE_PCIE_HW_REVISION_REG);
+		cnss_pr_info("HW Revision(JTAGID): 0x%x\n", val);
+		break;
+	default:
+		return;
+	}
 }
 
 static struct pci_driver cnss_pci_driver = {
