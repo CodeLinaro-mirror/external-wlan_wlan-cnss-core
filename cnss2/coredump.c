@@ -178,6 +178,9 @@ cnss_coredump_build(struct mhi_fw_crash_data *crash_data,
 	return dump_data;
 }
 
+int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
+				gfp_t gfp);
+
 static int cnss_coredump_submit(struct cnss_pci_data *pci_priv)
 {
 	struct cnss_dump_file_data *dump;
@@ -187,8 +190,7 @@ static int cnss_coredump_submit(struct cnss_pci_data *pci_priv)
 	if (!dump)
 		return -ENODATA;
 
-	dev_coredumpv(pci_priv->mhi_ctrl->cntrl_dev, dump,
-		      le32_to_cpu(dump->len), GFP_KERNEL);
+	cnss_qcom_devcd_dump(pci_priv->mhi_ctrl->cntrl_dev, dump, le32_to_cpu(dump->len), GFP_KERNEL);
 
 	return 0;
 }
@@ -219,7 +221,6 @@ void cnss_rddm_submit(void *bus_priv)
 	struct cnss_pci_data *pci_priv = (struct cnss_pci_data *)bus_priv;
 
 	cnss_coredump_submit(pci_priv);
-	cnss_coredump_buf_release(pci_priv);
 }
 
 void cnss_rddm_collect(void *bus_priv)
