@@ -15,6 +15,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
 #include <linux/version.h>
+#include <linux/devcoredump.h>
 #include <linux/sched.h>
 #include "main.h"
 #include "bus.h"
@@ -8186,9 +8187,6 @@ u32 mhi_reg_read_remap(struct cnss_pci_data *pci_priv,
 			       (io_offset & WINDOW_RANGE_MASK));
 	}
 
-//	mhi_device_put(pci_priv->mhi_ctrl->mhi_dev);
-	cnss_pr_err("%s ioaddr %p iooffset %lu val %x\n", __func__,
-		    io_addr, io_offset, val);
 	return	val;
 }
 
@@ -8204,7 +8202,6 @@ void mhi_reg_write_remap(struct cnss_pci_data *pci_priv,
 			 void __iomem *io_addr,
 			 uintptr_t io_offset, u32 val)
 {
-//	mhi_device_get_sync(pci_priv->mhi_ctrl->mhi_dev);
 
 	if (io_offset < MAX_UNWINDOWED_ADDRESS) {
 		iowrite32(val, io_addr + io_offset);
@@ -8215,7 +8212,6 @@ void mhi_reg_write_remap(struct cnss_pci_data *pci_priv,
 	}
 	wmb();
 
-//	mhi_device_put(pci_priv->mhi_ctrl->mhi_dev);
 	cnss_pr_err("%s ioaddr %p iooffset %lu val %x\n", __func__,
 		    io_addr, io_offset, val);
 }
@@ -8563,6 +8559,52 @@ void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on)
 void cnss_pci_shutdown(struct pci_dev *pdev)
 {
 	cnss_pci_sw_reset(pdev, false);
+}
+
+int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv)
+{
+	u32 fw_sram_io_start;
+	u32 fw_sram_io_end;
+	u32 fw_sram_size;
+	char *fw_sram_buf;
+	char *buf;
+	u32 io_offset;
+	u32 val;
+
+	switch (pci_priv->pci_dev->device) {
+	case KIWI_DEVICE_ID:
+			fw_sram_io_start = KIWI_PCIE_FW_SRAM_IO_START;
+			fw_sram_io_end = KIWI_PCIE_FW_SRAM_IO_END;
+			break;
+		default:
+			cnss_pr_err("fw sram is not supported, device id 0x%x\n",
+				    pci_priv->pci_dev->device);
+			return -ENOTSUPP;
+	}
+
+	fw_sram_size = fw_sram_io_end - fw_sram_io_start + 1;
+	fw_sram_buf = vzalloc(fw_sram_size);
+	if (!fw_sram_buf) {
+		cnss_pr_err("failed to alloc fw sram buf, size: %d\n", fw_sram_size);
+		return -ENOMEM;
+	}
+
+	buf = fw_sram_buf;
+	for (io_offset = fw_sram_io_start;
+		io_offset < fw_sram_io_end; io_offset += sizeof(val)) {
+		val = mhi_reg_read_remap(pci_priv, pci_priv->bar, io_offset);
+		memcpy(buf, &val, sizeof(val));
+		buf += sizeof(val);
+	}
+
+	cnss_save_buf_to_file(fw_sram_buf, fw_sram_size, "/var/crash/fwsram%s.bin");
+
+	dev_coredumpv(&pci_priv->pci_dev->dev, fw_sram_buf, fw_sram_size, GFP_KERNEL);
+	cnss_pr_info("fw sram devcoredump\n");
+
+	cnss_invoke_qca_dump_app(FW_SRAM_DUMP);
+
+	return 0;
 }
 
 static struct pci_driver cnss_pci_driver = {
