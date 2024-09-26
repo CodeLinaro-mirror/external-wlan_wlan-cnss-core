@@ -3548,7 +3548,6 @@ static int cnss_qca6290_powerup(struct cnss_pci_data *pci_priv)
 
 	plat_priv->power_up_error = 0;
 retry:
-	cnss_pci_sw_reset(pci_priv->pci_dev, true);
 	ret = cnss_power_on_device(plat_priv, false);
 	if (ret) {
 		cnss_pr_err("Failed to power on device, err = %d\n", ret);
@@ -3590,6 +3589,7 @@ retry:
 	}
 
 	cnss_pci_set_wlaon_pwr_ctrl(pci_priv, false, false, false);
+	cnss_pci_sw_reset(pci_priv->pci_dev, true);
 	cnss_pci_show_hw_revision(pci_priv);
 
 	timeout = cnss_get_timeout(plat_priv, CNSS_TIMEOUT_QMI);
