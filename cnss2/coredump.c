@@ -5,9 +5,9 @@
 #include <linux/devcoredump.h>
 #include <linux/dma-direction.h>
 #include <linux/mhi.h>
-#include "coredump.h"
 #include "pci.h"
 #include "debug.h"
+#include "coredump.h"
 
 static size_t cnss_get_remote_buf_len(struct fw_remote_mem *fw_mem)
 {
@@ -22,7 +22,7 @@ static size_t cnss_get_remote_buf_len(struct fw_remote_mem *fw_mem)
 	return len;
 }
 
-static int cnss_coredump_remote_dump(struct cnss_plat_data *plat_priv)
+int cnss_coredump_remote_dump(struct cnss_plat_data *plat_priv)
 {
 	struct fw_remote_crash_data *crash_data = &plat_priv->remote_crash_data;
 	struct fw_remote_mem *fw_mem = plat_priv->remote_mem;
@@ -81,7 +81,7 @@ static int cnss_coredump_fw_rddm_dump(struct cnss_pci_data *pci_priv)
 	return 0;
 }
 
-static int cnss_coredump_fw_paging_dump(struct cnss_pci_data *pci_priv)
+int cnss_coredump_fw_paging_dump(struct cnss_pci_data *pci_priv)
 {
 	struct mhi_controller *mhi_cntrl = pci_priv->mhi_ctrl;
 	struct image_info *img = mhi_cntrl->fbc_image;
@@ -93,7 +93,7 @@ static int cnss_coredump_fw_paging_dump(struct cnss_pci_data *pci_priv)
 	crash_data->paging_dump_buf_len = (img->entries - 1) * mhi_cntrl->seg_len +
 					(img->entries - 1) * sizeof(struct mhi_vec_entry);
 
-	cnss_pr_dbg("entries=%d, fwdump_buf_len=%d\n",
+	cnss_pr_err("entries=%d, fwdump_buf_len=%d\n",
 		     img->entries, crash_data->paging_dump_buf_len);
 
 	crash_data->paging_dump_buf = vzalloc(crash_data->paging_dump_buf_len);
@@ -108,7 +108,7 @@ static int cnss_coredump_fw_paging_dump(struct cnss_pci_data *pci_priv)
 
 	buf = crash_data->paging_dump_buf + seg * size;
 	size = img->mhi_buf[img->entries - 1].len;
-	cnss_pr_info("to write last block: mem: 0x%p, size: 0x%x\n",
+	cnss_pr_err("to write last block: mem: 0x%p, size: 0x%x\n",
 		    buf, size);
 
 	return 0;

@@ -44,4 +44,7 @@ struct cnss_dump_file_data {
 void cnss_mhi_pm_rddm_worker(struct work_struct *work);
 void cnss_rddm_collect(void *bus_priv);
 void cnss_rddm_submit(void *bus_priv);
+
+int cnss_coredump_remote_dump(struct cnss_plat_data *plat_priv);
+int cnss_coredump_fw_paging_dump(struct cnss_pci_data *pci_priv);
 #endif
