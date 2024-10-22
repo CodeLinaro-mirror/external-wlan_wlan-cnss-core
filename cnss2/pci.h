@@ -411,6 +411,9 @@ void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv);
 #define KIWI_PCIE_FW_SRAM_IO_START 0x01400000
 #define KIWI_PCIE_FW_SRAM_IO_END 0x0177ffff
 
+#define COLOGNE_PCIE_FW_SRAM_IO_START   0x01400000
+#define COLOGNE_PCIE_FW_SRAM_IO_END     0x01900000
+
 #define KIWI_PCIE_HW_REVISION_REG	0x01A10010
 #define COLOGNE_PCIE_HW_REVISION_REG	0x01A85010
 

@@ -23,6 +23,7 @@
 #include "pci.h"
 #include "pci_platform.h"
 #include "reg.h"
+#include "../mhi/core/internal.h"
 
 #include "coredump.h"
 static struct cnss_msi_config msi_config_global = {
@@ -5590,9 +5591,29 @@ static void cnss_pci_free_aux_mem(struct cnss_pci_data *pci_priv)
 	aux_mem->size = 0;
 }
 
+static void mhi_dump_irq(struct cnss_pci_data *pci_priv)
+{
+	int i, irq, irq_sum = pci_priv->mhi_ctrl->nr_irqs;
+	int *irq_list = pci_priv->mhi_ctrl->irq;
+	bool is_one_msi = cnss_pci_is_one_msi(pci_priv);
+
+	struct irq_desc *desc;
+
+
+	for (i=0; i<irq_sum; i++) {
+		irq = irq_list[i];
+		desc = irq_to_desc(irq);
+		cnss_pr_err("MSI%d irq=%d, depth=%d\n", i, irq, desc->depth);
+		if (true == is_one_msi)
+			break;
+	}
+
+}
+
 void cnss_pci_fw_boot_timeout_hdlr(struct cnss_pci_data *pci_priv)
 {
 	struct cnss_plat_data *plat_priv;
+	struct mhi_controller *mhi_ctrl;
 
 	if (!pci_priv)
 		return;
@@ -5608,8 +5629,18 @@ void cnss_pci_fw_boot_timeout_hdlr(struct cnss_pci_data *pci_priv)
 		return;
 	}
 
+	mhi_ctrl = pci_priv->mhi_ctrl;
+
+	mhi_dump_irq(pci_priv);
+	mhi_dump_event_ring(mhi_ctrl, &(mhi_ctrl->mhi_event[0]), U32_MAX);
+
+	cnss_bus_dump_fw_sram(plat_priv);
+	cnss_coredump_fw_paging_dump(pci_priv);
+	cnss_coredump_remote_dump(plat_priv);
+
+
 	cnss_schedule_recovery(&pci_priv->pci_dev->dev,
-			       CNSS_REASON_TIMEOUT);
+				   CNSS_REASON_TIMEOUT);
 }
 
 static void cnss_pci_deinit_smmu(struct cnss_pci_data *pci_priv)
@@ -8590,6 +8621,10 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv)
 	case KIWI_DEVICE_ID:
 			fw_sram_io_start = KIWI_PCIE_FW_SRAM_IO_START;
 			fw_sram_io_end = KIWI_PCIE_FW_SRAM_IO_END;
+			break;
+	case COLOGNE_DEVICE_ID:
+			fw_sram_io_start = COLOGNE_PCIE_FW_SRAM_IO_START;
+			fw_sram_io_end = COLOGNE_PCIE_FW_SRAM_IO_END;
 			break;
 		default:
 			cnss_pr_err("fw sram is not supported, device id 0x%x\n",

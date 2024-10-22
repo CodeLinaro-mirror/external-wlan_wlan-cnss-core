@@ -2345,6 +2345,7 @@ static int cnss_do_recovery(struct cnss_plat_data *plat_priv,
 		break;
 	case CNSS_REASON_DEFAULT:
 	case CNSS_REASON_TIMEOUT:
+		goto self_recovery;
 		break;
 	default:
 		cnss_pr_err("Unsupported recovery reason: %s(%d)\n",
