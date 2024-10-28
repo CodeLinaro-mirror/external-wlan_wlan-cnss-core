@@ -69,6 +69,8 @@ endif
 endif
 endif #unified_driver end
 
+KBUILD_OPTIONS += CNSS2_PLATFORM_NAME?=linux_x86
+
 all: modules
 
 %:
