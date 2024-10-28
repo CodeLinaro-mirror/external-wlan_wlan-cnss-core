@@ -144,6 +144,7 @@ static struct notifier_block cnss_pm_notifier = {
 	.notifier_call = cnss_pm_notify,
 };
 
+#ifndef CONFIG_CNSS2_X86
 size_t cnss_get_platform_name(struct cnss_plat_data *plat_priv,
 			      char *buf, const size_t buf_len)
 {
@@ -172,6 +173,22 @@ size_t cnss_get_platform_name(struct cnss_plat_data *plat_priv,
 
 	return 0;
 }
+
+#else
+size_t cnss_get_platform_name(struct cnss_plat_data *plat_priv,
+			      char *buf, const size_t buf_len)
+{
+	size_t model_len = 0;
+
+	if (unlikely(!buf || !buf_len))
+		return 0;
+
+#ifdef CNSS2_PLATFORM_NAME
+	model_len = snprintf(buf, buf_len, "%s", CNSS2_PLATFORM_NAME);
+#endif
+	return model_len;
+}
+#endif
 
 static void cnss_pm_stay_awake(struct cnss_plat_data *plat_priv)
 {
