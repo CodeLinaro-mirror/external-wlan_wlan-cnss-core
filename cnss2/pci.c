@@ -23,7 +23,6 @@
 #include "pci.h"
 #include "pci_platform.h"
 #include "reg.h"
-#include "../mhi/core/internal.h"
 
 #include "coredump.h"
 static struct cnss_msi_config msi_config_global = {
@@ -5579,7 +5578,22 @@ static void cnss_pci_free_aux_mem(struct cnss_pci_data *pci_priv)
 	aux_mem->size = 0;
 }
 
-static void mhi_dump_irq(struct cnss_pci_data *pci_priv)
+void cnss_pci_dump_msi_data(struct cnss_pci_data *pci_priv)
+{
+	struct msi_desc *msi_desc;
+	struct pci_dev *pci_dev = pci_priv->pci_dev;
+
+	cnss_pr_err("irq = %d\n", pci_dev->irq);
+	msi_desc = irq_get_msi_desc(pci_dev->irq);
+	if (!msi_desc) {
+		cnss_pr_err("msi_desc is NULL!\n");
+		return;
+	}
+
+	cnss_pr_err("MSI base data is %d\n", msi_desc->msg.data);
+}
+
+void mhi_dump_irq(struct cnss_pci_data *pci_priv)
 {
 	int i, irq, irq_sum = pci_priv->mhi_ctrl->nr_irqs;
 	int *irq_list = pci_priv->mhi_ctrl->irq;
@@ -5620,7 +5634,8 @@ void cnss_pci_fw_boot_timeout_hdlr(struct cnss_pci_data *pci_priv)
 	mhi_ctrl = pci_priv->mhi_ctrl;
 
 	mhi_dump_irq(pci_priv);
-	mhi_dump_event_ring(mhi_ctrl, &(mhi_ctrl->mhi_event[0]), U32_MAX);
+	mhi_dump_event_ring(mhi_ctrl);
+	cnss_pci_dump_msi_data(pci_priv);
 
 	cnss_bus_dump_fw_sram(plat_priv);
 	cnss_coredump_fw_paging_dump(pci_priv);

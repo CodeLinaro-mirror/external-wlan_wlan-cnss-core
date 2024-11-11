@@ -345,6 +345,8 @@ void cnss_register_iommu_fault_handler_irq(struct cnss_pci_data *pci_priv);
 void cnss_pci_sw_reset(struct pci_dev *pdev, bool power_on);
 int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv);
 void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv);
+void cnss_pci_dump_msi_data(struct cnss_pci_data *pci_priv);
+void mhi_dump_irq(struct cnss_pci_data *pci_priv);
 
 #define PCIE_TXVECDB (0x360)
 #define PCIE_TXVECSTATUS (0x368)

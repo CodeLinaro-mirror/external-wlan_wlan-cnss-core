@@ -960,15 +960,13 @@ int mhi_process_ctrl_ev_ring(struct mhi_controller *mhi_cntrl,
 	return count;
 }
 
-int mhi_dump_event_ring(struct mhi_controller *mhi_cntrl,
-			     struct mhi_event *mhi_event,
-			     u32 event_quota)
+int mhi_dump_event_ring(struct mhi_controller *mhi_cntrl)
 {
 	struct mhi_tre *dev_rp, *local_rp;
+	struct mhi_event *mhi_event = mhi_cntrl->mhi_event;
 	struct mhi_ring *ev_ring = &mhi_event->ring;
 	struct mhi_event_ctxt *er_ctxt =
 		&mhi_cntrl->mhi_ctxt->er_ctxt[mhi_event->er_index];
-	struct mhi_chan *mhi_chan;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
 	u32 chan, ev_index=mhi_event->er_index;
 	int count = 0;
@@ -979,8 +977,11 @@ int mhi_dump_event_ring(struct mhi_controller *mhi_cntrl,
 	 * in case MHI is already in error state, but it's still possible
 	 * to transition to error state while processing events
 	 */
-	if (unlikely(MHI_EVENT_ACCESS_INVALID(mhi_cntrl->pm_state)))
+	if (unlikely(MHI_EVENT_ACCESS_INVALID(mhi_cntrl->pm_state))) {
+		dev_err(&mhi_cntrl->mhi_dev->dev,
+			"mhi event access invalid\n");
 		return -EIO;
+	}
 
 	if (!is_valid_ring_ptr(ev_ring, ptr)) {
 		dev_err(&mhi_cntrl->mhi_dev->dev,
@@ -990,6 +991,8 @@ int mhi_dump_event_ring(struct mhi_controller *mhi_cntrl,
 
 	dev_rp = mhi_to_virtual(ev_ring, ptr);
 	local_rp = ev_ring->rp;
+	dev_err(&mhi_cntrl->mhi_dev->dev,
+		"mhi ring dev_rp=0x%p, local=0x%p, ev_ring=0x%p\n", dev_rp, local_rp, ev_ring);
 
 	while (dev_rp != local_rp) {
 		enum mhi_pkt_type type = MHI_TRE_GET_EV_TYPE(local_rp);
@@ -997,9 +1000,10 @@ int mhi_dump_event_ring(struct mhi_controller *mhi_cntrl,
 		switch (type) {
 		case MHI_PKT_TYPE_BW_REQ_EVENT:
 		{
-			struct mhi_link_info *link_info;
-
 			dev_err(dev, "Received BW_REQ event\n");
+			dev_err(dev, "link_speed=%d, link_width=%d\n",
+				MHI_TRE_GET_EV_LINKSPEED(local_rp),
+				MHI_TRE_GET_EV_LINKWIDTH(local_rp));
 			break;
 		}
 		case MHI_PKT_TYPE_STATE_CHANGE_EVENT:
