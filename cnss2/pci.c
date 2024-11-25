@@ -4089,6 +4089,10 @@ skip_wait_recovery:
 			       CNSS_EVENT_SYNC_UNKILLABLE, NULL);
 
 	mutex_unlock(&plat_priv->driver_ops_lock);
+
+	clear_bit(CNSS_DRIVER_REGISTER, &plat_priv->driver_state);
+	cnss_pr_info("WLAN driver unregister, state: 0x%lx\n",
+		     plat_priv->driver_state);
 }
 EXPORT_SYMBOL(cnss_wlan_unregister_driver);
 

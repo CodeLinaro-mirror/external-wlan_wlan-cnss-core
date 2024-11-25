@@ -1266,6 +1266,7 @@ int cnss_power_on_device(struct cnss_plat_data *plat_priv , bool reset)
 	}
 
 	plat_priv->powered_on = true;
+	clear_bit(CNSS_SHUTDOWN_DEVICE, &plat_priv->driver_state);
 
 	return 0;
 }
