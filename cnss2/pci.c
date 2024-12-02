@@ -8234,46 +8234,6 @@ static const struct dev_pm_ops cnss_pm_ops = {
 			   cnss_pci_runtime_idle)
 };
 
-static inline void mhi_reg_select_window(struct cnss_pci_data *pci_priv,
-			void __iomem *io_addr, u32 offset)
-{
-	u32 window = (offset >> WINDOW_SHIFT) & WINDOW_VALUE_MASK;
-
-	switch (pci_priv->device_id) {
-	case KIWI_DEVICE_ID:
-		iowrite32(WINDOW_ENABLE_BIT | window,
-			  io_addr + KIWI_PCIE_REMAP_1M_BAR_CTRL);
-		wmb();
-		break;
-	case COLOGNE_DEVICE_ID:
-		iowrite32(WINDOW_ENABLE_BIT | window,
-			  io_addr + COLOGNE_PCIE_REMAP_1M_BAR_CTRL);
-		wmb();
-		break;
-	default:
-		return;
-	}
-
-}
-
-u32 mhi_reg_read_remap(struct cnss_pci_data *pci_priv,
-		       void __iomem *io_addr,
-		       uintptr_t io_offset)
-{
-	u32 val = 0;
-//	mhi_device_get_sync(pci_priv->mhi_ctrl->mhi_dev);
-
-	if (io_offset < MAX_UNWINDOWED_ADDRESS) {
-		val = ioread32(io_addr + io_offset);
-	} else {
-		mhi_reg_select_window(pci_priv, io_addr, io_offset);
-		val = ioread32(io_addr + WINDOW_START +
-			       (io_offset & WINDOW_RANGE_MASK));
-	}
-
-	return	val;
-}
-
 static inline void mhi_mdelay(u32 delay)
 {
 	if (in_interrupt() || irqs_disabled() || in_atomic())
@@ -8282,70 +8242,62 @@ static inline void mhi_mdelay(u32 delay)
 		msleep(delay);
 }
 
-void mhi_reg_write_remap(struct cnss_pci_data *pci_priv,
-			 void __iomem *io_addr,
-			 uintptr_t io_offset, u32 val)
-{
-
-	if (io_offset < MAX_UNWINDOWED_ADDRESS) {
-		iowrite32(val, io_addr + io_offset);
-	} else {
-		mhi_reg_select_window(pci_priv, io_addr, io_offset);
-		iowrite32(val, io_addr + WINDOW_START +
-			  (io_offset & WINDOW_RANGE_MASK));
-	}
-	wmb();
-
-	cnss_pr_err("%s ioaddr %p iooffset %lu val %x\n", __func__,
-		    io_addr, io_offset, val);
-}
-
 void mhi_reset_pcie_txvecdb(struct cnss_pci_data *pci_priv)
 {
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    PCIE_TXVECDB, 0);
+	int ret = 0;
+
+	ret = cnss_pci_reg_write(pci_priv, PCIE_TXVECDB, 0);
+	if (ret)
+		cnss_pr_err("Failed to write 0 to reg 0x%x, err = %d",
+			    PCIE_TXVECDB, ret);
 }
 
 void mhi_reset_pcie_txvecstatus(struct cnss_pci_data *pci_priv)
 {
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    PCIE_TXVECSTATUS, 0);
+	int ret = 0;
+
+	ret = cnss_pci_reg_write(pci_priv, PCIE_TXVECSTATUS, 0);
+	if (ret)
+		cnss_pr_err("Failed to write 0 to reg 0x%x, err = %d",
+			    PCIE_TXVECSTATUS, ret);
 }
 
 void mhi_reset_pcie_rxvecdb(struct cnss_pci_data *pci_priv)
 {
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    PCIE_RXVECDB, 0);
+	int ret = 0;
+
+	ret = cnss_pci_reg_write(pci_priv, PCIE_RXVECDB, 0);
+	if (ret)
+		cnss_pr_err("Failed to write 0 to reg 0x%x, err = %d",
+			    PCIE_RXVECDB, ret);
 }
 
 void mhi_reset_pcie_rxvecstatus(struct cnss_pci_data *pci_priv)
 {
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    PCIE_RXVECSTATUS, 0);
+	int ret = 0;
+
+	ret = cnss_pci_reg_write(pci_priv, PCIE_RXVECSTATUS, 0);
+	if (ret)
+		cnss_pr_err("Failed to write 0 to reg 0x%x, err = %d",
+			    PCIE_RXVECSTATUS, ret);
 }
 
 void mhi_set_wlaon_sw_entry(struct cnss_pci_data *pci_priv)
 {
 	u32 val;
+	int ret = 0;
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 WLAON_WARM_SW_ENTRY);
+	cnss_pci_reg_read(pci_priv, WLAON_WARM_SW_ENTRY, &val);
 	cnss_pr_err("WLAON_WARM_SW_ENTRY 0x%x\n", val);
 
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    WLAON_WARM_SW_ENTRY, 0);
+	ret = cnss_pci_reg_write(pci_priv, WLAON_WARM_SW_ENTRY, 0);
+	if (ret)
+		cnss_pr_err("Failed to write 0 to reg 0x%x, err = %d",
+			    WLAON_WARM_SW_ENTRY, ret);
 
 	mhi_mdelay(10);
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 WLAON_WARM_SW_ENTRY);
+	cnss_pci_reg_read(pci_priv, WLAON_WARM_SW_ENTRY, &val);
 	cnss_pr_err("WLAON_WARM_SW_ENTRY 0x%x\n", val);
 }
 
@@ -8353,14 +8305,14 @@ void mhi_set_pcie_soc_global_reset(struct cnss_pci_data *pci_priv)
 {
 	u32 val;
 	u32 delay;
+	int ret = 0;
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 PCIE_SOC_GLOBAL_RESET);
+	cnss_pci_reg_read(pci_priv, PCIE_SOC_GLOBAL_RESET, &val);
 	val |= PCIE_SOC_GLOBAL_RESET_V;
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    PCIE_SOC_GLOBAL_RESET, val);
+	ret = cnss_pci_reg_write(pci_priv, PCIE_SOC_GLOBAL_RESET, val);
+	if (ret)
+		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
+			    val, PCIE_SOC_GLOBAL_RESET, ret);
 
 	/* TODO: exact time to sleep is uncertain */
 	delay = 10;
@@ -8368,22 +8320,20 @@ void mhi_set_pcie_soc_global_reset(struct cnss_pci_data *pci_priv)
 
 	/* Need to toggle V bit back otherwise stuck in reset status */
 	val &= ~PCIE_SOC_GLOBAL_RESET_V;
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    PCIE_SOC_GLOBAL_RESET, val);
+	ret = cnss_pci_reg_write(pci_priv, PCIE_SOC_GLOBAL_RESET, val);
+	if (ret)
+		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
+			    val, PCIE_SOC_GLOBAL_RESET, ret);
 
 	mhi_mdelay(delay);
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 PCIE_SOC_GLOBAL_RESET);
+	cnss_pci_reg_read(pci_priv, PCIE_SOC_GLOBAL_RESET, &val);
 }
 void mhi_set_pcie_mhictrl_reset(struct cnss_pci_data *pci_priv)
 {
 	u32 val;
+	int ret = 0;
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 MHISTATUS);
+	cnss_pci_reg_read(pci_priv, MHISTATUS, &val);
 	cnss_pr_err("MHISTATUS 0x%x\n", val);
 
 	/*
@@ -8391,13 +8341,13 @@ void mhi_set_pcie_mhictrl_reset(struct cnss_pci_data *pci_priv)
 	 * has SYSERR bit set and thus need to set MHICTRL_RESET
 	 * to clear SYSERR.
 	 */
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    MHICTRL, MHICTRL_RESET_MASK);
+	ret = cnss_pci_reg_write(pci_priv, MHICTRL, MHICTRL_RESET_MASK);
+	if (ret)
+		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
+			    MHICTRL_RESET_MASK, MHICTRL, ret);
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 MHICTRL);
+	cnss_pci_reg_read(pci_priv, MHICTRL, &val);
+
 	mhi_mdelay(10);
 }
 
@@ -8405,18 +8355,22 @@ void mhi_set_pcie_mhictrl_reset(struct cnss_pci_data *pci_priv)
 void cnss_pci_host_reset(struct cnss_pci_data *pci_priv)
 {
 	u32 val;
+	int ret = 0;
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 HOST_RESET_REG);
+	cnss_pci_reg_read(pci_priv, HOST_RESET_REG, &val);
+
 	val |= 0x1;
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    HOST_RESET_REG, val);
+	ret = cnss_pci_reg_write(pci_priv, HOST_RESET_REG, val);
+	if (ret)
+		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
+			    val, HOST_RESET_REG, ret);
+
 	mhi_mdelay(10);
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    HOST_RESET_ADDR, HOST_RESET_PATTERN);
+	ret = cnss_pci_reg_write(pci_priv, HOST_RESET_ADDR, HOST_RESET_PATTERN);
+	if (ret)
+		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
+			    HOST_RESET_PATTERN, HOST_RESET_ADDR, ret);
+
 	mhi_mdelay(10);
 }
 
@@ -8425,34 +8379,24 @@ void cnss_pci_clear_dbg_registers(struct cnss_pci_data *pci_priv)
 	u32 val;
 
 	/* read cookie */
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 PCIE_Q6_COOKIE_ADDR);
+	cnss_pci_reg_read(pci_priv, PCIE_Q6_COOKIE_ADDR, &val);
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 WLAON_WARM_SW_ENTRY);
+	cnss_pci_reg_read(pci_priv, WLAON_WARM_SW_ENTRY, &val);
 	/* TODO: exact time to sleep is uncertain */
 	mhi_mdelay(10);
 
 	/* write 0 to WLAON_WARM_SW_ENTRY to prevent Q6 from
 	 * continuing warm path and entering dead loop.
 	 */
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    WLAON_WARM_SW_ENTRY, 0);
+	cnss_pci_reg_write(pci_priv, WLAON_WARM_SW_ENTRY, 0);
 	mhi_mdelay(10);
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 WLAON_WARM_SW_ENTRY);
+	cnss_pci_reg_read(pci_priv, WLAON_WARM_SW_ENTRY, &val);
 
 	/* A read clear register. clear the register to prevent
 	 * Q6 from entering wrong code path.
 	 */
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 WLAON_SOC_RESET_CAUSE_REG);
+	cnss_pci_reg_read(pci_priv, WLAON_SOC_RESET_CAUSE_REG, &val);
 }
 /* Below is a WAR to avoid HST PCIE interface drop during HotReset
  * plus Global reset. According to HW desinger, need to enable
@@ -8461,82 +8405,83 @@ void cnss_pci_clear_dbg_registers(struct cnss_pci_data *pci_priv)
 void cnss_pci_enable_host_reset(struct cnss_pci_data *pci_priv)
 {
 	u32 val;
+	int ret = 0;
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 GCC_PRE_ARES_DEBUG_TIMER_VAL);
+	cnss_pci_reg_read(pci_priv, GCC_PRE_ARES_DEBUG_TIMER_VAL, &val);
+
 	val |= 0x80000000;
+	ret = cnss_pci_reg_write(pci_priv, GCC_PRE_ARES_DEBUG_TIMER_VAL, val);
+	if (ret)
+		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
+			    val, GCC_PRE_ARES_DEBUG_TIMER_VAL, ret);
 
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    GCC_PRE_ARES_DEBUG_TIMER_VAL, val);
-
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 GCC_PRE_ARES_DEBUG_TIMER_VAL);
+	cnss_pci_reg_read(pci_priv, GCC_PRE_ARES_DEBUG_TIMER_VAL, &val);
 }
 
 void cnss_pci_enable_LTSSM(struct cnss_pci_data *pci_priv)
 {
 	u32 val;
+	int ret = 0;
 	int count = 5;
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 PCIE_PCIE_PARF_LTSSM);
+	cnss_pci_reg_read(pci_priv, PCIE_PCIE_PARF_LTSSM, &val);
 
 	/* PCIE link seems very unstable after the Hot Reset*/
 	while (val != PARM_LTSSM_VALUE && count--) {
 		if (val == 0xffffffff)
 			mhi_mdelay(5);
-		mhi_reg_write_remap(pci_priv,
-				    pci_priv->bar,
-				    PCIE_PCIE_PARF_LTSSM, PARM_LTSSM_VALUE);
+		ret = cnss_pci_reg_write(pci_priv, PCIE_PCIE_PARF_LTSSM,
+					 PARM_LTSSM_VALUE);
+		if (ret) {
+			cnss_pr_err("Fail to write %x to reg 0x%x, err = %d",
+				    PARM_LTSSM_VALUE, PCIE_PCIE_PARF_LTSSM,
+				    ret);
+			return;
+		}
 
-		val = mhi_reg_read_remap(pci_priv,
-					 pci_priv->bar,
-					 PCIE_PCIE_PARF_LTSSM);
+		cnss_pci_reg_read(pci_priv, PCIE_PCIE_PARF_LTSSM, &val);
 	}
 
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 GCC_GCC_PCIE_HOT_RST);
+	cnss_pci_reg_read(pci_priv, GCC_GCC_PCIE_HOT_RST, &val);
 	mhi_mdelay(5);
 }
 
 void cnss_pci_clear_all_intrs(struct cnss_pci_data *pci_priv)
 {
+	int ret = 0;
 	/* This is a WAR for PCIE Hotreset.
 	 * When target receive Hotreset, but will set the interrupt.
 	 * So when download SBL again, SBL will open Interrupt and
 	 * receive it, and crash immediately.
 	 */
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			   PCIE_PCIE_INT_ALL_CLEAR, PCIE_INT_CLEAR_ALL);
+	ret = cnss_pci_reg_write(pci_priv, PCIE_PCIE_INT_ALL_CLEAR,
+				 PCIE_INT_CLEAR_ALL);
+	if (ret)
+		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
+			    PCIE_INT_CLEAR_ALL, PCIE_PCIE_INT_ALL_CLEAR, ret);
 }
 
 void cnss_pci_set_vdd4_blow(struct cnss_pci_data *pci_priv, bool set_vdd4blow)
 {
 	u32 val;
+	int ret = 0;
 
 	/* control FW otp write privilege.
 	 * Disable the write prvilige to protect otp from
 	 * overwritten by unknown electric signals. This issue
 	 * is seen in stress test.
 	 */
-	val = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 WLAON_QFPROM_PWR_CTRL_REG);
+	cnss_pci_reg_read(pci_priv, WLAON_QFPROM_PWR_CTRL_REG, &val);
 
 	if (set_vdd4blow)
 		val |= QFPROM_PWR_CTRL_VDD4BLOW_MASK;
 	else
 		val &= ~QFPROM_PWR_CTRL_VDD4BLOW_MASK;
 
-	mhi_reg_write_remap(pci_priv,
-			    pci_priv->bar,
-			    WLAON_QFPROM_PWR_CTRL_REG, val);
+	ret = cnss_pci_reg_write(pci_priv, WLAON_QFPROM_PWR_CTRL_REG, val);
+	if (ret)
+		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d\n",
+			    val, WLAON_QFPROM_PWR_CTRL_REG, ret);
 }
 
 static bool cnss_pci_set_link_reg(struct cnss_pci_data *pci_priv,
@@ -8545,19 +8490,17 @@ static bool cnss_pci_set_link_reg(struct cnss_pci_data *pci_priv,
 	u32 ret;
 	int count = 10;
 
-	ret = mhi_reg_read_remap(pci_priv,
-				 pci_priv->bar,
-				 offset);
+	cnss_pci_reg_read(pci_priv, offset, &ret);
 	if ((ret & mask) == value)
 		return true;
 
 	while (count > 0) {
-		mhi_reg_write_remap(pci_priv,
-				    pci_priv->bar,
-				    offset, (ret & ~mask) | value);
-		ret = mhi_reg_read_remap(pci_priv,
-					 pci_priv->bar,
-					 offset);
+		ret = cnss_pci_reg_write(pci_priv, offset,
+					 (ret & ~mask) | value);
+		if (ret)
+			cnss_pr_err("Fail to write %x to reg 0x%x, err = %d",
+				    (ret & ~mask) | value, offset, ret);
+		cnss_pci_reg_read(pci_priv, offset, &ret);
 		if ((ret & mask) == value)
 			return true;
 
@@ -8680,7 +8623,7 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv)
 	buf = fw_sram_buf;
 	for (io_offset = fw_sram_io_start;
 		io_offset < fw_sram_io_end; io_offset += sizeof(val)) {
-		val = mhi_reg_read_remap(pci_priv, pci_priv->bar, io_offset);
+		cnss_pci_reg_read(pci_priv, io_offset, &val);
 		memcpy(buf, &val, sizeof(val));
 		buf += sizeof(val);
 	}
@@ -8701,15 +8644,11 @@ void cnss_pci_show_hw_revision(struct cnss_pci_data *pci_priv)
 
 	switch (pci_priv->device_id) {
 	case KIWI_DEVICE_ID:
-		val = mhi_reg_read_remap(pci_priv,
-					 pci_priv->bar,
-					 KIWI_PCIE_HW_REVISION_REG);
+		cnss_pci_reg_read(pci_priv, KIWI_PCIE_HW_REVISION_REG, &val);
 		cnss_pr_info("HW Revision(JTAGID): 0x%x\n", val);
 		break;
 	case COLOGNE_DEVICE_ID:
-		val = mhi_reg_read_remap(pci_priv,
-					 pci_priv->bar,
-					 COLOGNE_PCIE_HW_REVISION_REG);
+		cnss_pci_reg_read(pci_priv, COLOGNE_PCIE_HW_REVISION_REG, &val);
 		cnss_pr_info("HW Revision(JTAGID): 0x%x\n", val);
 		break;
 	default:
