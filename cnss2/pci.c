@@ -8317,15 +8317,6 @@ void mhi_set_pcie_soc_global_reset(struct cnss_pci_data *pci_priv)
 	/* TODO: exact time to sleep is uncertain */
 	delay = 10;
 	mhi_mdelay(delay);
-
-	/* Need to toggle V bit back otherwise stuck in reset status */
-	val &= ~PCIE_SOC_GLOBAL_RESET_V;
-	ret = cnss_pci_reg_write(pci_priv, PCIE_SOC_GLOBAL_RESET, val);
-	if (ret)
-		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
-			    val, PCIE_SOC_GLOBAL_RESET, ret);
-
-	mhi_mdelay(delay);
 	cnss_pci_reg_read(pci_priv, PCIE_SOC_GLOBAL_RESET, &val);
 }
 void mhi_set_pcie_mhictrl_reset(struct cnss_pci_data *pci_priv)
