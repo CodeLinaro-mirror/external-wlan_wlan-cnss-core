@@ -1,10 +1,17 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Copyright (c) 2020-2021, The Linux Foundation. All rights reserved. */
+/*
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ */
 
 #ifndef CNSS_PLAT_IPC_SERVICE_V01_H
 #define CNSS_PLAT_IPC_SERVICE_V01_H
 
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/linux/soc/qcom/qmi.h"
+#else
 #include <linux/soc/qcom/qmi.h>
+#endif
 
 #define CNSS_PLATFORM_SERVICE_ID_V01 0x42E
 #define CNSS_PLATFORM_SERVICE_VERS_V01 0x01

@@ -1,11 +1,15 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2015-2021, The Linux Foundation. All rights reserved. */
-/* Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #ifndef WLAN_FIRMWARE_SERVICE_V01_H
 #define WLAN_FIRMWARE_SERVICE_V01_H
 
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/linux/soc/qcom/qmi.h"
+#else
 #include <linux/soc/qcom/qmi.h>
+#endif
 
 #define WLFW_SERVICE_ID_V01 0x45
 #define WLFW_SERVICE_VERS_V01 0x01

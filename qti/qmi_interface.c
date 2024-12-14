@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2017 Linaro Ltd.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/device.h>
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/uapi/linux/qrtr.h"
+#else
 #include <linux/qrtr.h>
+#endif
 #include <linux/net.h>
 #include <linux/completion.h>
 #include <linux/idr.h>

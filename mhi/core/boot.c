@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/delay.h>
@@ -11,7 +11,11 @@
 #include <linux/firmware.h>
 #include <linux/interrupt.h>
 #include <linux/list.h>
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/linux/mhi.h"
+#else
 #include <linux/mhi.h>
+#endif
 #include <linux/module.h>
 #include <linux/random.h>
 #include <linux/slab.h>

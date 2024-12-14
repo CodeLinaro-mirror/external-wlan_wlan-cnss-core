@@ -1,11 +1,17 @@
 /* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved. */
+
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM qrtr
 
 #if !defined(_TRACE_QRTR_H) || defined(TRACE_HEADER_MULTI_READ)
 #define _TRACE_QRTR_H
 
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/uapi/linux/qrtr.h"
+#else
 #include <linux/qrtr.h>
+#endif
 #include <linux/tracepoint.h>
 
 TRACE_EVENT(qrtr_ns_service_announce_new,

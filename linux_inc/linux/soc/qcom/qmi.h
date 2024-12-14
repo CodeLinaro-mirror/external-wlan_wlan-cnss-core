@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  * Copyright (c) 2017, Linaro Ltd.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef __QMI_HELPERS_H__
 #define __QMI_HELPERS_H__
@@ -10,7 +10,11 @@
 #include <linux/completion.h>
 #include <linux/idr.h>
 #include <linux/list.h>
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/uapi/linux/qrtr.h"
+#else
 #include <linux/qrtr.h>
+#endif
 #include <linux/types.h>
 #include <linux/workqueue.h>
 

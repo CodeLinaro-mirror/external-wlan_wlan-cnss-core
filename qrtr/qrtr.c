@@ -2,11 +2,15 @@
 /*
  * Copyright (c) 2015, Sony Mobile Communications Inc.
  * Copyright (c) 2013, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/netlink.h>
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/uapi/linux/qrtr.h"
+#else
 #include <linux/qrtr.h>
+#endif
 #include <linux/termios.h>	/* For TIOCINQ/OUTQ */
 #include <linux/spinlock.h>
 #include <linux/wait.h>

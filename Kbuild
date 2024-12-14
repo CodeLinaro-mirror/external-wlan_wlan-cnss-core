@@ -135,15 +135,14 @@ obj-$(CONFIG_WCNSS_MEM_PRE_ALLOC) += cnss_prealloc/
 obj-y += cnss_utils/
 
 else
-CNSS_CORE_BASE=.
-QRTR_DIR := $(CNSS_CORE_BASE)/qrtr
-MHI_DIR := $(CNSS_CORE_BASE)/mhi/core
-QTI_DIR := $(CNSS_CORE_BASE)/qti
-CNSS_DIR := $(CNSS_CORE_BASE)/cnss2
-CNSS_UTILS_DIR := $(CNSS_CORE_BASE)/cnss_utils
-CNSS_PREALLOC_DIR := $(CNSS_CORE_BASE)/cnss_prealloc
+QRTR_DIR := qrtr
+MHI_DIR := mhi/core
+QTI_DIR := qti
+CNSS_DIR := cnss2
+CNSS_UTILS_DIR := cnss_utils
+CNSS_PREALLOC_DIR := cnss_prealloc
 
-INIT_OBJS := $(CNSS_CORE_BASE)/unified_wlan_cnsscore.o
+INIT_OBJS := unified_wlan_cnsscore.o
 INIT_INC := -I$(ROOTDIR)
 
 ifneq ($(CONFIG_QRTR),)
@@ -175,7 +174,7 @@ endif
 ifneq ($(CONFIG_QCOM_QMI_HELPERS), )
 	QMI_HELPERS_OBJS := $(QTI_DIR)/qmi_encdec.o                            \
 	                    $(QTI_DIR)/qmi_interface.o
-	QMI_HELPERS_INC := -I$(QTI_DIR)
+	QMI_HELPERS_INC := -I$(ROOTDIR)/$(QTI_DIR)
 endif
 
 ifneq ($(CONFIG_CNSS2),)
@@ -195,7 +194,7 @@ ifeq ($(CONFIG_CNSS2_QMI),y)
 	CNSS_OBJS += $(CNSS_DIR)/qmi.o                                          \
 		         $(CNSS_DIR)/coexistence_service_v01.o
 endif
-	CNSS_INC := -I$(CNSS_DIR)
+	CNSS_INC := -I$(ROOTDIR)/$(CNSS_DIR)
 endif
 
 ifneq ($(CONFIG_CNSS_UTILS), )
@@ -209,11 +208,11 @@ ifeq ($(CONFIG_CNSS_PLAT_IPC_QMI_SVC),y)
 	CNSS_UTILS_OBJS += $(CNSS_UTILS_DIR)/cnss_plat_ipc_qmi.o             \
                        $(CNSS_UTILS_DIR)/cnss_plat_ipc_service_v01.o
 endif
-	CNSS_UTILS_INC := -I$(CNSS_UTILS_DIR)
+	CNSS_UTILS_INC := -I$(ROOTDIR)/$(CNSS_UTILS_DIR)
 endif
 
 CNSS_PREALLOC_OBJS := $(CNSS_PREALLOC_DIR)/cnss_prealloc.o
-CNSS_PREALLOC_INC := $(CNSS_PREALLOC_DIR)
+CNSS_PREALLOC_INC := -I$(ROOTDIR)/$(CNSS_PREALLOC_DIR)
 
 OBJS := $(INIT_OBJS)
 OBJS += $(QRTR_OBJS)                                                        \
@@ -233,7 +232,7 @@ INCS += $(QRTR_INC)                                                         \
         $(CNSS_PREALLOC_INC)
 
 cflags-y += $(INCS)
-ccflags-y += -Os -I$(src)/$(CNSS_CORE_BASE)/inc -I$(src)/$(CNSS_CORE_BASE)/cnss_utils -I$(ROOTDIR)
+ccflags-y += -Os -I$(src)/inc $(INCS)
 
 obj-$(WLAN_CNSSCORE) +=$(MODNAME).o
 $(MODNAME)-y := $(OBJS)

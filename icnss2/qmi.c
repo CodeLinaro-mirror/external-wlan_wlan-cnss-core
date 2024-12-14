@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "icnss2_qmi: " fmt
@@ -20,11 +20,12 @@
 #include <linux/ipc_logging.h>
 #include <linux/thread_info.h>
 #include <linux/firmware.h>
-#include <linux/soc/qcom/qmi.h>
 #include <linux/platform_device.h>
 #ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/linux/soc/qcom/qmi.h"
 #include "icnss2.h"
 #else
+#include <linux/soc/qcom/qmi.h>
 #include <soc/qcom/icnss2.h>
 #endif
 #include <soc/qcom/of_common.h>

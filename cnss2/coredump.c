@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /**
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/devcoredump.h>
 #include <linux/dma-direction.h>
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/linux/mhi.h"
+#else
 #include <linux/mhi.h>
+#endif
 #include "pci.h"
 #include "debug.h"
 #include "coredump.h"

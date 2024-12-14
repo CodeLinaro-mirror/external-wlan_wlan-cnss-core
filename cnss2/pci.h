@@ -12,7 +12,11 @@
 #ifdef CONFIG_CNSS2_SMMU_DB_SUPPORT
 #include <linux/qcom-iommu-util.h>
 #endif
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/linux/mhi.h"
+#else
 #include <linux/mhi.h>
+#endif
 #if IS_ENABLED(CONFIG_MHI_BUS_MISC)
 #include <linux/mhi_misc.h>
 #endif

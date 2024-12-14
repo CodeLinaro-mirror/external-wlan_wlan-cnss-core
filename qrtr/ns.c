@@ -3,18 +3,23 @@
  * Copyright (c) 2015, Sony Mobile Communications Inc.
  * Copyright (c) 2013, The Linux Foundation. All rights reserved.
  * Copyright (c) 2020, Linaro Ltd.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
-#include <linux/qrtr.h>
 #include <linux/workqueue.h>
 #include <net/sock.h>
 
 #include "qrtr.h"
 
 #define CREATE_TRACE_POINTS
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/uapi/linux/qrtr.h"
+#include "linux_inc/trace/events/qrtr.h"
+#else
+#include <linux/qrtr.h>
 #include <trace/events/qrtr.h>
+#endif
 
 static RADIX_TREE(nodes, GFP_KERNEL);
 

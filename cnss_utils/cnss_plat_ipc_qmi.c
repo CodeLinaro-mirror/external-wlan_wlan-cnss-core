@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021, 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021, 2023, 2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/module.h>
 #include <linux/kernel.h>
+#ifdef CONFIG_CNSS_OUT_OF_TREE
+#include "linux_inc/linux/qrtr.h"
+#include "linux_inc/linux/soc/qcom/qmi.h"
+#else
 #include <linux/qrtr.h>
 #include <linux/soc/qcom/qmi.h>
+#endif
 #if IS_ENABLED(CONFIG_IPC_LOGGING)
 #include <linux/ipc_logging.h>
 #endif
