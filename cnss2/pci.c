@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/completion.h>
@@ -2655,7 +2655,7 @@ static bool cnss_pci_fallback_one_msi(struct cnss_pci_data *pci_priv,
 	*num_vectors = pci_alloc_irq_vectors(pci_dev,
 					     msi_config->total_vectors,
 					     msi_config->total_vectors,
-					     PCI_IRQ_MSI);
+					     pci_priv->irq_flag);
 	if (*num_vectors < 0) {
 		cnss_pr_err("Failed to get one MSI vector!\n");
 		return false;
@@ -5886,7 +5886,7 @@ static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 	num_vectors = pci_alloc_irq_vectors(pci_dev,
 					    msi_config->total_vectors,
 					    msi_config->total_vectors,
-					    PCI_IRQ_MSI);
+					    pci_priv->irq_flag);
 	if ((num_vectors != msi_config->total_vectors) &&
 	    !cnss_pci_fallback_one_msi(pci_priv, &num_vectors)) {
 		cnss_pr_err("Failed to get enough MSI vectors (%d), available vectors = %d",
@@ -8054,6 +8054,11 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 	if (ret)
 		goto dereg_pci_event;
 
+	pci_priv->irq_flag = PCI_IRQ_MSI;
+	if (test_bit(ENABLE_MSIX, &plat_priv->ctrl_params.quirks)) {
+		cnss_pr_info("Enable PCI_IRQ_MSIX flags by quirks");
+		pci_priv->irq_flag |= PCI_IRQ_MSIX;
+	}
 	ret = cnss_pci_enable_msi(pci_priv);
 	if (ret)
 		goto disable_bus;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2016-2021, The Linux Foundation. All rights reserved. */
-/* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 
 #include <linux/err.h>
@@ -880,6 +880,9 @@ static int cnss_show_quirks_state(struct seq_file *s,
 			continue;
 		case ENABLE_CBC:
 			seq_puts(s, "ENABLE_CBC");
+			continue;
+		case ENABLE_MSIX:
+			seq_puts(s, "ENABLE_MSIX");
 			continue;
 		default:
 			continue;
