@@ -8432,9 +8432,6 @@ void cnss_pci_enable_LTSSM(struct cnss_pci_data *pci_priv)
 
 		cnss_pci_reg_read(pci_priv, PCIE_PCIE_PARF_LTSSM, &val);
 	}
-
-	cnss_pci_reg_read(pci_priv, GCC_GCC_PCIE_HOT_RST, &val);
-	mhi_mdelay(5);
 }
 
 void cnss_pci_clear_all_intrs(struct cnss_pci_data *pci_priv)
