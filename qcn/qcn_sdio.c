@@ -388,6 +388,8 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 	if (!(mode) && !(mode < QCN_SDIO_SW_MAX))
 		return -EINVAL;
 
+	pr_info("%s: curr_sw_mode %d new mode %d\n",
+		__func__, sdio_ctxt->curr_sw_mode, mode);
 	if (sdio_ctxt->curr_sw_mode == mode)
 		return 0;
 
@@ -615,6 +617,7 @@ static void qcn_sdio_irq_handler(struct sdio_func *func)
 		sdio_release_host(sdio_ctxt->func);
 		pr_err("%s: channel mismatch interrupt triggered\n", __func__);
 	} else {
+		pr_err("%s: Unknown interrupt: 0x%02x\n", __func__, data);
 		sdio_claim_host(sdio_ctxt->func);
 		sdio_writeb(sdio_ctxt->func, (u8)data, SDIO_QCN_IRQ_CLR, NULL);
 		sdio_release_host(sdio_ctxt->func);
@@ -821,6 +824,24 @@ static inline int qcn_sdio_lpm_set(struct qcn_sdio *sdio_ctxt, bool enable)
 }
 #endif
 
+static int qcn_sdio_inject_sys_err(struct device *dev)
+{
+	struct sdio_func *func = dev_to_sdio_func(dev);
+	int ret = 0;
+	u32 value = 0;
+
+	pr_info("%s: func %d curr_sw_mode=%d\n", __func__,
+		func->num, sdio_ctxt->curr_sw_mode);
+	value = META_INFO(QCN_SDIO_SYS_ERR_HEVENT, (u32)0);
+
+	sdio_claim_host(func);
+	sdio_writel(func, value, SDIO_QCN_HRQ_PUSH, &ret);
+	sdio_release_host(func);
+
+	pr_info("%s: exit with ret %d\n", __func__, ret);
+	return ret;
+}
+
 static int qcn_sdio_action_show(struct seq_file *s, void *data)
 {
 	seq_puts(s, "\nUsage: echo <action> > <debugfs_path>/qcn_sdio/action\n");
@@ -833,6 +854,7 @@ static int qcn_sdio_action_show(struct seq_file *s, void *data)
 	seq_puts(s, "resume: Trigger resume\n");
 #endif
 
+	seq_puts(s, "inject_sys_err: Inject sys err to trigger SSR\n");
 	return 0;
 }
 
@@ -875,6 +897,8 @@ static ssize_t qcn_sdio_action_write(struct file *fp,
 		ret = qcn_sdio_lpm_set(sdio_ctxt, true);
 	} else if (sysfs_streq(cmd, "lpm_disable")) {
 		ret = qcn_sdio_lpm_set(sdio_ctxt, false);
+	} else if (sysfs_streq(cmd, "inject_sys_err")) {
+		ret = qcn_sdio_inject_sys_err(dev);
 	} else {
 		pr_err("Invalid command %s\n", cmd);
 		ret = -EINVAL;
