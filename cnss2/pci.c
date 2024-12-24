@@ -76,6 +76,7 @@ static struct cnss_msi_config msi_config_global = {
 
 #define DEV_RDDM_TIMEOUT		5000
 #define WAKE_EVENT_TIMEOUT		5000
+#define GLOBAL_RESET_TIMEOUT		200
 
 #ifdef CONFIG_CNSS_EMULATION
 #define EMULATION_HW			1
@@ -8304,8 +8305,8 @@ void mhi_set_wlaon_sw_entry(struct cnss_pci_data *pci_priv)
 void mhi_set_pcie_soc_global_reset(struct cnss_pci_data *pci_priv)
 {
 	u32 val;
-	u32 delay;
 	int ret = 0;
+	u32 timeout = 0;
 
 	cnss_pci_reg_read(pci_priv, PCIE_SOC_GLOBAL_RESET, &val);
 	val |= PCIE_SOC_GLOBAL_RESET_V;
@@ -8314,10 +8315,12 @@ void mhi_set_pcie_soc_global_reset(struct cnss_pci_data *pci_priv)
 		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
 			    val, PCIE_SOC_GLOBAL_RESET, ret);
 
-	/* TODO: exact time to sleep is uncertain */
-	delay = 10;
-	mhi_mdelay(delay);
-	cnss_pci_reg_read(pci_priv, PCIE_SOC_GLOBAL_RESET, &val);
+	while ((val & PCIE_SOC_GLOBAL_RESET_V) &&
+	       (timeout++ < GLOBAL_RESET_TIMEOUT)) {
+		mhi_mdelay(1);
+		cnss_pci_reg_read(pci_priv, PCIE_SOC_GLOBAL_RESET, &val);
+	}
+	cnss_pr_info("global reset reg = 0x%x, delay %d s", val, timeout);
 }
 void mhi_set_pcie_mhictrl_reset(struct cnss_pci_data *pci_priv)
 {
