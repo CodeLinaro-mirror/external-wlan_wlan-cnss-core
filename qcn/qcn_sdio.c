@@ -772,11 +772,12 @@ static void qcn_sdio_remove(struct sdio_func *func)
 	struct qcn_sdio_ch_info *ch_info = NULL;
 
 	atomic_set(&xport_status, 0);
+
+#ifndef CONFIG_NAPIER_X86
 	sdio_claim_host(sdio_ctxt->func);
-#ifndef CONFIG_NAPIER_X86	
 	qcn_enable_async_irq(false);
-#endif
 	sdio_release_host(sdio_ctxt->func);
+#endif
 
 	qcn_sdio_purge_rw_buff();
 
@@ -878,19 +879,22 @@ static int qcn_sdio_plat_remove(struct platform_device *pdev)
 		mutex_unlock(&lock);
 		sdio_al_deregister_client(&cinfo->cli_handle);
 		mutex_lock(&lock);
-		list_del(&cinfo->cli_list);
 	}
+
 	mutex_unlock(&lock);
+	sdio_unregister_driver(&qcn_sdio_driver);
+
 	mutex_destroy(&lock);
 	if (sdio_ctxt) {
 		destroy_workqueue(sdio_ctxt->qcn_sdio_wq);
+		sdio_claim_host(sdio_ctxt->func);
 		sdio_release_irq(sdio_ctxt->func);
+		sdio_release_host(sdio_ctxt->func);
 		kfree(sdio_ctxt);
 		sdio_ctxt = NULL;
 	}
-	sdio_unregister_driver(&qcn_sdio_driver);
-	atomic_set(&status, 0);
 
+	atomic_set(&status, 0);
 	return 0;
 }
 

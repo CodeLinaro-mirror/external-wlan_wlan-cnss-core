@@ -319,6 +319,15 @@ static void unified_pdrv_deinit(void)
 #endif
 	qmi_interface_deinit();
 	msm_ipc_router_deinit();
+
+#ifdef CONFIG_QTI_SDIO_CLIENT
+	qti_bridge_exit();
+#endif
+
+#ifdef CONFIG_QCN
+	qcn_sdio_exit();
+#endif
+
 #ifdef CONFIG_USB_QTI_KS_BRIDGE
 	ksb_exit();
 #endif
