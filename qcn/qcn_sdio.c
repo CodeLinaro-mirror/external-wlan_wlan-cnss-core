@@ -821,29 +821,50 @@ static struct sdio_driver qcn_sdio_driver = {
 	.remove = qcn_sdio_remove,
 };
 
-static int qcn_sdio_plat_probe(struct platform_device *pdev)
+static int __qcn_sdio_register_driver(void *data)
 {
+#ifndef CONFIG_NAPIER_X86
+	struct platform_device *pdev = data;
+#endif
 	int ret = 0;
-
-	mutex_init(&lock);
-	INIT_LIST_HEAD(&cinfo_head);
-	atomic_set(&status, 1);
 
 	ret = sdio_register_driver(&qcn_sdio_driver);
 	if (ret) {
-		pr_err("%s: SDIO driver registration failed: %d\n", __func__,
-									ret);
+		pr_err("SDIO driver registration failed: %d\n", ret);
 		mutex_destroy(&lock);
 		atomic_set(&status, 0);
+		return ret;
 	}
 
-	init_completion(&client_probe_complete);
+	pr_info("sdio_register_driver done\n");
 
 #ifndef CONFIG_NAPIER_X86
 	qcn_create_sysfs(&pdev->dev);
 #endif
+	return 0;
+}
 
-	return ret;
+static int qcn_sdio_register_driver_async(struct platform_device *pdev)
+{
+	struct task_struct *thread;
+
+	thread = kthread_run(__qcn_sdio_register_driver, pdev, "qcn_reg_sdio");
+	if (IS_ERR(thread)) {
+		pr_err("Failed to run qcn_reg_sdio thread\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int qcn_sdio_plat_probe(struct platform_device *pdev)
+{
+	mutex_init(&lock);
+	INIT_LIST_HEAD(&cinfo_head);
+	atomic_set(&status, 1);
+	init_completion(&client_probe_complete);
+
+	return qcn_sdio_register_driver_async(pdev);
 }
 
 static int qcn_sdio_plat_remove(struct platform_device *pdev)
