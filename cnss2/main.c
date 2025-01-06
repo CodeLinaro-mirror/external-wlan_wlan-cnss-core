@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/rtc.h>
 #include <linux/delay.h>
 #include <linux/jiffies.h>
 #include <linux/module.h>
@@ -1305,6 +1306,27 @@ int cnss_force_fw_assert(struct device *dev)
 }
 cnss_export_symbol(cnss_force_fw_assert);
 
+static int cnss_get_ts_str(char *tbuf, int len)
+{
+	struct timespec64 tv;
+	struct rtc_time tm;
+	int time_len = 0;
+
+	ktime_get_real_ts64(&tv);
+	/* Convert rtc to local time */
+	tv.tv_sec -= sys_tz.tz_minuteswest * 60;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0))
+	rtc_time64_to_tm(tv.tv_sec, &tm);
+#else
+	rtc_time_to_tm(tv.tv_sec, &tm);
+#endif
+	time_len = scnprintf(tbuf, len,
+		"%04d-%02d-%02d-%02d-%02d-%02d-",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec);
+	return time_len;
+}
+
 int cnss_dump_fw_sram_to_file(struct cnss_plat_data *plat_priv)
 {
 	uint32_t fw_sram_start;
@@ -1334,7 +1356,7 @@ int cnss_dump_fw_sram_to_file(struct cnss_plat_data *plat_priv)
 			return -ENOTSUPP;
 	}
 
-	len = get_time_of_the_day_in_hr_min_sec(time_buf, sizeof(time_buf));
+	len = cnss_get_ts_str(time_buf, sizeof(time_buf));
 	len = scnprintf(fw_sram_dump_path,
 			sizeof(fw_sram_dump_path),
 			"/var/crash/%s",

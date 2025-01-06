@@ -1387,7 +1387,7 @@ static void cnss_wlfw_clnt_ind(struct qmi_handle *handle,
 		cnss_driver_event_post(plat_priv,
                                	       CNSS_DRIVER_EVENT_COLD_BOOT_CAL_DONE,
                                        0, NULL);
-	
+		break;
 	default:
 		cnss_pr_err("Invalid QMI WLFW indication, msg_id: 0x%x\n",
 			    msg_id);
