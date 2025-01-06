@@ -57,6 +57,7 @@
 #define	TTY_TX_BUF_SZ_EVENT		0x21
 #define	TTY_TX_BUF_SZ_TRANS_EVENT	0x22
 
+#ifdef CONFIG_DIAG_SDIO
 #define	QMI_RX_BYTE_COUNT		0x61
 #define	QMI_RX_BYTE_COUNT_TRANS		0x62
 #define	QMI_RX_BYTE_TRANS_MODE		0x63
@@ -74,6 +75,16 @@
 #define	DIAG_DOORBELL_EVENT		0x80
 #define	DIAG_TX_BUF_SZ_EVENT		0x81
 #define	DIAG_TX_BUF_SZ_TRANS_EVENT	0x82
+#else
+#define	QMI_RX_BYTE_COUNT		0x81
+#define	QMI_RX_BYTE_COUNT_TRANS		0x82
+#define	QMI_RX_BYTE_TRANS_MODE		0x83
+#define	QMI_RX_BYTE_TX_READY		0x84
+
+#define	QMI_DOORBELL_EVENT		0x80
+#define	QMI_TX_BUF_SZ_EVENT		0x81
+#define	QMI_TX_BUF_SZ_TRANS_EVENT	0x82
+#endif
 
 #define	QCN_IPC_LOG_PAGES		32
 
@@ -343,23 +354,31 @@ static void sdio_dl_meta_data_cb(struct sdio_al_channel_handle *ch_handle,
 		qti_client_data_avail_cb(ch_handle, (data & 0x00003FFF));
 		break;
 	case QMI_RX_BYTE_COUNT:
+#ifdef CONFIG_DIAG_SDIO
 	case DIAG_RX_BYTE_COUNT:
+#endif
 		qlog(qsb, "client %s meta_data %x\n", qsb->name, data);
 		break;
 	case TTY_RX_BYTE_COUNT_TRANS:
 	case QMI_RX_BYTE_COUNT_TRANS:
+#ifdef CONFIG_DIAG_SDIO
 	case DIAG_RX_BYTE_COUNT_TRANS:
+#endif
 		break;
 	case TTY_RX_BYTE_TRANS_MODE:
 	case QMI_RX_BYTE_TRANS_MODE:
+#ifdef CONFIG_DIAG_SDIO
 	case DIAG_RX_BYTE_TRANS_MODE:
+#endif
 		qsb->blk_trans_mode = (data & 0x00000001);
 		qlog(qsb, "client %s mode = %d data %x\n", qsb->name,
 						qsb->blk_trans_mode, data);
 		break;
 	case TTY_RX_BYTE_TX_READY:
 	case QMI_RX_BYTE_TX_READY:
+#ifdef CONFIG_DIAG_SDIO
 	case DIAG_RX_BYTE_TX_READY:
+#endif
 		qsb->tx_ready = 1;
 		wake_up(&qsb->wait_q);
 		qlog(qsb, "client %s tx_ready data = %x\n", qsb->name, data);
@@ -386,9 +405,11 @@ int qti_client_open(int id, void *ops)
 	case QCN_SDIO_CLI_ID_QMI:
 		event = QMI_DOORBELL_EVENT;
 		break;
+#ifdef CONFIG_DIAG_SDIO
 	case QCN_SDIO_CLI_ID_DIAG:
 		event = DIAG_DOORBELL_EVENT;
 		break;
+#endif
 	default:
 		to_console = 1;
 		qlog(qsb, "Invalid client\n");
@@ -545,9 +566,11 @@ int qti_client_write(int id, char *buf, size_t count)
 	case QCN_SDIO_CLI_ID_QMI:
 		event = QMI_TX_BUF_SZ_EVENT;
 		break;
+#ifdef CONFIG_DIAG_SDIO
 	case QCN_SDIO_CLI_ID_DIAG:
 		event = DIAG_TX_BUF_SZ_EVENT;
 		break;
+#endif
 	default:
 		to_console = 1;
 		qlog(qsb, "Invalid client\n");
@@ -1235,7 +1258,10 @@ static int qti_bridge_probe(struct platform_device *pdev)
 	++kworker_refs_count;
 #ifdef CONFIG_NAPIER_X86
 	register_client(3, 1);
+
+#ifdef CONFIG_DIAG_SDIO
 	register_client(4, 1);
+#endif
 #endif
 
 

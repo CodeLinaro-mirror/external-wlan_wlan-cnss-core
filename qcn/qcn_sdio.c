@@ -1035,17 +1035,45 @@ void sdio_al_deregister_client(struct sdio_al_client_handle *handle)
 }
 EXPORT_SYMBOL(sdio_al_deregister_client);
 
+struct qcn_sdio_chan_nameid_mapping {
+	const char *name;
+	uint32_t id;
+};
+
+#ifdef CONFIG_DIAG_SDIO
+static const struct qcn_sdio_chan_nameid_mapping nameid_mapping[] =
+{
+	{"SDIO_AL_TTY_CH0", QCN_SDIO_CH_0},
+	{"SDIO_AL_WLAN_CH0", QCN_SDIO_CH_0},
+	{"SDIO_AL_WLAN_CH1", QCN_SDIO_CH_1},
+	{"SDIO_AL_QMI_CH0", QCN_SDIO_CH_2},
+	{"SDIO_AL_DIAG_CH0", QCN_SDIO_CH_3},
+	{NULL, QCN_SDIO_CH_MAX}
+};
+#else
+static const struct qcn_sdio_chan_nameid_mapping nameid_mapping[] =
+{
+	{"SDIO_AL_TTY_CH0", QCN_SDIO_CH_0},
+	{"SDIO_AL_WLAN_CH0", QCN_SDIO_CH_1},
+	{"SDIO_AL_WLAN_CH1", QCN_SDIO_CH_2},
+	{"SDIO_AL_QMI_CH0", QCN_SDIO_CH_3},
+	{NULL, QCN_SDIO_CH_MAX}
+};
+#endif
+
 struct sdio_al_channel_handle *sdio_al_register_channel(
 		struct sdio_al_client_handle *client_handle,
 		struct sdio_al_channel_data *channel_data)
 {
 	struct qcn_sdio_ch_info	*ch_info = NULL;
 	struct qcn_sdio_client_info *client_info = NULL;
+	int i = 0;
+	bool is_valid = false;
 
-	pr_err("sdio_al_register_channel for channel name:%s\n", channel_data->name);
-
+	pr_err("sdio_al_register_channel for channel name:%s\n",
+	       channel_data->name);
 	if (!((channel_data) && (channel_data->name) && (client_handle) &&
-				(channel_data->client_data))) {
+	      (channel_data->client_data))) {
 		pr_err("%s: SDIO: Invalid param\n", __func__);
 		return ERR_PTR(-EINVAL);
 	}
@@ -1055,28 +1083,31 @@ struct sdio_al_channel_handle *sdio_al_register_channel(
 		return ERR_PTR(-ENOMEM);
 
 	memcpy(&ch_info->ch_data, channel_data,
-					sizeof(struct sdio_al_channel_data));
+	       sizeof(struct sdio_al_channel_data));
 
-	if ((!strcmp(channel_data->name, "SDIO_AL_WLAN_CH0")) ||
-			(!strcmp(channel_data->name, "SDIO_AL_TTY_CH0"))) {
-		if (atomic_read(&sdio_ctxt->ch_status[QCN_SDIO_CH_0]) < 0)
-			ch_info->ch_handle.channel_id = QCN_SDIO_CH_0;
-	} else if (!strcmp(channel_data->name, "SDIO_AL_WLAN_CH1")) {
-		if (atomic_read(&sdio_ctxt->ch_status[QCN_SDIO_CH_1]) < 0)
-			ch_info->ch_handle.channel_id = QCN_SDIO_CH_1;
-	} else if (!strcmp(channel_data->name, "SDIO_AL_QMI_CH0")) {
-		if (atomic_read(&sdio_ctxt->ch_status[QCN_SDIO_CH_2]) < 0)
-			ch_info->ch_handle.channel_id = QCN_SDIO_CH_2;
-	} else if (!strcmp(channel_data->name, "SDIO_AL_DIAG_CH0")) {
-		if (atomic_read(&sdio_ctxt->ch_status[QCN_SDIO_CH_3]) < 0)
-			ch_info->ch_handle.channel_id = QCN_SDIO_CH_3;
-	} else {
+	while (nameid_mapping[i].name) {
+		if (strcmp(channel_data->name, nameid_mapping[i].name)) {
+			i++;
+			continue;
+		}
+
+		is_valid = true;
+		if (atomic_read(&sdio_ctxt->ch_status[nameid_mapping[i].id])
+		    < 0)
+			ch_info->ch_handle.channel_id = nameid_mapping[i].id;
+
+		break;
+	}
+
+	if (!is_valid) {
 		pr_err("%s: SDIO: Invalid CH name: %s\n", __func__,
-							channel_data->name);
+		       channel_data->name);
 		kfree(ch_info);
 		return ERR_PTR(-EINVAL);
 	}
 
+	pr_err("%s: CH name %s id %u", __func__,
+	       ch_info->ch_data.name, ch_info->ch_handle.channel_id);
 	client_info = container_of(client_handle, struct qcn_sdio_client_info,
 								cli_handle);
 	ch_info->ch_handle.channel_data = &ch_info->ch_data;
