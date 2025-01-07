@@ -5,6 +5,7 @@ emulation_build ?= 0
 unified_driver ?= 0
 unified_prealloc ?= 0
 diag_support ?= 1
+lpm_support ?= 0
 
 ifeq ($(diag_support), 1)
 KBUILD_OPTIONS += CONFIG_MSM_DIAG_INTERFACE=y
@@ -63,6 +64,10 @@ ifeq ($(interface_type), sdio)
 KBUILD_OPTIONS += CONFIG_SDIO_XPRT=m CONFIG_QCN=m CONFIG_QTI_SDIO_CLIENT=m CONFIG_CNSS2_SDIO=y
 endif
 endif #unified_driver end
+
+ifeq ($(lpm_support), 1)
+KBUILD_OPTIONS += CONFIG_LPM=y
+endif
 
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(shell pwd) modules $(KBUILD_OPTIONS)

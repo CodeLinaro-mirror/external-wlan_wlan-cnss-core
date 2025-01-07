@@ -203,6 +203,10 @@ ifneq ($(CONFIG_MULTI_CARD),)
 	endif
 endif
 
+ifeq ($(CONFIG_LPM), y)
+KBUILD_CPPFLAGS += -DCONFIG_LPM
+endif
+
 CDEFINES :=	-Wall\
 		-Werror
 KBUILD_CPPFLAGS += $(CDEFINES)

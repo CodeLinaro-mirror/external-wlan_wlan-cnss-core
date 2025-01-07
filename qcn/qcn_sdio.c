@@ -23,6 +23,8 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/kthread.h>
+#include <linux/seq_file.h>
+#include <linux/debugfs.h>
 #include "qcn_sdio.h"
 
 static bool tx_dump;
@@ -73,6 +75,11 @@ struct qcn_sdio {
 	atomic_t wait_list_count;
 	struct workqueue_struct *qcn_sdio_wq;
 	struct work_struct sdio_rw_w;
+	struct dentry *dbg_dentry;
+#ifdef CONFIG_LPM
+	bool low_power_disabled;
+	atomic_t suspended;
+#endif
 };
 
 static struct qcn_sdio *sdio_ctxt;
@@ -96,7 +103,7 @@ static int qcn_create_sysfs(struct device *dev);
 	<< QCN_SDIO_HMETA_SW_SHFT) & QCN_SDIO_HMETA_SW_BMSK) |		  \
 	(u32)(QCN_SDIO_HMETA_FMT_VER & QCN_SDIO_HMETA_VER_BMSK))
 #elif (QCN_SDIO_META_VER_1)
-#define	META_INFO(even, data)						  \
+#define	META_INFO(event, data)						  \
 	((u32)(((u32)event << QCN_SDIO_HMETA_EVENT_SHFT) &		  \
 	QCN_SDIO_HMETA_EVENT_BMSK) | (u32)(((u32)data <<		  \
 	QCN_SDIO_HMETA_DATA_SHFT) & QCN_SDIO_HMETA_DATA_BMSK))
@@ -695,6 +702,230 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 	}
 }
 
+#ifdef CONFIG_LPM
+static int qcn_sdio_suspend(struct device *dev)
+{
+	struct sdio_func *func = dev_to_sdio_func(dev);
+	u8 value = 0;
+	int ret = 0, count = 0, suspended;
+
+	if (sdio_ctxt->low_power_disabled) {
+		pr_err("Low power has been disabled\n");
+		return 0;
+	}
+
+	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 0, 1);
+	if (suspended) {
+		pr_info("Already suspended\n");
+		return 0;
+	}
+
+	pr_info("%s: func %d curr_sw_mode=%d\n", __func__,
+		func->num, sdio_ctxt->curr_sw_mode);
+
+	sdio_claim_host(func);
+	value = sdio_readb(func, SDIO_QCN_LOW_PWR, &ret);
+	if (ret) {
+		pr_err("low power status read error: %d\n", ret);
+		goto out;
+	}
+
+	value = value | SDIO_QCN_LOW_PWR_GO_MASK;
+	sdio_writeb(func, value, SDIO_QCN_LOW_PWR, &ret);
+	if (ret) {
+		pr_err("low power status write error: %d\n", ret);
+		goto out;
+	}
+	sdio_release_host(func);
+
+	do {
+		sdio_claim_host(func);
+		value = sdio_readb(func, SDIO_QCN_LOW_PWR, &ret);
+		sdio_release_host(func);
+		if (ret) {
+			pr_err("low power status read after write error: %d\n",
+			       ret);
+			msleep(10);
+			continue;
+		}
+
+		if (!(value & SDIO_QCN_LOW_PWR_GO_MASK)) {
+			sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
+			pr_info("%s: suspended\n", __func__);
+			return 0;
+		}
+
+		msleep(10);
+	} while ((value & SDIO_QCN_LOW_PWR_GO_MASK) && (count ++ < 1000));
+
+out:
+	sdio_release_host(func);
+	if (count >= 1000) {
+		pr_err("suspend timed out\n");
+		ret = -EBUSY;
+	}
+
+	pr_info("exit with ret %d\n", ret);
+	return ret;
+}
+
+static int qcn_sdio_resume(struct device *dev)
+{
+	struct sdio_func *func = dev_to_sdio_func(dev);
+	int ret = 0, suspended;
+	u32 value = 0;
+
+	if (sdio_ctxt->low_power_disabled) {
+		pr_err("Low power has been disabled\n");
+		return 0;
+	}
+
+	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 1, 0);
+	if (!suspended) {
+		pr_info("Already resumed\n");
+		return 0;
+	}
+
+	pr_info("%s: func %d curr_sw_mode=%d\n", __func__,
+		func->num, sdio_ctxt->curr_sw_mode);
+	value = META_INFO(QCN_SDIO_DOORBELL_HEVENT, (u32)0);
+
+	sdio_claim_host(func);
+	sdio_writel(func, value, SDIO_QCN_HRQ_PUSH, &ret);
+	sdio_release_host(func);
+
+	pr_info("exit with ret %d\n", ret);
+	return ret;
+}
+
+static int qcn_sdio_lpm_set(struct qcn_sdio *sdio_ctxt, bool enable)
+{
+	pr_info("%s: %s\n", __func__, enable ? "enable" : "disable");
+	sdio_ctxt->low_power_disabled = !enable;
+	return 0;
+}
+#else
+static inline int qcn_sdio_suspend(struct device *dev)
+{
+	return -ENOTSUPP;
+}
+
+static inline int qcn_sdio_resume(struct device *dev)
+{
+	return -ENOTSUPP;
+}
+
+static inline int qcn_sdio_lpm_set(struct qcn_sdio *sdio_ctxt, bool enable)
+{
+	return -ENOTSUPP;
+}
+#endif
+
+static int qcn_sdio_action_show(struct seq_file *s, void *data)
+{
+	seq_puts(s, "\nUsage: echo <action> > <debugfs_path>/qcn_sdio/action\n");
+	seq_puts(s, "<action> can be one of below:\n");
+
+#ifdef CONFIG_LPM
+	seq_puts(s, "lpm_enable: Enable Low Power Feature\n");
+	seq_puts(s, "lpm_disable: Disable Low Power Feature\n");
+	seq_puts(s, "suspend: Trigger suspend\n");
+	seq_puts(s, "resume: Trigger resume\n");
+#endif
+
+	return 0;
+}
+
+static int qcn_sdio_action_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, qcn_sdio_action_show, inode->i_private);
+}
+
+static ssize_t qcn_sdio_action_write(struct file *fp,
+					 const char __user *user_buf,
+					 size_t count, loff_t *off)
+{
+	struct qcn_sdio *sdio_ctxt =
+		((struct seq_file *)fp->private_data)->private;
+	char buf[64];
+	char *cmd;
+	unsigned int len = 0;
+	int ret = 0;
+	struct device *dev;
+
+	if (!sdio_ctxt || !sdio_ctxt->func) {
+		pr_err("Invalid sdio context");
+		return -ENODEV;
+	}
+
+	len = min(count, sizeof(buf) - 1);
+	if (copy_from_user(buf, user_buf, len))
+		return -EFAULT;
+
+	buf[len] = '\0';
+	cmd = buf;
+
+	dev = &sdio_ctxt->func->dev;
+
+	if (sysfs_streq(cmd, "suspend")) {
+		ret = qcn_sdio_suspend(dev);
+	} else if (sysfs_streq(cmd, "resume")) {
+		ret = qcn_sdio_resume(dev);
+	} else if (sysfs_streq(cmd, "lpm_enable")) {
+		ret = qcn_sdio_lpm_set(sdio_ctxt, true);
+	} else if (sysfs_streq(cmd, "lpm_disable")) {
+		ret = qcn_sdio_lpm_set(sdio_ctxt, false);
+	} else {
+		pr_err("Invalid command %s\n", cmd);
+		ret = -EINVAL;
+	}
+
+	if (ret) {
+		pr_err("%s: failed with ret %d\n", __func__, ret);
+		return ret;
+	}
+
+	return count;
+}
+
+static const struct file_operations qcn_sdio_action_fops = {
+	.read		= seq_read,
+	.write		= qcn_sdio_action_write,
+	.release	= single_release,
+	.open		= qcn_sdio_action_open,
+	.owner		= THIS_MODULE,
+	.llseek		= seq_lseek,
+};
+
+
+static int qcn_sdio_debugfs_create(struct qcn_sdio *sdio_ctxt)
+{
+	int ret = 0;
+	struct dentry *root_dentry;
+
+	root_dentry = debugfs_create_dir("qcn_sdio", 0);
+	if (IS_ERR(root_dentry)) {
+		ret = PTR_ERR(root_dentry);
+		pr_err("Unable to create debugfs %d\n", ret);
+		return -EINVAL;
+	}
+
+	sdio_ctxt->dbg_dentry = root_dentry;
+	debugfs_create_file("action", 0644, root_dentry, sdio_ctxt,
+			    &qcn_sdio_action_fops);
+	pr_debug("qcn_sdio debugfs created\n");
+	return 0;
+}
+
+static void qcn_sdio_debugfs_destroy(struct qcn_sdio *sdio_ctxt)
+{
+	if (sdio_ctxt->dbg_dentry) {
+		debugfs_remove_recursive(sdio_ctxt->dbg_dentry);
+		sdio_ctxt->dbg_dentry = NULL;
+		pr_debug("qcn_sdio debugfs destroyed\n");
+	}
+}
+
 static
 int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 {
@@ -757,8 +988,8 @@ int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 		mmc_retune_disable(current_host);
 	}
 
+	qcn_sdio_debugfs_create(sdio_ctxt);
 	atomic_set(&xport_status, 1);
-
 	return 0;
 err:
 	kfree(sdio_ctxt);
@@ -771,6 +1002,7 @@ static void qcn_sdio_remove(struct sdio_func *func)
 	struct qcn_sdio_client_info *cinfo = NULL;
 	struct qcn_sdio_ch_info *ch_info = NULL;
 
+	qcn_sdio_debugfs_destroy(sdio_ctxt);
 	atomic_set(&xport_status, 0);
 
 #ifndef CONFIG_NAPIER_X86
@@ -815,11 +1047,23 @@ static const struct sdio_device_id qcn_sdio_devices[] = {
 
 MODULE_DEVICE_TABLE(sdio, qcn_sdio_devices);
 
+#ifdef CONFIG_LPM
+static const struct dev_pm_ops qcn_sdio_pm_ops = {
+    .suspend = qcn_sdio_suspend,
+    .resume = qcn_sdio_resume,
+};
+#endif
+
 static struct sdio_driver qcn_sdio_driver = {
 	.name = "qcn_sdio",
 	.id_table = qcn_sdio_devices,
 	.probe = qcn_sdio_probe,
 	.remove = qcn_sdio_remove,
+#ifdef CONFIG_LPM
+	.drv = {
+		.pm = &qcn_sdio_pm_ops,
+	},
+#endif
 };
 
 static int __qcn_sdio_register_driver(void *data)
