@@ -8315,12 +8315,12 @@ void mhi_set_pcie_soc_global_reset(struct cnss_pci_data *pci_priv)
 		cnss_pr_err("Failed to write %x to reg 0x%x, err = %d",
 			    val, PCIE_SOC_GLOBAL_RESET, ret);
 
-	while ((val & PCIE_SOC_GLOBAL_RESET_V) &&
-	       (timeout++ < GLOBAL_RESET_TIMEOUT)) {
+	do {
 		mhi_mdelay(1);
 		cnss_pci_reg_read(pci_priv, PCIE_SOC_GLOBAL_RESET, &val);
-	}
-	cnss_pr_info("global reset reg = 0x%x, delay %d s", val, timeout);
+	} while ((timeout++ < GLOBAL_RESET_TIMEOUT) &&
+		 (val & PCIE_SOC_GLOBAL_RESET_V));
+	cnss_pr_info("global reset reg = 0x%x, delay %d ms", val, timeout);
 }
 void mhi_set_pcie_mhictrl_reset(struct cnss_pci_data *pci_priv)
 {
