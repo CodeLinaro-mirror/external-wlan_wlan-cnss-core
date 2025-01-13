@@ -878,12 +878,6 @@ static int cnss_show_quirks_state(struct seq_file *s,
 		case FORCE_ONE_MSI:
 			seq_puts(s, "FORCE_ONE_MSI");
 			continue;
-		case ENABLE_SSR:
-			seq_puts(s, "ENABLE_SSR");
-			continue;
-		case ENABLE_PCI_LINK_PS:
-			seq_puts(s, "ENABLE_PCI_LINK_PS");
-			continue;
 		case ENABLE_CBC:
 			seq_puts(s, "ENABLE_CBC");
 			continue;

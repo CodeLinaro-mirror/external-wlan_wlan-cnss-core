@@ -1564,25 +1564,6 @@ static int cnss_update_supported_link_info(struct cnss_pci_data *pci_priv)
 	return ret;
 }
 
-static int cnss_pci_disable_aspm(struct cnss_pci_data *pci_priv)
-{
-	u16 link_ctrl;
-	int ret;
-
-	ret = pcie_capability_read_word(pci_priv->pci_dev, PCI_EXP_LNKCTL,
-					&link_ctrl);
-	if (ret)
-		return ret;
-
-	cnss_pr_dbg("pci link_ctl 0x%04x\n", link_ctrl);
-
-	/* disable L0s and L1 */
-	pcie_capability_write_word(pci_priv->pci_dev, PCI_EXP_LNKCTL,
-				   link_ctrl & ~PCI_EXP_LNKCTL_ASPMC);
-
-	return 0;
-}
-
 static int cnss_pci_get_link_status(struct cnss_pci_data *pci_priv)
 {
 	u16 link_status;
@@ -8110,11 +8091,6 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 		cnss_pci_get_link_status(pci_priv);
 		cnss_pci_set_wlaon_pwr_ctrl(pci_priv, false, true, false);
 		cnss_pci_wake_gpio_init(pci_priv);
-#ifdef CONFIG_CNSS2_X86
-		/* check if it's really needed to disable aspm */
-		if (!test_bit(ENABLE_PCI_LINK_PS, &plat_priv->ctrl_params.quirks))
-			cnss_pci_disable_aspm(pci_priv);
-#endif
 		break;
 	default:
 		cnss_pr_err("Unknown PCI device found: 0x%x\n",

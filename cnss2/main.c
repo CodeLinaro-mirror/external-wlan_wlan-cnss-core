@@ -2213,7 +2213,7 @@ void cnss_recovery_handler(struct cnss_plat_data *plat_priv)
 	cnss_bus_dev_ramdump(plat_priv);
 #endif
 
-	if (!test_bit(ENABLE_SSR, &plat_priv->ctrl_params.quirks)) {
+	if (!plat_priv->recovery_enabled) {
 		panic("subsys-restart: Resetting the SoC wlan crashed\n");
 		cnss_pr_err("Skip recovery, return\n");
 		return;
