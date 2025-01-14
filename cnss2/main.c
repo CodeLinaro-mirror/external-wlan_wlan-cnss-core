@@ -2525,6 +2525,47 @@ int cnss_force_fw_assert(struct device *dev)
 }
 EXPORT_SYMBOL(cnss_force_fw_assert);
 
+int cnss_dump_fw_fullram(struct device *dev)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+	struct cnss_pci_data *pci_priv;
+	enum cnss_recovery_reason reason_back;
+	struct mhi_fw_crash_data *crash_data;
+	struct fw_remote_crash_data *fw_crash_data;
+
+	if (!plat_priv) {
+		cnss_pr_err("plat_priv is NULL\n");
+		return -ENODEV;
+	}
+
+
+	pci_priv = plat_priv->bus_priv;
+	reason_back = plat_priv->fw_crash_data.reason;
+	plat_priv->fw_crash_data.reason = CNSS_REASON_DEFAULT;
+
+	// build dump info, only save in buffer
+	cnss_bus_dump_fw_sram(plat_priv);
+	cnss_coredump_fw_paging_dump(pci_priv);
+	cnss_coredump_remote_dump(plat_priv);
+
+	// submit dump to file
+	cnss_coredump_submit(pci_priv);
+
+
+	// free the full ram mem
+	crash_data = &pci_priv->plat_priv->fw_crash_data;
+	fw_crash_data = &plat_priv->remote_crash_data;
+	vfree(crash_data->paging_dump_buf);
+	vfree(crash_data->sram_dump_buf);
+	vfree(fw_crash_data->remote_buf);
+	crash_data->paging_dump_buf_len = 0;
+	crash_data->sram_dump_buf_len = 0;
+	fw_crash_data->remote_buf_len = 0;
+	plat_priv->fw_crash_data.reason = reason_back;
+
+	return 0;
+}
+
 int cnss_dump_fw_sram(struct device *dev)
 {
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);

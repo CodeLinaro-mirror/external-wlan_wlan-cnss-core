@@ -313,6 +313,8 @@ static ssize_t cnss_dev_boot_debug_write(struct file *fp,
 				&plat_priv->driver_state);
 		} else if (sysfs_streq(cmd, "dump_fw_sram")) {
 			cnss_dump_fw_sram(&pci_priv->pci_dev->dev);
+		} else if (sysfs_streq(cmd, "dump_fw_fullram")) {
+			cnss_dump_fw_fullram(&pci_priv->pci_dev->dev);
 		} else if (sysfs_streq(cmd, "dump_msi")) {
 			cnss_pr_info("Dump irq/mhi/msi debug info\n");
 			mhi_dump_irq(pci_priv);

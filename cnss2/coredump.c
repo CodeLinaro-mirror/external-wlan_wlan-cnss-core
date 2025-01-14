@@ -190,7 +190,7 @@ cnss_coredump_build(struct mhi_fw_crash_data *crash_data,
 int cnss_qcom_devcd_dump(struct device *dev, void *data, size_t datalen,
 				gfp_t gfp);
 
-static int cnss_coredump_submit(struct cnss_pci_data *pci_priv)
+int cnss_coredump_submit(struct cnss_pci_data *pci_priv)
 {
 	struct cnss_dump_file_data *dump;
 
@@ -202,6 +202,7 @@ static int cnss_coredump_submit(struct cnss_pci_data *pci_priv)
 	cnss_save_buf_to_file((char *)dump, dump->len, "/var/crash/Trieste%s.bin");
 	cnss_qcom_devcd_dump(pci_priv->mhi_ctrl->cntrl_dev, dump, le32_to_cpu(dump->len), GFP_KERNEL);
 	cnss_invoke_qca_dump_app(FW_RDDM_DUMP);
+	cnss_pr_info("fw core devcoredump\n");
 
 	return 0;
 }
