@@ -12,6 +12,7 @@ enum cnss_fw_crash_dump_type {
 	CNSS_FW_CRASH_PAGING_DATA,
 	CNSS_FW_CRASH_RDDM_DATA,
 	CNSS_FW_REMOTE_MEM_DATA,
+	CNSS_FW_CRASH_SRAM_DATA,
 	CNSS_FW_CRASH_DUMP_MAX,
 };
 
@@ -25,7 +26,7 @@ struct cnss_tlv_dump_data {
 } __packed;
 
 struct cnss_dump_file_data {
-	/* "ATH11K-FW-DUMP" */
+	/* "CNSS_FW_DUMP" */
 	char df_magic[16];
 	__le32 len;
 	/* file dump version */
@@ -36,7 +37,8 @@ struct cnss_dump_file_data {
 	/* time-of-day stamp, nano-seconds */
 	__le64 tv_nsec;
 	/* room for growth w/out changing binary format */
-	u8 unused[8];
+	u8 crash_reason;
+	u8 unused[7];
 	/* struct mhi_tlv_dump_data + more */
 	u8 data[0];
 } __packed;

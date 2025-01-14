@@ -41,8 +41,8 @@
 #include "genl.h"
 #include "reg.h"
 #ifdef CONFIG_CNSS2_X86
-#include "coredump.h"
 #include "pci.h"
+#include "coredump.h"
 #endif
 
 #ifdef CONFIG_CNSS_HW_SECURE_DISABLE
@@ -2302,6 +2302,9 @@ static int cnss_do_recovery(struct cnss_plat_data *plat_priv,
 			    enum cnss_recovery_reason reason)
 {
 	int ret;
+	struct cnss_pci_data *pci_priv = plat_priv->bus_priv;
+
+	plat_priv->fw_crash_data.reason = reason;
 
 	plat_priv->recovery_count++;
 
@@ -2345,7 +2348,11 @@ static int cnss_do_recovery(struct cnss_plat_data *plat_priv,
 		break;
 	case CNSS_REASON_DEFAULT:
 	case CNSS_REASON_TIMEOUT:
-		goto self_recovery;
+
+		cnss_bus_dump_fw_sram(plat_priv);
+		cnss_coredump_fw_paging_dump(pci_priv);
+		cnss_coredump_remote_dump(plat_priv);
+		/** goto self_recovery; */
 		break;
 	default:
 		cnss_pr_err("Unsupported recovery reason: %s(%d)\n",

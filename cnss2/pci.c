@@ -3726,8 +3726,9 @@ static int cnss_qca6290_ramdump(struct cnss_pci_data *pci_priv)
 	struct cnss_dump_seg *dump_seg = info_v2->dump_data_vaddr;
 	int ret = 0;
 
-	if (!info_v2->dump_data_valid || !dump_seg ||
-	    dump_data->nentries == 0)
+	if ((CNSS_REASON_RDDM == plat_priv->fw_crash_data.reason)
+			&&(!info_v2->dump_data_valid || !dump_seg ||
+			dump_data->nentries == 0))
 		return 0;
 
 	ret = cnss_do_elf_ramdump(plat_priv);
@@ -5642,9 +5643,9 @@ void cnss_pci_fw_boot_timeout_hdlr(struct cnss_pci_data *pci_priv)
 	mhi_dump_event_ring(mhi_ctrl);
 	cnss_pci_dump_msi_data(pci_priv);
 
-	cnss_bus_dump_fw_sram(plat_priv);
-	cnss_coredump_fw_paging_dump(pci_priv);
-	cnss_coredump_remote_dump(plat_priv);
+	/** cnss_bus_dump_fw_sram(plat_priv); */
+	/** cnss_coredump_fw_paging_dump(pci_priv); */
+	/** cnss_coredump_remote_dump(plat_priv); */
 
 
 	cnss_schedule_recovery(&pci_priv->pci_dev->dev,
@@ -8584,10 +8585,10 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv)
 	u32 fw_sram_io_start;
 	u32 fw_sram_io_end;
 	u32 fw_sram_size;
-	char *fw_sram_buf;
 	char *buf;
 	u32 io_offset;
 	u32 val;
+	struct mhi_fw_crash_data *crash_data = &pci_priv->plat_priv->fw_crash_data;
 
 	switch (pci_priv->pci_dev->device) {
 	case KIWI_DEVICE_ID:
@@ -8605,13 +8606,14 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv)
 	}
 
 	fw_sram_size = fw_sram_io_end - fw_sram_io_start + 1;
-	fw_sram_buf = vzalloc(fw_sram_size);
-	if (!fw_sram_buf) {
+	buf = vzalloc(fw_sram_size);
+	if (!buf) {
 		cnss_pr_err("failed to alloc fw sram buf, size: %d\n", fw_sram_size);
 		return -ENOMEM;
 	}
+	crash_data->sram_dump_buf = buf;
+	crash_data->sram_dump_buf_len = fw_sram_size;
 
-	buf = fw_sram_buf;
 	for (io_offset = fw_sram_io_start;
 		io_offset < fw_sram_io_end; io_offset += sizeof(val)) {
 		cnss_pci_reg_read(pci_priv, io_offset, &val);
@@ -8619,9 +8621,9 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv)
 		buf += sizeof(val);
 	}
 
-	cnss_save_buf_to_file(fw_sram_buf, fw_sram_size, "/var/crash/fwsram%s.bin");
+	cnss_save_buf_to_file(buf, fw_sram_size, "/var/crash/fwsram%s.bin");
 
-	dev_coredumpv(&pci_priv->pci_dev->dev, fw_sram_buf, fw_sram_size, GFP_KERNEL);
+	/** dev_coredumpv(&pci_priv->pci_dev->dev, buf, fw_sram_size, GFP_KERNEL); */
 	cnss_pr_info("fw sram devcoredump\n");
 
 	cnss_invoke_qca_dump_app(FW_SRAM_DUMP);

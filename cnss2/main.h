@@ -497,6 +497,9 @@ struct mhi_fw_crash_data {
 	size_t paging_dump_buf_len;
 	u8 *ramdump_buf;
 	size_t ramdump_buf_len;
+	u8 *sram_dump_buf;
+	size_t sram_dump_buf_len;
+	enum cnss_recovery_reason reason;
 };
 
 struct mhi_vec_entry {
