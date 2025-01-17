@@ -2355,9 +2355,12 @@ static int cnss_do_recovery(struct cnss_plat_data *plat_priv,
 		mhi_dump_event_ring(mhi_ctrl);
 		cnss_pci_dump_msi_data(pci_priv);
 
+		cnss_pci_dump_debug_reg(pci_priv);
+
 		cnss_bus_dump_fw_sram(plat_priv);
 		cnss_coredump_fw_paging_dump(pci_priv);
 		cnss_coredump_remote_dump(plat_priv);
+
 		/** goto self_recovery; */
 		break;
 	default:

@@ -21,6 +21,63 @@
 #include <linux/slab.h>
 #include "internal.h"
 
+void mhi_debug_reg_dump(struct mhi_controller *mhi_cntrl)
+{
+	struct device *dev = &mhi_cntrl->mhi_dev->dev;
+	enum mhi_state state;
+	enum mhi_ee_type ee;
+	int i, ret;
+	u32 val;
+	void __iomem *mhi_base = mhi_cntrl->regs;
+	void __iomem *bhi_base = mhi_cntrl->bhi;
+	void __iomem *bhie_base = mhi_cntrl->bhie;
+	void __iomem *wake_db = mhi_cntrl->wake_db;
+	struct {
+		const char *name;
+		int offset;
+		void __iomem *base;
+	} debug_reg[] = {
+		{ "BHI_ERRDBG2", BHI_ERRDBG2, bhi_base},
+		{ "BHI_ERRDBG3", BHI_ERRDBG3, bhi_base},
+		{ "BHI_ERRDBG1", BHI_ERRDBG1, bhi_base},
+		{ "BHI_ERRCODE", BHI_ERRCODE, bhi_base},
+		{ "BHI_EXECENV", BHI_EXECENV, bhi_base},
+		{ "BHI_STATUS", BHI_STATUS, bhi_base},
+		{ "MHI_CNTRL", MHICTRL, mhi_base},
+		{ "MHI_STATUS", MHISTATUS, mhi_base},
+		{ "MHI_WAKE_DB", 0, wake_db},
+		{ "BHIE_TXVEC_DB", BHIE_TXVECDB_OFFS, bhie_base},
+		{ "BHIE_TXVEC_STATUS", BHIE_TXVECSTATUS_OFFS, bhie_base},
+		{ "BHIE_RXVEC_DB", BHIE_RXVECDB_OFFS, bhie_base},
+		{ "BHIE_RXVEC_STATUS", BHIE_RXVECSTATUS_OFFS, bhie_base},
+		{ NULL },
+	};
+
+	if (!mhi_cntrl->regs || !mhi_cntrl->bhi || !mhi_cntrl->bhie) {
+		dev_err(dev, "Cannot dump MHI/BHI registers\n");
+		return;
+	}
+
+	dev_err(dev, "host pm_state:%s dev_state:%s ee:%s\n",
+			to_mhi_pm_state_str(mhi_cntrl->pm_state),
+			TO_MHI_STATE_STR(mhi_cntrl->dev_state),
+			TO_MHI_EXEC_STR(mhi_cntrl->ee));
+
+	state = mhi_get_mhi_state(mhi_cntrl);
+	ee = mhi_get_exec_env(mhi_cntrl);
+
+	dev_err(dev, "device ee: %s dev_state: %s\n", TO_MHI_EXEC_STR(ee),
+			TO_MHI_STATE_STR(state));
+
+	for (i = 0; debug_reg[i].name; i++) {
+		if (!debug_reg[i].base)
+			continue;
+		ret = mhi_read_reg(mhi_cntrl, debug_reg[i].base,
+				debug_reg[i].offset, &val);
+		dev_err(dev, "reg: %s val: 0x%x, ret: %d\n", debug_reg[i].name,
+				val, ret);
+	}
+}
 int __must_check mhi_read_reg(struct mhi_controller *mhi_cntrl,
 			      void __iomem *base, u32 offset, u32 *out)
 {
