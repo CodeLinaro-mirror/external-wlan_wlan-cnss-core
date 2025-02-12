@@ -8604,7 +8604,7 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv)
 		buf += sizeof(val);
 	}
 
-	cnss_save_buf_to_file(buf, fw_sram_size, "/var/crash/fwsram%s.bin");
+	cnss_save_buf_to_file(crash_data->sram_dump_buf, fw_sram_size, "/var/crash/fwsram%s.bin");
 
 	/** dev_coredumpv(&pci_priv->pci_dev->dev, buf, fw_sram_size, GFP_KERNEL); */
 	cnss_pr_info("fw sram devcoredump\n");
