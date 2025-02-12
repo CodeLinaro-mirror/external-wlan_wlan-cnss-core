@@ -4470,7 +4470,8 @@ static ssize_t recovery_show(struct device *dev,
 			     struct device_attribute *attr,
 			     char *buf)
 {
-	struct cnss_plat_data *plat_priv = dev_get_drvdata(dev);
+	struct cnss_pci_data *pci_priv = dev_get_drvdata(dev);
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 	u32 buf_size = PAGE_SIZE;
 	u32 curr_len = 0;
 	u32 buf_written = 0;
