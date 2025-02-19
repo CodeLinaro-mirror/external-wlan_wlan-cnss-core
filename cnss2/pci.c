@@ -3696,6 +3696,7 @@ static void cnss_qca6290_crash_shutdown(struct cnss_pci_data *pci_priv)
 {
 	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 
+	cnss_pci_sw_reset(pci_priv->pci_dev, false);
 	set_bit(CNSS_IN_PANIC, &plat_priv->driver_state);
 	cnss_pr_dbg("Crash shutdown with driver_state 0x%lx\n",
 		    plat_priv->driver_state);
@@ -8645,6 +8646,7 @@ static struct pci_driver cnss_pci_driver = {
 	.id_table = cnss_pci_id_table,
 	.probe    = cnss_pci_probe,
 	.remove   = cnss_pci_remove,
+	.shutdown = cnss_pci_shutdown,
 	.driver = {
 		.pm = &cnss_pm_ops,
 	},
