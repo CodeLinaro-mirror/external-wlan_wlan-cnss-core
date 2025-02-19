@@ -1509,12 +1509,16 @@ static int cnss_set_pci_config_space(struct cnss_pci_data *pci_priv, bool save)
 		} else {
 			pci_save_state(pci_dev);
 			pci_priv->saved_state = pci_store_saved_state(pci_dev);
+			pci_enable_wake(pci_priv->pci_dev, PCI_D3cold, 1);
+			pci_enable_wake(pci_priv->pci_dev, PCI_D3hot, 1);
 		}
 	} else {
 		if (link_down_or_recovery) {
 			pci_load_saved_state(pci_dev, pci_priv->default_state);
 			pci_restore_state(pci_dev);
 		} else if (pci_priv->saved_state) {
+			pci_enable_wake(pci_priv->pci_dev, PCI_D3cold, 0);
+			pci_enable_wake(pci_priv->pci_dev, PCI_D3hot, 0);
 			pci_load_and_free_saved_state(pci_dev,
 						      &pci_priv->saved_state);
 			pci_restore_state(pci_dev);
@@ -8105,6 +8109,10 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 		ret = -ENODEV;
 		goto unreg_mhi;
 	}
+
+	ret = device_init_wakeup(dev, true);
+	if (ret)
+		cnss_pr_err("Failed to init pci device wakeup, err = %d", ret);
 
 	cnss_pci_config_regs(pci_priv);
 	if (EMULATION_HW)
