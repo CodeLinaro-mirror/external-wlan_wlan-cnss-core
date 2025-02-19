@@ -3696,13 +3696,13 @@ static void cnss_qca6290_crash_shutdown(struct cnss_pci_data *pci_priv)
 {
 	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
 
-	cnss_pci_sw_reset(pci_priv->pci_dev, false);
 	set_bit(CNSS_IN_PANIC, &plat_priv->driver_state);
 	cnss_pr_dbg("Crash shutdown with driver_state 0x%lx\n",
 		    plat_priv->driver_state);
 
 	cnss_pci_collect_dump_info(pci_priv, true);
 	clear_bit(CNSS_IN_PANIC, &plat_priv->driver_state);
+	cnss_pci_sw_reset(pci_priv->pci_dev, false);
 }
 
 static int cnss_qca6290_ramdump(struct cnss_pci_data *pci_priv)
