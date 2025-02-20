@@ -121,6 +121,7 @@
 #define QMI_WLFW_MAC_ADDR_SIZE_V01 6
 #define QMI_WLFW_MAX_NUM_SHADOW_REG_V2_V01 36
 #define QMI_WLFW_MAX_NUM_SVC_V01 24
+#define QMI_WLFW_MAX_PLATFORM_NAME_LEN_V01 64
 
 enum wlfw_driver_mode_enum_v01 {
 	WLFW_DRIVER_MODE_ENUM_MIN_VAL_V01 = INT_MIN,
@@ -722,6 +723,8 @@ struct wlfw_host_cap_req_msg_v01 {
 	u8 mem_cfg_mode;
 	u8 cal_duration_valid;
 	u16 cal_duration;
+	u8 platform_name_valid;
+	char platform_name[QMI_WLFW_MAX_PLATFORM_NAME_LEN_V01 + 1];
 };
 
 #define WLFW_HOST_CAP_REQ_MSG_V01_MAX_MSG_LEN 194
