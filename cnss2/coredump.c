@@ -51,6 +51,8 @@ int cnss_coredump_remote_dump(struct cnss_plat_data *plat_priv)
 			offset += fw_mem[i].size;
 		}
 	}
+	cnss_pr_err("[FOR PARSING VmCore] remote_dump mem: 0x%llx, size: %u\n",
+		    crash_data->remote_buf, offset);
 	return 0;
 }
 
@@ -76,11 +78,12 @@ static int cnss_coredump_fw_rddm_dump(struct cnss_pci_data *pci_priv)
 	for (seg = 0; seg < entries; seg++) {
 		buf = img->mhi_buf[seg].buf;
 		size = img->mhi_buf[seg].len;
-		cnss_pr_err(
-			    "write rddm memory: mem: 0x%p, size: 0x%x\n",
+		cnss_pr_err("write rddm memory: mem: 0x%p, size: 0x%x\n",
 			    buf, size);
 		memcpy(crash_data->ramdump_buf + seg * size, buf, size);
 	}
+	cnss_pr_err("[FOR PARSING VmCore] fw_rddm_dump mem: 0x%llx, size: %d\n",
+		    crash_data->ramdump_buf, crash_data->ramdump_buf_len);
 
 	return 0;
 }
@@ -112,8 +115,9 @@ int cnss_coredump_fw_paging_dump(struct cnss_pci_data *pci_priv)
 
 	buf = crash_data->paging_dump_buf + seg * size;
 	size = img->mhi_buf[img->entries - 1].len;
-	cnss_pr_err("to write last block: mem: 0x%p, size: 0x%x\n",
-		    buf, size);
+	cnss_pr_err("last block: mem: 0x%p, size: 0x%x\n", buf, size);
+	cnss_pr_err("[FOR PARSING VmCore] fw_paging_dump mem: 0x%llx, size: %d\n",
+		    crash_data->paging_dump_buf, crash_data->paging_dump_buf_len);
 
 	return 0;
 }
