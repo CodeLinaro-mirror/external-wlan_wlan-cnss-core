@@ -64,18 +64,18 @@ extern enum log_level cnss_ipc_log_level;
 
 #define cnss_pr_dbg(_fmt, ...) \
 	cnss_debug_log_print(proc_name, __func__, \
-			     DEBUG_LOG, DEBUG_LOG, _fmt, ##__VA_ARGS__)
+			     INFO_LOG, INFO_LOG, _fmt, ##__VA_ARGS__)
 
 #define cnss_pr_vdbg(_fmt, ...) \
 	cnss_debug_log_long_print(proc_name, __func__, \
-				  DEBUG_LOG, DEBUG_LOG, _fmt, ##__VA_ARGS__)
+				  INFO_LOG, INFO_LOG, _fmt, ##__VA_ARGS__)
 
 #define cnss_pr_buf(_fmt, ...) \
 	cnss_debug_log_long_print(proc_name, __func__, \
-				  DEBUG_HI_LOG, DEBUG_LOG, _fmt, ##__VA_ARGS__)
+				  INFO_LOG, INFO_LOG, _fmt, ##__VA_ARGS__)
 #define cnss_pr_dbg_buf(_fmt, ...) \
 	cnss_debug_log_long_print(proc_name, __func__, \
-				  DEBUG_HI_LOG, DEBUG_HI_LOG, _fmt, ##__VA_ARGS__)
+				  INFO_LOG, INFO_LOG, _fmt, ##__VA_ARGS__)
 
 #ifdef CONFIG_CNSS2_DEBUG
 #define CNSS_ASSERT(_condition) do {					\
