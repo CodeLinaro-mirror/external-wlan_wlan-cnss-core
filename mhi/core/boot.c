@@ -247,6 +247,7 @@ static int mhi_fw_load_bhi(struct mhi_controller *mhi_cntrl,
 		{ NULL },
 	};
 
+	dev_err(dev, "enter mhi_fw_load_bhi\n");
 	read_lock_bh(pm_lock);
 	if (!MHI_REG_ACCESS_VALID(mhi_cntrl->pm_state)) {
 		read_unlock_bh(pm_lock);
@@ -254,7 +255,7 @@ static int mhi_fw_load_bhi(struct mhi_controller *mhi_cntrl,
 	}
 
 	session_id = MHI_RANDOM_U32_NONZERO(BHI_TXDB_SEQNUM_BMSK);
-	dev_dbg(dev, "Starting image download via BHI. Session ID: %u\n",
+	dev_err(dev, "Starting image download via BHI. Session ID: %u\n",
 		session_id);
 	mhi_write_reg(mhi_cntrl, base, BHI_STATUS, 0);
 	mhi_write_reg(mhi_cntrl, base, BHI_IMGADDR_HIGH,
@@ -265,6 +266,7 @@ static int mhi_fw_load_bhi(struct mhi_controller *mhi_cntrl,
 	mhi_write_reg(mhi_cntrl, base, BHI_IMGTXDB, session_id);
 	read_unlock_bh(pm_lock);
 
+	dev_err(dev, "start waiting for the image download to complete %d s\n", mhi_cntrl->timeout_ms/1000);
 	/* Wait for the image download to complete */
 	ret = wait_event_timeout(mhi_cntrl->state_event,
 			   MHI_PM_IN_ERROR_STATE(mhi_cntrl->pm_state) ||
@@ -272,6 +274,7 @@ static int mhi_fw_load_bhi(struct mhi_controller *mhi_cntrl,
 					      BHI_STATUS_MASK, BHI_STATUS_SHIFT,
 					      &tx_status) || tx_status,
 			   msecs_to_jiffies(mhi_cntrl->timeout_ms));
+	dev_err(dev, "image download complete\n");
 	if (MHI_PM_IN_ERROR_STATE(mhi_cntrl->pm_state))
 		goto invalid_pm_state;
 
@@ -295,7 +298,7 @@ static int mhi_fw_load_bhi(struct mhi_controller *mhi_cntrl,
 	return (!ret) ? -ETIMEDOUT : 0;
 
 invalid_pm_state:
-
+	dev_err(dev, "invalid_pm_state\n");
 	return -EIO;
 }
 
@@ -402,6 +405,7 @@ void mhi_fw_load_handler(struct mhi_controller *mhi_cntrl)
 	int i, ret;
 	const u8 *img_buf;
 
+	dev_err(dev, "enter mhi_fw_load_handler\n");
 	if (MHI_PM_IN_ERROR_STATE(mhi_cntrl->pm_state)) {
 		dev_err(dev, "Device MHI is not in valid state\n");
 		return;
@@ -422,6 +426,7 @@ void mhi_fw_load_handler(struct mhi_controller *mhi_cntrl)
 		}
 	}
 
+	dev_err(dev, "mhi_cntrl->ee = %u\n", mhi_cntrl->ee);
 	/* wait for ready on pass through or any other execution environment */
 	if (mhi_cntrl->ee != MHI_EE_EDL && mhi_cntrl->ee != MHI_EE_PBL)
 		goto fw_load_ready_state;
@@ -436,6 +441,7 @@ void mhi_fw_load_handler(struct mhi_controller *mhi_cntrl)
 		goto error_fw_load;
 	}
 
+	dev_err(dev, "start request_firmware\n");
 	ret = request_firmware(&firmware, fw_name, dev);
 	if (ret) {
 		dev_err(dev, "Error loading firmware: %d\n", ret);
@@ -451,6 +457,7 @@ void mhi_fw_load_handler(struct mhi_controller *mhi_cntrl)
 	buf = dma_alloc_coherent(mhi_cntrl->cntrl_dev, size, &dma_addr,
 				 GFP_KERNEL);
 	if (!buf) {
+		dev_err(dev, "error: dma_alloc_coherent fail, buf is null!\n");
 		release_firmware(firmware);
 		goto error_fw_load;
 	}
@@ -467,6 +474,7 @@ void mhi_fw_load_handler(struct mhi_controller *mhi_cntrl)
 		goto error_fw_load;
 	}
 
+	dev_err(dev, "fw_name=%s, edl_image=%s\n", fw_name, mhi_cntrl->edl_image);
 	/* Wait for ready since EDL image was loaded */
 	if (fw_name == mhi_cntrl->edl_image) {
 		release_firmware(firmware);
@@ -481,6 +489,7 @@ void mhi_fw_load_handler(struct mhi_controller *mhi_cntrl)
 	 * If we're doing fbc, populate vector tables while
 	 * device transitioning into MHI READY state
 	 */
+	dev_err(dev, "mhi_cntrl->fbc_download = %d\n", mhi_cntrl->fbc_download);
 	if (mhi_cntrl->fbc_download) {
 
 		img_size = firmware->size;
@@ -516,12 +525,14 @@ fw_load_ready_state:
 	return;
 
 error_ready_state:
+	dev_err(dev, "error_ready_state\n");
 	if (mhi_cntrl->fbc_download) {
 		mhi_free_bhie_table(mhi_cntrl, mhi_cntrl->fbc_image);
 		mhi_cntrl->fbc_image = NULL;
 	}
 
 error_fw_load:
+	dev_err(dev, "error_fw_load\n");
 	mhi_cntrl->pm_state = MHI_PM_FW_DL_ERR;
 	wake_up_all(&mhi_cntrl->state_event);
 }
