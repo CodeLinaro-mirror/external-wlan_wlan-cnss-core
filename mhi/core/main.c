@@ -1036,17 +1036,6 @@ int mhi_dump_event_ring(struct mhi_controller *mhi_cntrl)
 	int count = 0;
 	dma_addr_t ptr = er_ctxt->rp;
 
-	/*
-	 * This is a quick check to avoid unnecessary event processing
-	 * in case MHI is already in error state, but it's still possible
-	 * to transition to error state while processing events
-	 */
-	if (unlikely(MHI_EVENT_ACCESS_INVALID(mhi_cntrl->pm_state))) {
-		dev_err(&mhi_cntrl->mhi_dev->dev,
-			"mhi event access invalid\n");
-		return -EIO;
-	}
-
 	if (!is_valid_ring_ptr(ev_ring, ptr)) {
 		dev_err(&mhi_cntrl->mhi_dev->dev,
 			"Event ring rp points outside of the event ring\n");
