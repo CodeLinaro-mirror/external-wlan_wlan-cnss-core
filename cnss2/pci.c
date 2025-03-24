@@ -3722,6 +3722,7 @@ static int cnss_qca6290_ramdump(struct cnss_pci_data *pci_priv)
 
 	cnss_pci_clear_dump_info(pci_priv);
 	cnss_pci_power_off_mhi(pci_priv);
+	cnss_pci_sw_reset(pci_priv->pci_dev, false);
 	cnss_suspend_pci_link(pci_priv);
 	cnss_pci_deinit_mhi(pci_priv);
 	cnss_power_off_device(plat_priv);
