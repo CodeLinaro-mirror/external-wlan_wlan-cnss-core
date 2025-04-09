@@ -40,6 +40,10 @@ ifeq ($(CONFIG_DUMP_FW_BY_UMH),y)
 KBUILD_CPPFLAGS += -DCONFIG_DUMP_FW_BY_UMH
 endif
 
+ifeq ($(CONFIG_NOT_SET_PCI_DSTATE),y)
+KBUILD_CPPFLAGS += -DCONFIG_NOT_SET_PCI_DSTATE
+endif
+
 # CONFIG_CNSS_PLAT_IPC_QMI_SVC should never be "y" here since it
 # can be only compiled as a module from out-of-kernel-tree source.
 ifeq ($(CONFIG_CNSS_PLAT_IPC_QMI_SVC),m)

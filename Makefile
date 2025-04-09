@@ -70,6 +70,7 @@ endif
 endif #unified_driver end
 
 KBUILD_OPTIONS += CNSS2_PLATFORM_NAME?=linux_x86
+KBUILD_OPTIONS += CONFIG_NOT_SET_PCI_DSTATE=y
 
 all: modules
 
