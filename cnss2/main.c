@@ -4524,7 +4524,6 @@ static ssize_t recovery_show(struct device *dev,
 	return curr_len;
 }
 
-#ifndef CONFIG_CNSS2_X86
 static ssize_t tme_opt_file_download_show(struct device *dev,
 			     struct device_attribute *attr, char *buf)
 {
@@ -4541,7 +4540,6 @@ static ssize_t tme_opt_file_download_show(struct device *dev,
 	curr_len += buf_written;
 	return curr_len;
 }
-#endif
 
 static ssize_t time_sync_period_show(struct device *dev,
 				     struct device_attribute *attr,
@@ -4800,7 +4798,6 @@ static ssize_t qdss_conf_download_store(struct device *dev,
 	return count;
 }
 
-#ifndef CONFIG_CNSS2_X86
 static ssize_t tme_opt_file_download_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
@@ -4817,7 +4814,8 @@ static ssize_t tme_opt_file_download_store(struct device *dev,
 		return 0;
 	}
 
-	if (plat_priv->device_id == PEACH_DEVICE_ID &&
+	if ((plat_priv->device_id == PEACH_DEVICE_ID ||
+	    plat_priv->device_id == COLOGNE_DEVICE_ID) &&
 	    cnss_bus_runtime_pm_get_sync(plat_priv) < 0)
 		goto runtime_pm_put;
 
@@ -4835,11 +4833,11 @@ static ssize_t tme_opt_file_download_store(struct device *dev,
 	cnss_pr_dbg("Received tme_opt_file_download indication cmd: %s\n", cmd);
 
 runtime_pm_put:
-	if (plat_priv->device_id == PEACH_DEVICE_ID)
+	if (plat_priv->device_id == PEACH_DEVICE_ID ||
+	    plat_priv->device_id == COLOGNE_DEVICE_ID)
 		cnss_bus_runtime_pm_put(plat_priv);
 	return count;
 }
-#endif
 
 static ssize_t hw_trace_override_store(struct device *dev,
 				       struct device_attribute *attr,
@@ -4882,10 +4880,10 @@ static DEVICE_ATTR_WO(qdss_trace_stop);
 static DEVICE_ATTR_WO(qdss_conf_download);
 static DEVICE_ATTR_WO(hw_trace_override);
 static DEVICE_ATTR_RW(time_sync_period);
+static DEVICE_ATTR_RW(tme_opt_file_download);
 #ifndef CONFIG_CNSS2_X86
 static DEVICE_ATTR_WO(shutdown);
 static DEVICE_ATTR_WO(enable_hds);
-static DEVICE_ATTR_RW(tme_opt_file_download);
 static DEVICE_ATTR_WO(charger_mode);
 #endif
 
@@ -4897,10 +4895,10 @@ static struct attribute *cnss_attrs[] = {
 	&dev_attr_qdss_conf_download.attr,
 	&dev_attr_hw_trace_override.attr,
 	&dev_attr_time_sync_period.attr,
+	&dev_attr_tme_opt_file_download.attr,
 #ifndef CONFIG_CNSS2_X86
 	&dev_attr_shutdown.attr,
 	&dev_attr_enable_hds.attr,
-	&dev_attr_tme_opt_file_download.attr,
 	&dev_attr_charger_mode.attr,
 #endif
 	NULL,
