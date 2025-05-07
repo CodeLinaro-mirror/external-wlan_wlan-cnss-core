@@ -8756,7 +8756,11 @@ int cnss_pci_dump_fw_sram(struct cnss_pci_data *pci_priv)
 
 	for (io_offset = fw_sram_io_start;
 		io_offset < fw_sram_io_end; io_offset += sizeof(val)) {
-		cnss_pci_reg_read(pci_priv, io_offset, &val);
+		if (cnss_pci_reg_read(pci_priv, io_offset, &val)) {
+			cnss_pr_err("SRAM Dump failed at 0x%x\n", io_offset);
+			vfree(buf);
+			return -EIO;
+		}
 		memcpy(buf, &val, sizeof(val));
 		buf += sizeof(val);
 	}
