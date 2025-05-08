@@ -5240,7 +5240,8 @@ retry:
 				CNSS_ASSERT(0);
 				return -ENOMEM;
 			}
-			if (plat_priv->fw_mem[i].type == CNSS_MEM_TYPE_DDR) {
+			if (plat_priv->fw_mem[i].type == CNSS_MEM_TYPE_DDR
+				|| plat_priv->fw_mem[i].type == CNSS_MEM_CAL_V01) {
 				cnss_qmi_set_remote_mem(plat_priv->remote_mem,
 							fw_mem[i].va,
 							fw_mem[i].size,
