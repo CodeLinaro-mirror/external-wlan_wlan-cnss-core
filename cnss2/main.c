@@ -342,6 +342,7 @@ void cnss_get_qrtr_info(struct cnss_plat_data *plat_priv)
 
 #endif
 
+#ifndef CONFIG_CNSS2_X86
 void cnss_get_sleep_clk_supported(struct cnss_plat_data *plat_priv)
 {
 	plat_priv->sleep_clk = of_property_read_bool(plat_priv->dev_node,
@@ -349,6 +350,16 @@ void cnss_get_sleep_clk_supported(struct cnss_plat_data *plat_priv)
 	cnss_pr_dbg("qcom,sleep-clk-support is %d\n",
 		    plat_priv->sleep_clk);
 }
+#else
+void cnss_get_sleep_clk_supported(struct cnss_plat_data *plat_priv)
+{
+#ifdef CNSS2_SLEEP_CLK
+	plat_priv->sleep_clk = CNSS2_SLEEP_CLK;
+	cnss_pr_err("qcom,sleep-clk-support is %d\n",
+		    plat_priv->sleep_clk);
+#endif
+}
+#endif
 
 void cnss_get_bwscal_info(struct cnss_plat_data *plat_priv)
 {
