@@ -501,6 +501,8 @@ struct mhi_fw_crash_data {
 	size_t ramdump_buf_len;
 	u8 *sram_dump_buf;
 	size_t sram_dump_buf_len;
+	u8 *qdss_dump_buf;
+	size_t qdss_dump_buf_len;
 	enum cnss_recovery_reason reason;
 };
 

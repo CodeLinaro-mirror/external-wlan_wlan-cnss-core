@@ -56,6 +56,49 @@ int cnss_coredump_remote_dump(struct cnss_plat_data *plat_priv)
 	return 0;
 }
 
+static size_t cnss_get_qdss_buf_len(struct cnss_fw_mem *qdss_mem)
+{
+	unsigned int i;
+	size_t len = 0;
+
+	for (i = 0; i < QMI_WLFW_MAX_NUM_MEM_SEG_V01; i++) {
+		if (qdss_mem[i].va && qdss_mem[i].size)
+			len += qdss_mem[i].size;
+	}
+
+	return len;
+}
+
+int cnss_coredump_qdss_dump(struct cnss_pci_data *pci_priv)
+{
+	struct cnss_fw_mem *qdss_mem = pci_priv->plat_priv->qdss_mem;
+	struct mhi_fw_crash_data *crash_data = &pci_priv->plat_priv->fw_crash_data;
+	u32 offset = 0;
+	u8 i;
+
+	crash_data->qdss_dump_buf_len = cnss_get_qdss_buf_len(qdss_mem);
+
+	crash_data->qdss_dump_buf = vzalloc(crash_data->qdss_dump_buf_len);
+
+	if (!crash_data->qdss_dump_buf)
+		return -ENOMEM;
+
+	for (i = 0; i < QMI_WLFW_MAX_NUM_MEM_SEG_V01; i++) {
+		if (qdss_mem[i].va && qdss_mem[i].size) {
+			cnss_pr_err("qdss mem: 0x%p, size: 0x%lx\n",
+					qdss_mem[i].va,
+					qdss_mem[i].size);
+			memcpy(crash_data->qdss_dump_buf + offset,
+					qdss_mem[i].va, qdss_mem[i].size);
+			offset += qdss_mem[i].size;
+		}
+	}
+	cnss_pr_err("[FOR PARSING VmCore] qdss_dump mem: 0x%llx, size: %u\n",
+			crash_data->qdss_dump_buf, offset);
+
+	return 0;
+}
+
 static int cnss_coredump_fw_rddm_dump(struct cnss_pci_data *pci_priv)
 {
 	struct mhi_controller *mhi_cntrl = pci_priv->mhi_ctrl;
@@ -133,10 +176,12 @@ int cnss_coredump_fw_paging_dump(struct cnss_pci_data *pci_priv)
 	return 0;
 }
 
-static struct cnss_dump_file_data *
-cnss_coredump_build(struct mhi_fw_crash_data *crash_data,
-		      struct fw_remote_crash_data *remote_crash_data)
+static struct cnss_dump_file_data * cnss_coredump_build(struct cnss_plat_data *plat_priv)
+
 {
+	struct mhi_fw_crash_data *crash_data = &(plat_priv->fw_crash_data);
+	struct fw_remote_crash_data *remote_crash_data = &(plat_priv->remote_crash_data);
+
 	struct cnss_dump_file_data *dump_data;
 	struct cnss_tlv_dump_data *dump_tlv;
 	size_t hdr_len = sizeof(*dump_data);
@@ -150,6 +195,7 @@ cnss_coredump_build(struct mhi_fw_crash_data *crash_data,
 	len += sizeof(*dump_tlv) + crash_data->ramdump_buf_len;
 	len += sizeof(*dump_tlv) + remote_crash_data->remote_buf_len;
 	len += sizeof(*dump_tlv) + crash_data->sram_dump_buf_len;
+	len += sizeof(*dump_tlv) + crash_data->qdss_dump_buf_len;
 
 	sofar += hdr_len;
 
@@ -203,6 +249,14 @@ cnss_coredump_build(struct mhi_fw_crash_data *crash_data,
 	       crash_data->sram_dump_buf_len);
 	sofar += sizeof(*dump_tlv) + crash_data->sram_dump_buf_len;
 
+	/* gather qdss memory */
+	dump_tlv = (struct cnss_tlv_dump_data *)(buf + sofar);
+	dump_tlv->type = cpu_to_le32(CNSS_FW_QDSS_MEM_DATA);
+	dump_tlv->tlv_len = cpu_to_le32(crash_data->qdss_dump_buf_len);
+	memcpy(dump_tlv->tlv_data, crash_data->qdss_dump_buf,
+	       crash_data->qdss_dump_buf_len);
+	sofar += sizeof(*dump_tlv) + crash_data->qdss_dump_buf_len;
+
 	return dump_data;
 }
 
@@ -213,8 +267,8 @@ int cnss_coredump_submit(struct cnss_pci_data *pci_priv)
 {
 	struct cnss_dump_file_data *dump;
 
-	dump = cnss_coredump_build(&pci_priv->plat_priv->fw_crash_data,
-				     &pci_priv->plat_priv->remote_crash_data);
+	dump = cnss_coredump_build(pci_priv->plat_priv);
+
 	if (!dump)
 		return -ENODATA;
 
@@ -263,6 +317,7 @@ void cnss_rddm_collect(void *bus_priv)
 	cnss_coredump_fw_rddm_dump(pci_priv);
 	cnss_coredump_fw_paging_dump(pci_priv);
 	cnss_coredump_remote_dump(pci_priv->plat_priv);
+	cnss_coredump_qdss_dump(pci_priv);
 }
 
 void cnss_mhi_pm_rddm_worker(struct work_struct *work)

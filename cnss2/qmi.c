@@ -3436,6 +3436,7 @@ static struct qmi_msg_handler qmi_wlfw_msg_handlers[] = {
 		sizeof(struct wlfw_qdss_trace_req_mem_ind_msg_v01),
 		.fn = cnss_wlfw_qdss_trace_req_mem_ind_cb
 	},
+#ifndef CONFIG_CNSS2_X86
 	{
 		.type = QMI_INDICATION,
 		.msg_id = QMI_WLFW_QDSS_TRACE_SAVE_IND_V01,
@@ -3444,6 +3445,7 @@ static struct qmi_msg_handler qmi_wlfw_msg_handlers[] = {
 		sizeof(struct wlfw_qdss_trace_save_ind_msg_v01),
 		.fn = cnss_wlfw_fw_mem_file_save_ind_cb
 	},
+#endif
 	{
 		.type = QMI_INDICATION,
 		.msg_id = QMI_WLFW_QDSS_TRACE_FREE_IND_V01,
