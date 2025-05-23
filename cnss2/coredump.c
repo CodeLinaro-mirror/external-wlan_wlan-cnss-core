@@ -64,7 +64,13 @@ static int cnss_coredump_fw_rddm_dump(struct cnss_pci_data *pci_priv)
 	char *buf = NULL;
 	unsigned int size = 0;
 	int seg = 0;
-	int entries = img->entries;
+	int entries = 0;
+
+	if (!img) {
+		cnss_pr_err("rddm img null, skip rddm ramdump\n");
+		return 0;
+	}
+	entries = img->entries;
 
 	crash_data->ramdump_buf_len = (entries - 1) * mhi_cntrl->seg_len +
 		(entries - 1) * sizeof(struct mhi_vec_entry);
@@ -96,6 +102,11 @@ int cnss_coredump_fw_paging_dump(struct cnss_pci_data *pci_priv)
 	char *buf = NULL;
 	unsigned int size = 0;
 	int seg = 0;
+
+	if (!img) {
+		cnss_pr_err("fbc image null, skip paging dump\n");
+		return 0;
+	}
 
 	crash_data->paging_dump_buf_len = (img->entries - 1) * mhi_cntrl->seg_len +
 					(img->entries - 1) * sizeof(struct mhi_vec_entry);
