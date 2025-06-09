@@ -477,11 +477,7 @@ static const struct mhi_channel_config cnss_mhi_channels_genoa[] = {
 	},
 };
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
 static struct mhi_event_config cnss_mhi_events[] = {
-#else
-static const struct mhi_event_config cnss_mhi_events[] = {
-#endif
 	{
 		.num_elements = 32,
 		.irq_moderation_ms = 0,
@@ -7537,7 +7533,6 @@ static bool cnss_is_tme_supported(struct cnss_pci_data *pci_priv)
 }
 
 #ifdef CONFIG_ONE_MSI_VECTOR
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
 static void cnss_pci_set_mhi_event_config_for_one_msi(void)
 {
 	uint32_t i;
@@ -7551,21 +7546,6 @@ static void cnss_pci_set_mhi_event_config_for_one_msi(void)
 	for (i = 0; i < num_events; i++)
 		cnss_mhi_events[i].irq = 0;
 }
-#else
-static void cnss_pci_set_mhi_event_config_for_one_msi(void)
-{
-	/* The irq field value of cnss_mhi_events array should be set to 0, but when
-	 * the kernel version is older than 5.12, cnss_mhi_events is defined as const
-	 * type and irq field cannot be overwritten with the correct value. since the
-	 * kernel older than 5.12 is becoming outdated, this issue on the old kernel
-	 * will not be fixed for now.
-	 */
-	cnss_pr_err("Known issue: The irq field value of cnss_mhi_events should "
-		    "be an incorrect value in one msi mode, this may result in "
-		    "the host not being able to get interrupt. All rings should "
-		    "share the same vector 0 in one msi mode.");
-}
-#endif
 #else
 static void cnss_pci_set_mhi_event_config_for_one_msi(void)
 {
