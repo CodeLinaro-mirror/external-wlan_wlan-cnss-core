@@ -43,6 +43,8 @@
 #define GF_DEFAULT_BIN_BDF_FILE_NAME	FW_PREFIX "bdwlang.bin"
 #define DEFAULT_BIN_BDF_FILE_NAME       FW_PREFIX "bdwlan.bin"
 #define REGDB_FILE_NAME			FW_PREFIX "regdb.bin"
+#define IU_FILE_NAME			FW_PREFIX "phy_ucode.elf"
+#define AUX_FILE_NAME			FW_PREFIX "aux_ucode.elf"
 
 
 #ifdef CONFIG_CNSS2_DEBUG
@@ -898,6 +900,12 @@ int cnss_wlfw_bdf_dnld_send_sync(struct cnss_plat_data *plat_priv,
 		break;
 	case CNSS_BDF_REGDB:
 		snprintf(filename, sizeof(filename), REGDB_FILE_NAME);
+		break;
+	case CNSS_BDF_IU:
+		snprintf(filename, sizeof(filename), IU_FILE_NAME);
+		break;
+	case CNSS_BDF_AUX:
+		snprintf(filename, sizeof(filename), AUX_FILE_NAME);
 		break;
 	default:
 		cnss_pr_err("Invalid BDF type: %d\n",

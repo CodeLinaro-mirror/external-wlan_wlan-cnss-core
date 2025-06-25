@@ -221,6 +221,8 @@ enum cnss_bdf_type {
 	CNSS_BDF_BIN,
 	CNSS_BDF_ELF,
 	CNSS_BDF_REGDB = 4,
+	CNSS_BDF_IU = 9,
+	CNSS_BDF_AUX = 10,
 };
 
 struct cnss_cal_data {

@@ -1436,8 +1436,23 @@ static int cnss_wlfw_server_arrive_hdlr(struct cnss_plat_data *plat_priv)
 		if (ret)
 			goto out;
 #ifndef CONFIG_USB_EMULATION
-		ret = cnss_wlfw_bdf_dnld_send_sync(plat_priv,
-						   CNSS_BDF_ELF);
+		ret = cnss_wlfw_bdf_dnld_send_sync(plat_priv, CNSS_BDF_ELF);
+		if (ret)
+			goto out;
+
+		if (plat_priv->device_id == COLOGNE_SDIO_DEVICE_ID) {
+			ret = cnss_wlfw_bdf_dnld_send_sync(plat_priv, CNSS_BDF_REGDB);
+			if (ret)
+				goto out;
+
+			ret = cnss_wlfw_bdf_dnld_send_sync(plat_priv, CNSS_BDF_IU);
+			if (ret)
+				goto out;
+
+			ret = cnss_wlfw_bdf_dnld_send_sync(plat_priv, CNSS_BDF_AUX);
+			if (ret)
+				goto out;
+		}
 #endif
 	}
 out:
