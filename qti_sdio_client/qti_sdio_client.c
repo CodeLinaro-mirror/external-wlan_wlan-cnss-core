@@ -458,12 +458,8 @@ int qti_client_read(int id, char *buf, size_t count)
 	int bytes = 0;
 	struct qti_sdio_bridge *qsb = NULL;
 
-	//to_console = 1;
-	qlog(qsb, "client %s\n", qsb->name);
-	//to_console = 0;
-
 	if ((id < QCN_SDIO_CLI_ID_TTY) || (id > QCN_SDIO_CLI_ID_DIAG) ||
-				atomic_read(&qsbdev[id]->is_client_closing)) {
+			!qsbdev[id] || atomic_read(&qsbdev[id]->is_client_closing)) {
 		pr_err("%s invalid client ID %d\n", __func__, id);
 		return -ENODEV;
 	}

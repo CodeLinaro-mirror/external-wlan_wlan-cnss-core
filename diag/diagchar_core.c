@@ -81,7 +81,7 @@ static int diag_remote_init(void)
 {
         uint32_t itemsize = DIAG_MAX_REQ_SIZE;
 	uint32_t itemsize_hdlc = DIAG_MAX_HDLC_BUF_SIZE + APF_DIAG_PADDING;
-		
+
 	diagmem_setsize(POOL_TYPE_COPY, itemsize, poolsize);
 	diagmem_setsize(POOL_TYPE_HDLC, itemsize_hdlc, poolsize_hdlc);
         diagmem_setsize(POOL_TYPE_MDM, itemsize_mdm, poolsize_mdm);
@@ -89,20 +89,17 @@ static int diag_remote_init(void)
         diagmem_init(driver, POOL_TYPE_COPY);
 	diagmem_init(driver, POOL_TYPE_HDLC);
         diagmem_init(driver, POOL_TYPE_MDM);
-	
-	
+
 	driver->hdlc_encode_buf = kzalloc(DIAG_MAX_HDLC_BUF_SIZE, GFP_KERNEL);
 	if (!driver->hdlc_encode_buf)
 		return -ENOMEM;
 	driver->hdlc_encode_buf_len = 0;
-
 
 	driver->hdlc_buf = kzalloc(DIAG_MAX_HDLC_BUF_SIZE, GFP_KERNEL);
 	if (!driver->hdlc_buf)
 		return -ENOMEM;	
 	driver->hdlc_buf_len = 0;
 
-	
 	return 0;
 }
 

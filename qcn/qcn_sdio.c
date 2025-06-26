@@ -421,6 +421,7 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 			}
 			if (((cinfo->cli_handle.id == QCN_SDIO_CLI_ID_WLAN) ||
 			     (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_QMI) ||
+			     (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_TTY) ||
 			     (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_DIAG)) &&
 			     (mode == QCN_SDIO_SW_MROM)) {
 				qcn_send_meta_info((u8)QCN_SDIO_SW_MODE_HEVENT,
