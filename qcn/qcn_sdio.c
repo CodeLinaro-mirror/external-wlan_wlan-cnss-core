@@ -567,6 +567,19 @@ int reset_thread(void *data)
 	return 0;
 }
 
+static int qcn_sdio_reset(void)
+{
+	int ret = -1;
+
+	reset_task = kthread_run(reset_thread, NULL, "qcn_sdio_reset");
+	if (IS_ERR(reset_task)) {
+		pr_err("Failed to run qcn_sdio_reset thread\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 static void qcn_sdio_irq_handler(struct sdio_func *func)
 {
 	u8 data = 0;
@@ -579,9 +592,9 @@ static void qcn_sdio_irq_handler(struct sdio_func *func)
 
 		pr_err("%s: IRQ status read error ret = %d\n", __func__, ret);
 
-		reset_task = kthread_run(reset_thread, NULL, "qcn_reset");
-		if (IS_ERR(reset_task))
-			pr_err("Failed to run qcn_reset thread\n");
+		ret = qcn_sdio_reset();
+		if (ret)
+			pr_err("Failed to run qcn_sdio_reset thread\n");
 
 		return;
 	}
@@ -856,6 +869,7 @@ static int qcn_sdio_action_show(struct seq_file *s, void *data)
 #endif
 
 	seq_puts(s, "inject_sys_err: Inject sys err to trigger SSR\n");
+	seq_puts(s, "reset: Reset sdio\n");
 	return 0;
 }
 
@@ -900,6 +914,8 @@ static ssize_t qcn_sdio_action_write(struct file *fp,
 		ret = qcn_sdio_lpm_set(sdio_ctxt, false);
 	} else if (sysfs_streq(cmd, "inject_sys_err")) {
 		ret = qcn_sdio_inject_sys_err(dev);
+	} else if (sysfs_streq(cmd, "reset")) {
+		ret = qcn_sdio_reset();
 	} else {
 		pr_err("Invalid command %s\n", cmd);
 		ret = -EINVAL;
