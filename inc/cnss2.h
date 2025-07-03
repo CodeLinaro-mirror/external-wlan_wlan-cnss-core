@@ -22,6 +22,7 @@
 #include <linux/pci.h>
 #include <linux/usb.h>
 #include <linux/mmc/sdio_func.h>
+#include <linux/version.h>
 #include "qcn_sdio_al.h"
 
 #define CNSS_MAX_FILE_NAME		20
@@ -220,6 +221,9 @@ enum cnss_recovery_reason {
 	CNSS_REASON_TIMEOUT,
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 2)
+#define strlcpy strscpy
+#endif
 extern int cnss_wlan_register_driver(struct cnss_wlan_driver *driver);
 extern void cnss_wlan_unregister_driver(struct cnss_wlan_driver *driver);
 extern void cnss_device_crashed(struct device *dev);

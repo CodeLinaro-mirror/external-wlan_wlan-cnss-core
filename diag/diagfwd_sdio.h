@@ -21,11 +21,16 @@
 #else
 #include <linux/usb/diag_bridge.h>
 #endif
+#include <linux/version.h>
 
 #define SDIO_1			0
 #define NUM_SDIO_DEV		1
 
 #define DIAG_SDIO_NAME_SZ	24
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 2)
+#define strlcpy strscpy
+#endif
 
 struct diag_sdio_info {
 	int id;

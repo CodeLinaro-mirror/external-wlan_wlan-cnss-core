@@ -25,6 +25,9 @@
 #ifdef CONFIG_WCNSS_DMA_PRE_ALLOC
 #include <linux/dma-mapping.h>
 #endif
+#ifdef CONFIG_WLAN_CNSS_CORE
+#include "unified_wlan_cnsscore.h"
+#endif
 
 static DEFINE_SPINLOCK(alloc_lock);
 
@@ -34,6 +37,9 @@ static DEFINE_SPINLOCK(alloc_lock);
 
 #define PRE_ALLOC_DEBUGFS_DIR		PRE_ALLOC_DEBUGFS_DIR_NAME
 #define PRE_ALLOC_DEBUGFS_FILE_OBJ	"status"
+
+int wcnss_prealloc_init(void);
+void wcnss_prealloc_deinit(void);
 
 static struct dentry *debug_base;
 

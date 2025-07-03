@@ -25,7 +25,11 @@
 #include <linux/kthread.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
+#include <linux/version.h>
 #include "qcn_sdio.h"
+#ifdef CONFIG_WLAN_CNSS_CORE
+#include "unified_wlan_cnsscore.h"
+#endif
 
 static bool tx_dump;
 module_param(tx_dump, bool, S_IRUGO | S_IWUSR | S_IWGRP);
@@ -49,6 +53,9 @@ module_param(retune, bool, S_IRUGO | S_IWUSR | S_IWGRP);
 */
 static int driver_state;
 module_param(driver_state, int, S_IRUGO | S_IRUSR | S_IRGRP);
+
+int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode);
+int reset_thread(void *data);
 
 static struct mmc_host *current_host;
 

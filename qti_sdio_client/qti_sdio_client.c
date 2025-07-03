@@ -42,6 +42,9 @@
 #include <linux/kthread.h>
 #include <linux/completion.h>
 #include <linux/version.h>
+#ifdef CONFIG_WLAN_CNSS_CORE
+#include "unified_wlan_cnsscore.h"
+#endif
 
 #define	DATA_ALIGNMENT			4
 #define	MAX_CLIENTS			5
@@ -100,6 +103,20 @@ module_param(ipc_log, bool, S_IRUGO | S_IWUSR | S_IWGRP);
 
 static DEFINE_MUTEX(work_lock);
 static spinlock_t list_lock;
+
+void qti_client_queue_rx(int id, u8 *buf, unsigned int bytes);
+void qti_client_ul_xfer_cb(struct sdio_al_channel_handle *ch_handle,
+				struct sdio_al_xfer_result *xfer, void *ctxt);
+void qti_client_dl_xfer_cb(struct sdio_al_channel_handle *ch_handle,
+				struct sdio_al_xfer_result *xfer, void *ctxt);
+void qti_client_data_avail_cb(struct sdio_al_channel_handle *ch_handle,
+							unsigned int bytes);
+int qti_client_open(int id, void *ops);
+int qti_client_close(int id);
+int qti_client_read(int id, char *buf, size_t count);
+int qti_client_write(int id, char *buf, size_t count);
+int qti_client_debug_init(int id);
+void qti_client_debug_deinit(int id);
 
 #ifdef CONFIG_NAPIER_X86
 #define qlog(qsb, _msg, ...) do {                                            \
@@ -882,7 +899,11 @@ static int qti_client_probe(struct sdio_al_client_handle *client_handle)
 			goto tx_err;
 		}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0))
+		tty_dev->qsb_class = class_create("qsahara");
+#else
 		tty_dev->qsb_class = class_create(THIS_MODULE, "qsahara");
+#endif
 		if (IS_ERR(tty_dev->qsb_class)) {
 			to_console = 1;
 			qlog(qsb, "client %s failed to create class\n",

@@ -28,6 +28,10 @@
 #include <linux/skbuff.h>
 #include <linux/delay.h>
 #include <linux/sched.h>
+#include <linux/version.h>
+#ifdef CONFIG_WLAN_CNSS_CORE
+#include "unified_wlan_cnsscore.h"
+#endif
 
 static int msm_ipc_router_sdio_xprt_debug_mask = 1;
 #ifdef CONFIG_WLAN_CNSS_CORE
@@ -454,7 +458,11 @@ static void sdio_xprt_sft_close_done(struct msm_ipc_router_xprt *xprt)
  * This function is called when the underlying ipc_bridge driver unregisters
  * a platform device, mapped to an SDIO endpoint, during SSR.
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 2)
+static void msm_ipc_router_sdio_remote_remove(struct platform_device *pdev)
+#else
 static int msm_ipc_router_sdio_remote_remove(struct platform_device *pdev)
+#endif
 {
 	struct ipc_bridge_platform_data *pdata;
 	struct msm_ipc_router_sdio_xprt *sdio_xprtp;
@@ -463,7 +471,11 @@ static int msm_ipc_router_sdio_remote_remove(struct platform_device *pdev)
 	if (!sdio_xprtp) {
 		IPC_RTR_ERR("%s No device with name %s\n",
 					__func__, pdev->name);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 2)
+		return;
+#else
 		return -ENODEV;
+#endif
 	}
 
 	mutex_lock(&sdio_xprtp->ss_reset_lock);
@@ -481,7 +493,11 @@ static int msm_ipc_router_sdio_remote_remove(struct platform_device *pdev)
 	pdata = pdev->dev.platform_data;
 	if (pdata && pdata->close)
 		pdata->close(pdev->id);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 2)
+	return;
+#else
 	return 0;
+#endif
 }
 
 /**

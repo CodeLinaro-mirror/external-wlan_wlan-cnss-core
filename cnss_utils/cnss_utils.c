@@ -17,8 +17,12 @@
 #include <linux/slab.h>
 #include <linux/etherdevice.h>
 #include <linux/debugfs.h>
+#include <linux/version.h>
 #include "cnss_utils.h"
 #include "cnss_module.h"
+#ifdef CONFIG_WLAN_CNSS_CORE
+#include "unified_wlan_cnsscore.h"
+#endif
 
 #define CNSS_MAX_CH_NUM 45
 struct cnss_unsafe_channel_list {

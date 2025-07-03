@@ -648,7 +648,9 @@ static const struct proto_ops msm_ipc_proto_ops = {
 	.sendmsg		= msm_ipc_router_sendmsg,
 	.recvmsg		= msm_ipc_router_recvmsg,
 	.mmap			= sock_no_mmap,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0))
 	.sendpage		= sock_no_sendpage,
+#endif
 };
 
 static struct proto msm_ipc_proto = {
