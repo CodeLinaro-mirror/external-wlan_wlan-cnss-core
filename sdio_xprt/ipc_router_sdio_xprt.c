@@ -42,6 +42,8 @@ module_param_named(debug_mask, msm_ipc_router_sdio_xprt_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 #endif
 
+struct msm_ipc_router_sdio_xprt *sdio_xprtp;
+
 #if defined(DEBUG)
 #define D(x...) do { \
 if (msm_ipc_router_sdio_xprt_debug_mask) \
@@ -614,8 +616,6 @@ static int msm_ipc_router_sdio_driver_register(
 static int msm_ipc_router_sdio_config_init(
 		struct msm_ipc_router_sdio_xprt_config *sdio_xprt_config)
 {
-	struct msm_ipc_router_sdio_xprt *sdio_xprtp;
-
 	sdio_xprtp = kzalloc(sizeof(struct msm_ipc_router_sdio_xprt),
 							GFP_KERNEL);
 	if (IS_ERR_OR_NULL(sdio_xprtp)) {
@@ -816,6 +816,27 @@ static struct platform_driver msm_ipc_router_sdio_xprt_driver = {
 };
 #endif
 
+static void msm_ipc_router_sdio_config_deinit(void)
+{
+	if (sdio_xprtp)
+		kfree(sdio_xprtp);
+	sdio_xprtp = NULL;
+}
+
+static void msm_ipc_router_sdio_driver_unregister(void)
+{
+	struct msm_ipc_router_sdio_xprt *sdio_xprtp_item;
+
+	sdio_xprtp_item = find_sdio_xprt_list(sdio_xprtp->ch_name);
+
+	if (sdio_xprtp_item){
+		platform_driver_unregister(&sdio_xprtp->driver);
+		mutex_lock(&sdio_remote_xprt_list_lock_lha1);
+		list_del(&sdio_xprtp->list);
+		mutex_unlock(&sdio_remote_xprt_list_lock_lha1);
+	}
+}
+
 #ifdef CONFIG_WLAN_CNSS_CORE
 int msm_ipc_router_sdio_xprt_init(void)
 #else
@@ -846,7 +867,22 @@ static int __init msm_ipc_router_sdio_xprt_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+void msm_ipc_router_sdio_xprt_deinit(void)
+#else
+static void __exit msm_ipc_router_sdio_xprt_deinit(void)
+#endif
+{
+#ifdef CONFIG_NAPIER_X86
+	flush_delayed_work(&ipc_router_sdio_xprt_probe_work);
+	msm_ipc_router_sdio_driver_unregister();
+
+	msm_ipc_router_sdio_config_deinit();
+#endif
+}
+
 #ifndef CONFIG_WLAN_CNSS_CORE
 module_init(msm_ipc_router_sdio_xprt_init);
+module_exit(msm_ipc_router_sdio_xprt_deinit);
 MODULE_LICENSE("GPL v2");
 #endif

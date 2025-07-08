@@ -1137,6 +1137,32 @@ static int __qcn_sdio_register_driver(void *data)
 	return 0;
 }
 
+#ifdef CONFIG_WLAN_CNSS_CORE
+int qcn_sdio_remove_all_clients(void)
+{
+	struct qcn_sdio_client_info *cinfo = NULL;
+	struct qcn_sdio_ch_info *ch_info = NULL;
+
+	mutex_lock(&lock);
+	list_for_each_entry(cinfo, &cinfo_head, cli_list) {
+		while (!list_empty(&cinfo->ch_head)) {
+			ch_info = list_first_entry(&cinfo->ch_head,
+					struct qcn_sdio_ch_info, ch_list);
+			sdio_al_deregister_channel(&ch_info->ch_handle);
+		}
+		mutex_unlock(&lock);
+		if (cinfo->is_probed) {
+			cinfo->cli_data.remove(&cinfo->cli_handle);
+			cinfo->is_probed = 0;
+		}
+		mutex_lock(&lock);
+	}
+	mutex_unlock(&lock);
+
+	return 0;
+}
+#endif
+
 static int qcn_sdio_register_driver_async(struct platform_device *pdev)
 {
 	struct task_struct *thread;
@@ -1324,6 +1350,11 @@ void sdio_al_deregister_client(struct sdio_al_client_handle *handle)
 					struct qcn_sdio_ch_info, ch_list);
 		sdio_al_deregister_channel(&ch_info->ch_handle);
 	}
+	if (client_info->is_probed) {
+		client_info->cli_data.remove(handle);
+		client_info->is_probed = 0;
+	}
+
 	mutex_lock(&lock);
 	list_del(&client_info->cli_list);
 	kfree(client_info);

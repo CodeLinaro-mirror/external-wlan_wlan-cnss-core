@@ -21,6 +21,7 @@ void diag_bridge_exit(void);
 int msm_ipc_router_init(void);
 int msm_ipc_router_hsic_xprt_init(void);
 int msm_ipc_router_sdio_xprt_init(void);
+void msm_ipc_router_sdio_xprt_deinit(void);
 int ipc_router_mhi_xprt_init(void);
 int diagchar_init(void);
 void diagchar_exit(void);
@@ -38,6 +39,7 @@ void qmi_interface_deinit(void);
 void msm_ipc_router_hsic_xprt_deinit(void);
 void ipc_router_mhi_xprt_deinit(void);
 void msm_ipc_router_deinit(void);
+int qcn_sdio_remove_all_clients(void);
 
 #ifdef CONFIG_SINGLE_KO_FEATURE
 int hdd_module_init(void);

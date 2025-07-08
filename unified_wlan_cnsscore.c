@@ -253,6 +253,7 @@ fail11:
 	cnss_exit();
 fail10:
 #ifdef CONFIG_SDIO_XPRT
+	msm_ipc_router_sdio_xprt_deinit();
 fail9:
 #endif
 #ifdef CONFIG_HSIC_XPRT
@@ -311,8 +312,12 @@ static void unified_pdrv_deinit(void)
 #ifdef CONFIG_DIAG_IPC_BRIDGE
 	diag_bridge_exit(); /* ipc_bridge  */
 #endif
+	qcn_sdio_remove_all_clients();
 #ifdef CONFIG_HSIC_XPRT
 	msm_ipc_router_hsic_xprt_deinit();
+#endif
+#ifdef CONFIG_SDIO_XPRT
+	msm_ipc_router_sdio_xprt_deinit();
 #endif
 #ifdef CONFIG_MHI_XPRT
 	ipc_router_mhi_xprt_deinit();

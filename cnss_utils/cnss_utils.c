@@ -485,6 +485,7 @@ void cnss_utils_exit(void)
 static void __exit cnss_utils_exit(void)
 #endif
 {
+	debugfs_remove_recursive(cnss_utils_priv->root_dentry);
 	kfree(cnss_utils_priv);
 	cnss_utils_priv = NULL;
 }
