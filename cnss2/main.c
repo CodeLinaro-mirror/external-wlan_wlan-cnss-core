@@ -151,6 +151,9 @@ size_t cnss_get_platform_name(struct cnss_plat_data *plat_priv,
 	if (unlikely(!plat_priv || !buf || !buf_len))
 		return 0;
 
+	if (!plat_priv->plat_dev || !plat_priv->plat_dev->dev.of_node)
+		return 0;
+
 	if (of_property_read_bool(plat_priv->plat_dev->dev.of_node,
 				  "platform-name-required")) {
 		struct device_node *root;
