@@ -518,7 +518,7 @@ int cnss_wlan_enable(struct device *dev,
 skip_cfg:
 	cnss_pr_dbg("EMULDBG USB %s %d  \n",__func__,__LINE__);
 	plat_priv = cnss_get_plat_priv(NULL);
-	ret = cnss_wlfw_wlan_mode_send_sync(plat_priv, mode);
+	ret = cnss_wlfw_wlan_mode_send_sync(plat_priv, (int)mode);
 out:
 	return ret;
 }
