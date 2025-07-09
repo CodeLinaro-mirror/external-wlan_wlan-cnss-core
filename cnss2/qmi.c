@@ -45,6 +45,7 @@
 #define REGDB_FILE_NAME			FW_PREFIX "regdb.bin"
 #define IU_FILE_NAME			FW_PREFIX "phy_ucode.elf"
 #define AUX_FILE_NAME			FW_PREFIX "aux_ucode.elf"
+#define QDSS_TRACE_CONFIG_FILE		FW_PREFIX "qdss_trace_config.cfg"
 
 
 #ifdef CONFIG_CNSS2_DEBUG
@@ -1125,6 +1126,100 @@ int cnss_wlfw_wlan_mode_send_sync(struct cnss_plat_data *plat_priv,
 out:
 	if (mode != QMI_WLFW_OFF_V01)
 		CNSS_ASSERT(0);
+	return ret;
+}
+
+int cnss_wlfw_qdss_dnld_send_sync(struct cnss_plat_data *plat_priv)
+{
+	struct wlfw_qdss_trace_config_download_req_msg_v01 *req;
+	struct wlfw_qdss_trace_config_download_resp_msg_v01 resp;
+	const struct firmware *fw_entry = NULL;
+	const u8 *temp;
+	char qdss_cfg_filename[MAX_FIRMWARE_NAME_LEN];
+	unsigned int remaining;
+	struct msg_desc req_desc, resp_desc;
+	int ret = 0;
+
+	cnss_pr_dbg("Sending QDSS config download message, state: 0x%lx\n",
+		    plat_priv->driver_state);
+
+	req = kzalloc(sizeof(*req), GFP_KERNEL);
+	if (!req)
+		return -ENOMEM;
+
+	snprintf(qdss_cfg_filename, sizeof(qdss_cfg_filename),
+		 QDSS_TRACE_CONFIG_FILE);
+
+	cnss_pr_dbg("Invoke firmware_request_nowarn for %s\n",
+		    qdss_cfg_filename);
+	ret = request_firmware(&fw_entry, qdss_cfg_filename, NULL);
+	if (ret) {
+		cnss_pr_err("Unable to load %s ret %d\n",
+			    qdss_cfg_filename, ret);
+		goto err_req_fw;
+	}
+
+	temp = fw_entry->data;
+	remaining = fw_entry->size;
+
+	cnss_pr_dbg("Downloading QDSS: %s, size: %u\n",
+		    qdss_cfg_filename, remaining);
+
+	while (remaining) {
+		req->total_size_valid = 1;
+		req->total_size = remaining;
+		req->seg_id_valid = 1;
+		req->data_valid = 1;
+		req->end_valid = 1;
+
+		if (remaining > QMI_WLFW_MAX_DATA_SIZE_V01) {
+			req->data_len = QMI_WLFW_MAX_DATA_SIZE_V01;
+		} else {
+			req->data_len = remaining;
+			req->end = 1;
+		}
+
+		memcpy(req->data, temp, req->data_len);
+
+
+		req_desc.max_msg_len = WLFW_QDSS_TRACE_CONFIG_DOWNLOAD_REQ_MSG_V01_MAX_MSG_LEN;
+		req_desc.msg_id = QMI_WLFW_QDSS_TRACE_CONFIG_DOWNLOAD_REQ_V01;
+		req_desc.ei_array = wlfw_qdss_trace_config_download_req_msg_v01_ei;
+
+		resp_desc.max_msg_len = WLFW_QDSS_TRACE_CONFIG_DOWNLOAD_RESP_MSG_V01_MAX_MSG_LEN;
+		resp_desc.msg_id = QMI_WLFW_QDSS_TRACE_CONFIG_DOWNLOAD_RESP_V01;
+		resp_desc.ei_array = wlfw_qdss_trace_config_download_resp_msg_v01_ei;
+
+		ret = qmi_send_req_wait(plat_priv->qmi_wlfw_clnt, &req_desc, req,
+				      sizeof(req), &resp_desc, &resp, sizeof(resp),
+				      QMI_WLFW_TIMEOUT_MS);
+		if (ret < 0) {
+			cnss_pr_err("Failed to send respond QDSS download request, err: %d\n",
+				    ret);
+			goto err_send;
+		}
+
+		if (resp.resp.result != QMI_RESULT_SUCCESS_V01) {
+			cnss_pr_err("QDSS download request failed, result: %d, err: %d\n",
+				    resp.resp.result, resp.resp.error);
+			ret = -resp.resp.result;
+			goto err_send;
+		}
+
+		remaining -= req->data_len;
+		temp += req->data_len;
+		req->seg_id++;
+	}
+
+	release_firmware(fw_entry);
+	kfree(req);
+	return 0;
+
+err_send:
+	release_firmware(fw_entry);
+err_req_fw:
+
+	kfree(req);
 	return ret;
 }
 

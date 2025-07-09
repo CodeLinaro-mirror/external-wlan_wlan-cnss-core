@@ -42,5 +42,6 @@ int cnss_wlfw_cal_update_req_send_sync(struct cnss_plat_data *plat_priv,
 					void *data);
 int cnss_wlfw_cal_download_req_send_sync(struct cnss_plat_data *plat_priv,
 					void *data);
+int cnss_wlfw_qdss_dnld_send_sync(struct cnss_plat_data *plat_priv);
 unsigned int cnss_get_qmi_timeout(void);
 #endif /* _CNSS_QMI_H */

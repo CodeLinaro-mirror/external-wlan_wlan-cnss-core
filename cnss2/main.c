@@ -1455,6 +1455,8 @@ static int cnss_wlfw_server_arrive_hdlr(struct cnss_plat_data *plat_priv)
 			ret = cnss_wlfw_bdf_dnld_send_sync(plat_priv, CNSS_BDF_AUX);
 			if (ret)
 				goto out;
+
+			ret = cnss_wlfw_qdss_dnld_send_sync(plat_priv);
 		}
 #endif
 	}

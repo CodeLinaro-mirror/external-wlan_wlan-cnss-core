@@ -959,4 +959,23 @@ struct wlfw_pcie_gen_switch_resp_msg_v01 {
 #define WLFW_PCIE_GEN_SWITCH_RESP_MSG_V01_MAX_MSG_LEN 7
 extern struct elem_info wlfw_pcie_gen_switch_resp_msg_v01_ei[];
 
+struct wlfw_qdss_trace_config_download_req_msg_v01 {
+	u8 total_size_valid;
+	u32 total_size;
+	u8 seg_id_valid;
+	u32 seg_id;
+	u8 data_valid;
+	u32 data_len;
+	u8 data[QMI_WLFW_MAX_DATA_SIZE_V01];
+	u8 end_valid;
+	u8 end;
+};
+#define WLFW_QDSS_TRACE_CONFIG_DOWNLOAD_REQ_MSG_V01_MAX_MSG_LEN 6167
+extern struct elem_info wlfw_qdss_trace_config_download_req_msg_v01_ei[];
+
+struct wlfw_qdss_trace_config_download_resp_msg_v01 {
+	struct qmi_response_type_v01 resp;
+};
+#define WLFW_QDSS_TRACE_CONFIG_DOWNLOAD_RESP_MSG_V01_MAX_MSG_LEN 7
+extern struct elem_info wlfw_qdss_trace_config_download_resp_msg_v01_ei[];
 #endif

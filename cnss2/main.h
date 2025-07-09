@@ -43,6 +43,8 @@
 				CNSS_EVENT_UNINTERRUPTIBLE)
 #define QCN7605_CALDB_SIZE 614400
 
+#define MAX_FIRMWARE_NAME_LEN		40
+
 extern unsigned long quirks;
 
 #ifdef CONFIG_NAPIER_X86
