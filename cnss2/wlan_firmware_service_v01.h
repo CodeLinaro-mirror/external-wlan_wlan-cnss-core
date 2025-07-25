@@ -128,6 +128,9 @@
 #define QMI_WLFW_MAX_NUM_GPIO_INFO_V01 20
 #define QMI_WLFW_MLO_V2_CHP_V01 4
 #define QMI_WLFW_MAX_ADJ_CHIP_V01 2
+#define QMI_WLFW_MAX_DEV_MEM_NUM_V01 4
+#define QMI_WLFW_PMU_PARAMS_MAX_V01 16
+#define QMI_WLFW_PMU_PIN_NAME_MAX_LEN_V01 32
 
 enum wlfw_driver_mode_enum_v01 {
 	WLFW_DRIVER_MODE_ENUM_MIN_VAL_V01 = INT_MIN,
@@ -205,6 +208,37 @@ enum wlfw_host_build_type_v01 {
 	WLFW_HOST_BUILD_TYPE_MAX_VAL_V01 = INT_MAX,
 };
 
+enum wlfw_rd_card_chain_cap_v01 {
+	WLFW_RD_CARD_CHAIN_CAP_MIN_VAL_V01 = INT_MIN,
+	WLFW_RD_CARD_CHAIN_CAP_UNSPECIFIED_V01 = 0,
+	WLFW_RD_CARD_CHAIN_CAP_1x1_V01 = 1,
+	WLFW_RD_CARD_CHAIN_CAP_2x2_V01 = 2,
+	WLFW_RD_CARD_CHAIN_CAP_MAX_VAL_V01 = INT_MAX,
+};
+
+enum wlfw_bdf_dnld_method_v01 {
+	WLFW_BDF_DNLD_METHOD_MIN_VAL_V01 = INT_MIN,
+	WLFW_DIRECT_BDF_COPY_V01 = 0,
+	WLFW_SEND_BDF_OVER_QMI_V01 = 1,
+	WLFW_BDF_DNLD_METHOD_MAX_VAL_V01 = INT_MAX,
+};
+
+enum wlfw_he_channel_width_cap_v01 {
+	WLFW_HE_CHANNEL_WIDTH_CAP_MIN_VAL_V01 = INT_MIN,
+	WLFW_PHY_HE_CHANNEL_WIDTH_CAP_UNSPECIFIED_V01 = 0,
+	WLFW_PHY_HE_CHANNEL_WIDTH_CAP_80MHZ_V01 = 1,
+	WLFW_PHY_HE_CHANNEL_WIDTH_CAP_160MHZ_V01 = 2,
+	WLFW_HE_CHANNEL_WIDTH_CAP_MAX_VAL_V01 = INT_MAX,
+};
+
+enum wlfw_phy_qam_cap_v01 {
+	WLFW_PHY_QAM_CAP_MIN_VAL_V01 = INT_MIN,
+	WLFW_PHY_QAM_CAP_UNSPECIFIED_V01 = 0,
+	WLFW_PHY_QAM_CAP_1K_V01 = 1,
+	WLFW_PHY_QAM_CAP_4K_V01 = 2,
+	WLFW_PHY_QAM_CAP_MAX_VAL_V01 = INT_MAX,
+};
+
 struct wlfw_host_ddr_range_s_v01 {
 	u64 start;
 	u64 size;
@@ -226,6 +260,29 @@ struct mlo_chip_v2_info_s_v01 {
 	struct mlo_chip_info_s_v01 mlo_chip_info;
 	u8 adj_mlo_num_chips;
 	struct mlo_chip_info_s_v01 adj_mlo_chip_info[QMI_WLFW_MAX_ADJ_CHIP_V01];
+};
+
+struct wlfw_dev_mem_info_s_v01 {
+	u64 start;
+	u64 size;
+};
+
+struct wlfw_pmu_param_v01 {
+	u8 pin_name[QMI_WLFW_PMU_PIN_NAME_MAX_LEN_V01];
+	u32 wake_volt_valid;
+	u32 wake_volt;
+	u32 sleep_volt_valid;
+	u32 sleep_volt;
+};
+
+struct wlfw_pmu_cfg_v01 {
+	u32 pmu_param_len;
+	struct wlfw_pmu_param_v01 pmu_param[QMI_WLFW_PMU_PARAMS_MAX_V01];
+};
+
+struct wlchip_serial_id_v01 {
+	u32 serial_id_msb;
+	u32 serial_id_lsb;
 };
 
 #define QMI_WLFW_CE_ATTR_FLAGS_V01 ((u32)0x00)
@@ -488,9 +545,36 @@ struct wlfw_cap_resp_msg_v01 {
 	u32 eeprom_caldata_read_timeout;
 	u8 fw_caps_valid;
 	u64 fw_caps;
+	u8 rd_card_chain_cap_valid;
+	enum wlfw_rd_card_chain_cap_v01 rd_card_chain_cap;
+	u8 dev_mem_info_valid;
+	struct wlfw_dev_mem_info_s_v01 dev_mem_info[QMI_WLFW_MAX_DEV_MEM_NUM_V01];
+	u8 foundry_name_valid;
+	char foundry_name[QMI_WLFW_MAX_STR_LEN_V01 + 1];
+	u8 hang_data_addr_offset_valid;
+	u32 hang_data_addr_offset;
+	u8 hang_data_length_valid;
+	u16 hang_data_length;
+	u8 bdf_dnld_method_valid;
+	enum wlfw_bdf_dnld_method_v01 bdf_dnld_method;
+	u8 hwid_bitmap_valid;
+	u8 hwid_bitmap;
+	u8 ol_cpr_cfg_valid;
+	struct wlfw_pmu_cfg_v01 ol_cpr_cfg;
+	u8 regdb_mandatory_valid;
+	u8 regdb_mandatory;
+	u8 regdb_support_valid;
+	u8 regdb_support;
+	u8 rxgainlut_support_valid;
+	u8 rxgainlut_support;
+	u8 he_channel_width_cap_valid;
+	enum wlfw_he_channel_width_cap_v01 he_channel_width_cap;
+	u8 phy_qam_cap_valid;
+	enum wlfw_phy_qam_cap_v01 phy_qam_cap;
+	u8 serial_id_valid;
+	struct wlchip_serial_id_v01 serial_id;
 };
-
-#define WLFW_CAP_RESP_MSG_V01_MAX_MSG_LEN 246
+#define WLFW_CAP_RESP_MSG_V01_MAX_MSG_LEN 1171
 extern struct elem_info wlfw_cap_resp_msg_v01_ei[];
 
 struct wlfw_bdf_download_req_msg_v01 {
