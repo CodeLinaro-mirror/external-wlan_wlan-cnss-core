@@ -122,6 +122,12 @@
 #define QMI_WLFW_MAX_NUM_SHADOW_REG_V2_V01 36
 #define QMI_WLFW_MAX_NUM_SVC_V01 24
 #define QMI_WLFW_MAX_PLATFORM_NAME_LEN_V01 64
+#define QMI_WLFW_MAX_HOST_DDR_RANGE_SIZE_V01 3
+#define QMI_WLFW_MAX_MLO_CHIP_V01 3
+#define QMI_WLFW_MAX_NUM_MLO_LINKS_PER_CHIP_V01 2
+#define QMI_WLFW_MAX_NUM_GPIO_INFO_V01 20
+#define QMI_WLFW_MLO_V2_CHP_V01 4
+#define QMI_WLFW_MAX_ADJ_CHIP_V01 2
 
 enum wlfw_driver_mode_enum_v01 {
 	WLFW_DRIVER_MODE_ENUM_MIN_VAL_V01 = INT_MIN,
@@ -189,6 +195,37 @@ enum wlfw_pcie_gen_speed_v01 {
 	QMI_PCIE_GEN_SPEED_2_V01 = 2,
 	QMI_PCIE_GEN_SPEED_3_V01 = 3,
 	WLFW_PCIE_GEN_SPEED_MAX_VAL_V01 = INT_MAX,
+};
+
+enum wlfw_host_build_type_v01 {
+	WLFW_HOST_BUILD_TYPE_MIN_VAL_V01 = INT_MIN,
+	QMI_HOST_BUILD_TYPE_UNSPECIFIED_V01 = 0,
+	QMI_HOST_BUILD_TYPE_PRIMARY_V01 = 1,
+	QMI_HOST_BUILD_TYPE_SECONDARY_V01 = 2,
+	WLFW_HOST_BUILD_TYPE_MAX_VAL_V01 = INT_MAX,
+};
+
+struct wlfw_host_ddr_range_s_v01 {
+	u64 start;
+	u64 size;
+};
+
+struct mlo_chip_info_s_v01 {
+	u8 chip_id;
+	u8 num_local_links;
+	u8 hw_link_id[QMI_WLFW_MAX_NUM_MLO_LINKS_PER_CHIP_V01];
+	u8 valid_mlo_link_id[QMI_WLFW_MAX_NUM_MLO_LINKS_PER_CHIP_V01];
+};
+
+struct wlfw_host_pcie_link_info_s_v01 {
+	u32 pci_link_speed;
+	u32 pci_link_width;
+};
+
+struct mlo_chip_v2_info_s_v01 {
+	struct mlo_chip_info_s_v01 mlo_chip_info;
+	u8 adj_mlo_num_chips;
+	struct mlo_chip_info_s_v01 adj_mlo_chip_info[QMI_WLFW_MAX_ADJ_CHIP_V01];
 };
 
 #define QMI_WLFW_CE_ATTR_FLAGS_V01 ((u32)0x00)
@@ -725,9 +762,45 @@ struct wlfw_host_cap_req_msg_v01 {
 	u16 cal_duration;
 	u8 platform_name_valid;
 	char platform_name[QMI_WLFW_MAX_PLATFORM_NAME_LEN_V01 + 1];
+	u8 ddr_range_valid;
+	struct wlfw_host_ddr_range_s_v01 ddr_range[QMI_WLFW_MAX_HOST_DDR_RANGE_SIZE_V01];
+	u8 host_build_type_valid;
+	enum wlfw_host_build_type_v01 host_build_type;
+	u8 mlo_capable_valid;
+	u8 mlo_capable;
+	u8 mlo_chip_id_valid;
+	u16 mlo_chip_id;
+	u8 mlo_group_id_valid;
+	u8 mlo_group_id;
+	u8 max_mlo_peer_valid;
+	u16 max_mlo_peer;
+	u8 mlo_num_chips_valid;
+	u8 mlo_num_chips;
+	u8 mlo_chip_info_valid;
+	struct mlo_chip_info_s_v01 mlo_chip_info[QMI_WLFW_MAX_MLO_CHIP_V01];
+	u8 feature_list_valid;
+	u64 feature_list;
+	u8 num_wlan_clients_valid;
+	u16 num_wlan_clients;
+	u8 num_wlan_vaps_valid;
+	u8 num_wlan_vaps;
+	u8 wake_msi_addr_valid;
+	u32 wake_msi_addr;
+	u8 wlan_enable_delay_valid;
+	u32 wlan_enable_delay;
+	u8 ddr_type_valid;
+	u32 ddr_type;
+	u8 gpio_info_valid;
+	u32 gpio_info_len;
+	u32 gpio_info[QMI_WLFW_MAX_NUM_GPIO_INFO_V01];
+	u8 fw_ini_cfg_support_valid;
+	u8 fw_ini_cfg_support;
+	u8 mlo_chip_v2_info_valid;
+	struct mlo_chip_v2_info_s_v01 mlo_chip_v2_info[QMI_WLFW_MLO_V2_CHP_V01];
+	u8 pcie_link_info_valid;
+	struct wlfw_host_pcie_link_info_s_v01 pcie_link_info;
 };
-
-#define WLFW_HOST_CAP_REQ_MSG_V01_MAX_MSG_LEN 194
+#define WLFW_HOST_CAP_REQ_MSG_V01_MAX_MSG_LEN 581
 extern struct elem_info wlfw_host_cap_req_msg_v01_ei[];
 
 struct wlfw_host_cap_resp_msg_v01 {
