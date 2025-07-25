@@ -198,7 +198,8 @@ static int cnss_wlfw_host_cap_send_sync(struct cnss_plat_data *plat_priv)
 	req.bdf_support_valid = 1;
 	req.bdf_support = 1;
 
-	if (cnss_get_bus_type(plat_priv->device_id) == CNSS_BUS_PCI) {
+	if (cnss_get_bus_type(plat_priv->device_id) == CNSS_BUS_PCI ||
+	    cnss_get_bus_type(plat_priv->device_id) == CNSS_BUS_SDIO) {
 		req.m3_support_valid = 1;
 		req.m3_support = 1;
 
