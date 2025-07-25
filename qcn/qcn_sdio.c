@@ -56,6 +56,7 @@ module_param(driver_state, int, S_IRUGO | S_IRUSR | S_IRGRP);
 
 int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode);
 int reset_thread(void *data);
+static void qcn_set_host_clock(unsigned int hz);
 
 static struct mmc_host *current_host;
 
@@ -400,6 +401,14 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 	if (sdio_ctxt->curr_sw_mode == mode)
 		return 0;
 
+	if (mode == QCN_SDIO_SW_RDDM) {
+		if (current_host && current_host->ios.clock &&
+		    current_host->ios.clock > 100000000) {
+			pr_info("Try to reduce the frequency\n");
+			qcn_set_host_clock(50000000);
+		}
+	}
+
 	if ((sdio_ctxt->curr_sw_mode == QCN_SDIO_SW_PBL) &&
 						(mode == QCN_SDIO_SW_SBL)) {
 		sdio_ctxt->curr_sw_mode = QCN_SDIO_SW_SBL;
@@ -587,6 +596,19 @@ static int qcn_sdio_reset(void)
 	return 0;
 }
 
+static void qcn_set_host_clock(unsigned int hz)
+{
+	if (current_host->ios.clock <= hz)
+		return;
+
+	pr_info("%s: %u hz", __func__, hz);
+	sdio_claim_host(sdio_ctxt->func);
+	current_host->ios.clock = hz;
+	if (current_host->ops->set_ios)
+		current_host->ops->set_ios(current_host, &current_host->ios);
+	sdio_release_host(sdio_ctxt->func);
+}
+
 static void qcn_sdio_irq_handler(struct sdio_func *func)
 {
 	u8 data = 0;
@@ -598,6 +620,13 @@ static void qcn_sdio_irq_handler(struct sdio_func *func)
 		sdio_release_host(sdio_ctxt->func);
 
 		pr_err("%s: IRQ status read error ret = %d\n", __func__, ret);
+
+		if (current_host && current_host->ios.clock &&
+		    current_host->ios.clock > 100000000) {
+			pr_info("Try to reduce the frequency\n");
+			qcn_set_host_clock(50000000);
+			return;
+		}
 
 		ret = qcn_sdio_reset();
 		if (ret)
