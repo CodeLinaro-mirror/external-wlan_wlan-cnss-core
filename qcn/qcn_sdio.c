@@ -25,6 +25,8 @@
 #include <linux/kthread.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
+#include <linux/of.h>
+#include <linux/of_irq.h>
 #include <linux/version.h>
 #include "qcn_sdio.h"
 #ifdef CONFIG_WLAN_CNSS_CORE
@@ -88,6 +90,10 @@ struct qcn_sdio {
 	bool low_power_disabled;
 	atomic_t suspended;
 #endif
+	bool wake_irq_enable;
+	int wake_irq_nr;
+	int wake_irq_flag;
+	int wake_irq_pending;
 };
 
 static struct qcn_sdio *sdio_ctxt;
@@ -142,6 +148,8 @@ char *envp[QCN_SDIO_SW_MAX] = {
 #define	SDIO_STUFF_MASK		1
 #define	SDIO_BLOCKSZ_MASK	0x1FF
 #define	SDIO_DATA_MASK		0xFF
+
+#define VALID_IRQ(irq_nr)	(irq_nr > 0 ? true : false)
 
 static inline
 void qcn_sdio_set_cmd53_arg(u32 *arg, u8 rw, u8 func, u8 mode, u8 opcode,
@@ -614,6 +622,86 @@ static int qcn_sdio_reset(void)
 	return 0;
 }
 
+#ifdef OOB_WAKEUP
+
+#define WAKE_IRQ_NAME "oob-wake"
+
+static irqreturn_t qcn_sdio_wake_irq_handler(int irq, void *func)
+{
+	pr_info("%s: wake IRQ %d triggered\n", __func__, irq);
+
+	disable_irq_nosync(sdio_ctxt->wake_irq_nr);
+	/* TODO - IRQ service */
+
+	return IRQ_HANDLED;
+}
+
+static int qcn_sdio_wake_irq_init(struct sdio_func *func)
+{
+	struct device *sdio_dev = &func->dev;
+	int ret = 0;
+
+	if (sdio_dev->of_node) {
+		sdio_ctxt->wake_irq_nr = of_irq_get_byname(sdio_dev->of_node, WAKE_IRQ_NAME);
+		if (!VALID_IRQ(sdio_ctxt->wake_irq_nr)) {
+			dev_err(sdio_dev, "Failed to get IRQ %s\n", WAKE_IRQ_NAME);
+			ret = -ENODEV;
+		} else {
+			dev_info(sdio_dev, "wake IRQ: number %d\n", sdio_ctxt->wake_irq_nr);
+			sdio_ctxt->wake_irq_flag =
+				irq_get_trigger_type(sdio_ctxt->wake_irq_nr);
+			if (!sdio_ctxt->wake_irq_flag) {
+				/* Fall back to default, if not provided */
+				sdio_ctxt->wake_irq_flag = IRQF_TRIGGER_LOW;
+			}
+			sdio_ctxt->wake_irq_flag |= IRQF_ONESHOT;
+			dev_info(sdio_dev, "wake IRQ: %s level trigger\n",
+				 sdio_ctxt->wake_irq_flag & IRQF_TRIGGER_HIGH ?
+				 "high" : "low");
+
+			ret = devm_request_threaded_irq(sdio_dev, sdio_ctxt->wake_irq_nr,
+							NULL,
+							qcn_sdio_wake_irq_handler,
+							sdio_ctxt->wake_irq_flag,
+							WAKE_IRQ_NAME,
+							func);
+			if (ret) {
+				dev_err(sdio_dev, "Failed to request IRQ: %d\n", ret);
+				return ret;
+			}
+
+			ret = enable_irq_wake(sdio_ctxt->wake_irq_nr);
+			if (ret) {
+				dev_err(sdio_dev, "Failed to enable_irq_wake %d\n", ret);
+				return ret;
+			}
+			disable_irq_wake(sdio_ctxt->wake_irq_nr);
+
+			device_init_wakeup(sdio_dev, true);
+		}
+	} else {
+		dev_err(sdio_dev, "of_node not found!\n");
+		ret = -ENODEV;
+	}
+
+	return ret;
+}
+
+static void qcn_sdio_wake_irq_deinit(struct sdio_func *func)
+{
+	if (VALID_IRQ(sdio_ctxt->wake_irq_nr))
+		device_init_wakeup(&func->dev, false);
+}
+#else
+static int qcn_sdio_wake_irq_init(struct sdio_func *func)
+{
+	return 0;
+}
+static void qcn_sdio_wake_irq_deinit(struct sdio_func *func)
+{
+}
+#endif
+
 static void qcn_set_host_clock(unsigned int hz)
 {
 	if (current_host->ios.clock <= hz)
@@ -778,11 +866,16 @@ static int qcn_sdio_suspend(struct device *dev)
 {
 	struct sdio_func *func = dev_to_sdio_func(dev);
 	u8 value = 0;
-	int ret = 0, count = 0, suspended;
+	int ret = 0, suspended;
 
 	if (sdio_ctxt->low_power_disabled) {
 		pr_err("Low power has been disabled\n");
 		return 0;
+	}
+
+	if (sdio_ctxt->wake_irq_pending) {
+		dev_err(dev, "wake IRQ pending\n");
+		return -EBUSY;
 	}
 
 	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 0, 1);
@@ -807,48 +900,38 @@ static int qcn_sdio_suspend(struct device *dev)
 		pr_err("low power status write error: %d\n", ret);
 		goto out;
 	}
-	sdio_release_host(func);
 
-	do {
-		sdio_claim_host(func);
-		value = sdio_readb(func, SDIO_QCN_LOW_PWR, &ret);
-		sdio_release_host(func);
-		if (ret) {
-			pr_err("low power status read after write error: %d\n",
-			       ret);
-			msleep(10);
-			continue;
-		}
+	/* cologne-434: do not poll for SDIO_QCN_LOW_PWR as cologne will
+	 * not respond to sdio commands on receiving SDIO_QCN_LOW_PWR_GO
+	 */
+	msleep(5);
 
-		if (!(value & SDIO_QCN_LOW_PWR_GO_MASK)) {
-			sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
-			pr_info("%s: suspended\n", __func__);
-			return 0;
-		}
-
-		msleep(10);
-	} while ((value & SDIO_QCN_LOW_PWR_GO_MASK) && (count ++ < 1000));
+	if (VALID_IRQ(sdio_ctxt->wake_irq_nr)) {
+		dev_info(dev, "enable_irq_wake\n");
+		enable_irq_wake(sdio_ctxt->wake_irq_nr);
+		sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
+	}
 
 out:
 	sdio_release_host(func);
-	if (count >= 1000) {
-		pr_err("suspend timed out\n");
-		ret = -EBUSY;
-	}
 
-	pr_info("exit with ret %d\n", ret);
+	dev_info(dev, "suspend exit with ret %d\n", ret);
 	return ret;
 }
 
 static int qcn_sdio_resume(struct device *dev)
 {
-	struct sdio_func *func = dev_to_sdio_func(dev);
 	int ret = 0, suspended;
-	u32 value = 0;
 
 	if (sdio_ctxt->low_power_disabled) {
 		pr_err("Low power has been disabled\n");
 		return 0;
+	}
+
+	if (VALID_IRQ(sdio_ctxt->wake_irq_nr)) {
+		dev_info(dev, "disable_irq_wake\n");
+		disable_irq_wake(sdio_ctxt->wake_irq_nr);
+		sdio_ctxt->wake_irq_pending = 0;
 	}
 
 	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 1, 0);
@@ -857,15 +940,9 @@ static int qcn_sdio_resume(struct device *dev)
 		return 0;
 	}
 
-	pr_info("%s: func %d curr_sw_mode=%d\n", __func__,
-		func->num, sdio_ctxt->curr_sw_mode);
-	value = META_INFO(QCN_SDIO_DOORBELL_HEVENT, (u32)0);
+	qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT, (u32)0);
 
-	sdio_claim_host(func);
-	sdio_writel(func, value, SDIO_QCN_HRQ_PUSH, &ret);
-	sdio_release_host(func);
-
-	pr_info("exit with ret %d\n", ret);
+	dev_info(dev, "resume exit\n");
 	return ret;
 }
 
@@ -1033,6 +1110,11 @@ int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 	sdio_ctxt->func = func;
 	sdio_ctxt->id = id;
 	sdio_set_drvdata(func, sdio_ctxt);
+
+	ret = qcn_sdio_wake_irq_init(func);
+	if (ret)
+		goto err;
+
 	sdio_ctxt->qcn_sdio_wq = create_singlethread_workqueue("qcn_sdio");
 	if (!sdio_ctxt->qcn_sdio_wq) {
 		pr_err("%s: Error: SDIO create wq\n", __func__);
@@ -1128,6 +1210,8 @@ static void qcn_sdio_remove(struct sdio_func *func)
 	sdio_claim_host(sdio_ctxt->func);
 	sdio_release_irq(sdio_ctxt->func);
 	sdio_release_host(sdio_ctxt->func);
+
+	qcn_sdio_wake_irq_deinit(func);
 
 	kfree(sdio_ctxt);
 	sdio_ctxt = NULL;

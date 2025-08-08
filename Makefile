@@ -6,6 +6,7 @@ unified_driver ?= 0
 unified_prealloc ?= 0
 diag_support ?= 1
 lpm_support ?= 0
+oob_wake ?= 0
 
 ifeq ($(diag_support), 1)
 KBUILD_OPTIONS += CONFIG_MSM_DIAG_INTERFACE=y
@@ -40,8 +41,10 @@ endif
 endif
 ifeq ($(interface_type), sdio)
 KBUILD_OPTIONS += CONFIG_SDIO_XPRT=y CONFIG_QCN=y CONFIG_QTI_SDIO_CLIENT=y CONFIG_CNSS2_SDIO=y
+ifeq ($(oob_wake), 1)
+KBUILD_OPTIONS += CONFIG_OOB_WAKEUP=y
 endif
-
+endif
 
 else #unified_driver 0
 
