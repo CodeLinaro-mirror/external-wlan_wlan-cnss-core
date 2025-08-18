@@ -1,4 +1,5 @@
 /* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -38,6 +39,10 @@
 
 #include "cnss_module.h"
 #include "mhi.h"
+
+#ifdef CONFIG_CNSS_GENL
+#include "cnss_nl.h"
+#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0))
 #include <linux/panic_notifier.h>
@@ -2480,6 +2485,9 @@ static int cnss_remove(struct platform_device *plat_dev)
 	struct cnss_plat_data *plat_priv = platform_get_drvdata(plat_dev);
 #endif
 
+#ifdef CONFIG_CNSS_GENL
+        cld80211_exit();
+#endif
 	complete_all(&plat_priv->rddm_complete);
 	complete_all(&plat_priv->power_up_complete);
 #ifndef CONFIG_NAPIER_X86
@@ -2534,6 +2542,12 @@ static int __init cnss_initialize(void)
 	if (ret)
 		cnss_debug_deinit();
 
+#ifdef CONFIG_CNSS_GENL
+        ret = cld80211_init();
+        if (ret < 0)
+                cnss_pr_err("cld80211 init failed %d\n", ret);
+#endif
+
 	return ret;
 }
 
@@ -2543,6 +2557,10 @@ void cnss_exit(void)
 static void __exit cnss_exit(void)
 #endif
 {
+#ifdef CONFIG_CNSS_GENL
+        cld80211_exit();
+#endif
+
 #ifdef CONFIG_NAPIER_X86
 	cnss_remove(NULL);
 #else

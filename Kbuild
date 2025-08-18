@@ -1,3 +1,7 @@
+ifeq ($(CONFIG_CNSS_OUT_OF_TREE),y)
+KBUILD_CPPFLAGS += -DCONFIG_CNSS_OUT_OF_TREE
+endif
+
 ifeq ($(CONFIG_SINGLE_KO_FEATURE),y)
 
     CONFIG_WLAN_CNSS_CORE:=y
@@ -172,6 +176,11 @@ endif
 
 ifneq ($(CONFIG_WLAN_CNSS_CORE),)
     KBUILD_CPPFLAGS += -DCONFIG_WLAN_CNSS_CORE
+
+ifeq ($(CONFIG_CNSS_GENL),y)
+    KBUILD_CPPFLAGS += -DCONFIG_CNSS_GENL
+endif
+
 endif
 
 ifneq ($(CONFIG_CNSS_UTILS),)
@@ -309,6 +318,12 @@ endif
 	CNSS_INC := -I$(CNSS_DIR)
 endif
 
+ifeq ($(CONFIG_CNSS_GENL), y)
+        CNSS_GENL_DIR := cnss_genl
+        CNSS_GENL_INC := -I$(ROOTDIR)/inc
+        CNSS_OBJS += $(CNSS_GENL_DIR)/cnss_nl.o
+endif
+
 ifeq ($(CONFIG_MSM_DIAG_INTERFACE), y)
 	DIAG_OBJS := $(DIAG_DIR)/diagchar_core.o             \
 		     $(DIAG_DIR)/diag_local.o                \
@@ -411,6 +426,9 @@ INCS += $(CNSS_INC)                     \
         $(CNSS_PREALLOC_INC)            \
         $(MULTI_CARD_INC)
 
+ifeq ($(CONFIG_CNSS_GENL), y)
+        INCS += $(CNSS_GENL_INC)
+endif
 
 cflags-y += $(INCS)
 ccflags-y += -Os -I$(src)/$(CNSS_CORE_BASE)/inc -I$(src)/$(CNSS_CORE_BASE)/mhi -I$(ROOTDIR)
