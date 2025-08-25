@@ -1070,10 +1070,8 @@ static void data_avail_worker(struct kthread_work *work)
 
 		qsb->rx_dma_buf = data_node->rx_dma_buf;
 
-		to_console = 1;	
 		qlog(qsb, "%s Queuing to read %d %p\n", qsb->name,
 					qsb->data_avail, qsb->rx_dma_buf);
-		to_console = 0;
 
 		if (qsb->data_avail)
 			wake_up(&qsb->wait_q);
