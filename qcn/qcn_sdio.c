@@ -103,6 +103,14 @@ static struct task_struct *reset_task;
 static int qcn_create_sysfs(struct device *dev);
 #endif
 
+char *envp[QCN_SDIO_SW_MAX] = {
+	[QCN_SDIO_SW_RESET] = "WLAN_MODE=QCN_SDIO_SW_RESET",
+	[QCN_SDIO_SW_PBL] = "WLAN_MODE=QCN_SDIO_SW_PBL",
+	[QCN_SDIO_SW_SBL] = "WLAN_MODE=QCN_SDIO_SW_SBL",
+	[QCN_SDIO_SW_RDDM] = "WLAN_MODE=QCN_SDIO_SW_RDDM",
+	[QCN_SDIO_SW_MROM] = "WLAN_MODE=QCN_SDIO_SW_MROM",
+};
+
 #if (QCN_SDIO_META_VER_0)
 #define	META_INFO(event, data)						  \
 	((u32)((u32)data << QCN_SDIO_HMETA_DATA_SHFT) |			  \
@@ -501,6 +509,12 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 
 	driver_state = mode;
 	sdio_ctxt->curr_sw_mode = mode;
+	if (sdio_ctxt->curr_sw_mode == QCN_SDIO_SW_RDDM) {
+		char *uevent[2];
+		uevent[0] = envp[QCN_SDIO_SW_RDDM];
+		uevent[1] = NULL;
+		kobject_uevent_env(&sdio_ctxt->func->dev.kobj, KOBJ_CHANGE, uevent);
+	}
 	return 0;
 }
 
