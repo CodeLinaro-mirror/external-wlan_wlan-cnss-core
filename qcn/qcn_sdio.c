@@ -631,6 +631,7 @@ static irqreturn_t qcn_sdio_wake_irq_handler(int irq, void *func)
 	pr_info("%s: wake IRQ %d triggered\n", __func__, irq);
 
 	disable_irq_nosync(sdio_ctxt->wake_irq_nr);
+
 	/* TODO - IRQ service */
 
 	return IRQ_HANDLED;
@@ -862,6 +863,20 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 }
 
 #ifdef CONFIG_LPM
+static int qcn_sdio_lpm_notify_client(enum sdio_al_lpm_event event)
+{
+	struct qcn_sdio_client_info *cinfo = NULL;
+	int ret = 0;
+
+	list_for_each_entry(cinfo, &cinfo_head, cli_list) {
+		if (cinfo->is_probed && cinfo->cli_data.lpm_notify_cb)
+			ret = cinfo->cli_data.lpm_notify_cb(&cinfo->cli_handle,
+							    event);
+	}
+
+	return ret;
+}
+
 static int qcn_sdio_suspend(struct device *dev)
 {
 	struct sdio_func *func = dev_to_sdio_func(dev);
@@ -883,6 +898,10 @@ static int qcn_sdio_suspend(struct device *dev)
 		pr_info("Already suspended\n");
 		return 0;
 	}
+
+	dev_info(dev, "Notify client to suspend");
+	if ((ret = qcn_sdio_lpm_notify_client(LPM_ENTER)) != 0)
+		dev_err(dev, "Client failed to suspend: %d", ret);
 
 	pr_info("%s: func %d curr_sw_mode=%d\n", __func__,
 		func->num, sdio_ctxt->curr_sw_mode);
@@ -907,7 +926,7 @@ static int qcn_sdio_suspend(struct device *dev)
 	msleep(5);
 
 	if (VALID_IRQ(sdio_ctxt->wake_irq_nr)) {
-		dev_info(dev, "enable_irq_wake\n");
+		dev_info(dev, "enable_irq_wake");
 		enable_irq_wake(sdio_ctxt->wake_irq_nr);
 		sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
 	}
@@ -915,7 +934,7 @@ static int qcn_sdio_suspend(struct device *dev)
 out:
 	sdio_release_host(func);
 
-	dev_info(dev, "suspend exit with ret %d\n", ret);
+	dev_info(dev, "suspend exit with ret %d", ret);
 	return ret;
 }
 
@@ -941,6 +960,10 @@ static int qcn_sdio_resume(struct device *dev)
 	}
 
 	qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT, (u32)0);
+
+	dev_info(dev, "Notify client to resume");
+	if ((ret = qcn_sdio_lpm_notify_client(LPM_EXIT)) != 0)
+		dev_err(dev, "Client failed to resume: %d", ret);
 
 	dev_info(dev, "resume exit\n");
 	return ret;

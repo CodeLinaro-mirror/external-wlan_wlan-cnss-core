@@ -333,24 +333,27 @@ static int cnss_sdio_remove(struct sdio_al_client_handle *pal_cli_handle)
 	return 0;
 }
 
-static void cnss_sdio_pm(struct sdio_al_client_handle *pal_cli_handle,
+static int cnss_sdio_pm(struct sdio_al_client_handle *pal_cli_handle,
 			 enum sdio_al_lpm_event event)
 {
 	struct cnss_sdio_data *sdio_info = pal_cli_handle->client_priv;
 	struct sdio_func *func = sdio_info->al_client_handle->func;
+	int ret = 0;
 
 	if (!sdio_info->ops) {
-		cnss_pr_err("Ignore LPM event\n");
-		return;
+		cnss_pr_warn("Ignore LPM event\n");
+		return 0;
 	}
 
 	if (event == LPM_ENTER) {
 		cnss_pr_info("Entering LPM\n");
-		sdio_info->ops->suspend(&func->dev);
+		ret = sdio_info->ops->suspend(&func->dev);
 	} else {
 		cnss_pr_info("Exiting LPM\n");
-		sdio_info->ops->resume(&func->dev);
+		ret = sdio_info->ops->resume(&func->dev);
 	}
+
+	return ret;
 }
 
 struct sdio_al_client_data al_cli_data = {

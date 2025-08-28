@@ -103,7 +103,7 @@ struct sdio_al_client_data {
 
 	int (*remove)(struct sdio_al_client_handle *);
 
-	void (*lpm_notify_cb)(struct sdio_al_client_handle *,
+	int (*lpm_notify_cb)(struct sdio_al_client_handle *,
 			enum sdio_al_lpm_event event);
 };
 
