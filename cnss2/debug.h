@@ -49,7 +49,7 @@ extern void *cnss_ipc_log_context;
 	} while (0)
 
 #define cnss_pr_dbg(_fmt, ...) do {					\
-		pr_info("cnss: " _fmt, ##__VA_ARGS__);			\
+		pr_debug("cnss: " _fmt, ##__VA_ARGS__);			\
 		cnss_ipc_log_string("DBG: " pr_fmt(_fmt),		\
 				    ##__VA_ARGS__);			\
 	} while (0)

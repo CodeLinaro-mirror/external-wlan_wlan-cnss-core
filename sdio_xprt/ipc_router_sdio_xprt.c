@@ -13,7 +13,7 @@
 /*
  * IPC ROUTER SDIO XPRT module.
  */
-#define DEBUG
+#undef DEBUG
 
 #include <linux/module.h>
 #include <linux/platform_device.h>

@@ -255,7 +255,7 @@ void qti_client_ul_xfer_cb(struct sdio_al_channel_handle *ch_handle,
 	}
 
 	qsb = qsbdev[cl_data->id];
-	pr_err("qti_client_ul_xfer_cb for client id: %d\n", cl_data->id);
+	pr_debug("qti_client_ul_xfer_cb for client id: %d\n", cl_data->id);
 	complete(tx_complete);
 }
 
@@ -274,7 +274,7 @@ void qti_client_dl_xfer_cb(struct sdio_al_channel_handle *ch_handle,
 	}
 
 	qsb = qsbdev[cl_data->id];
-	pr_err("qti_client_dl_xfer_cb for client id: %d\n", cl_data->id);
+	pr_debug("qti_client_dl_xfer_cb for client id: %d\n", cl_data->id);
 	qti_client_queue_rx(cl_data->id, xfer->buf_addr, (int)(uintptr_t)ctxt);
 }
 
@@ -294,7 +294,7 @@ void qti_client_data_avail_cb(struct sdio_al_channel_handle *ch_handle,
 		return;
 	}
 	if(cl_data->id != QCN_SDIO_CLI_ID_TTY)
-		pr_err("qti_client_data_avail_cb for client id: %d", cl_data->id);
+		pr_debug("qti_client_data_avail_cb for client id: %d", cl_data->id);
 
 	qsb = qsbdev[cl_data->id];
 	qsb->data_avail_count++;
@@ -483,9 +483,7 @@ int qti_client_read(int id, char *buf, size_t count)
 
 	qsb = qsbdev[id];
 	if (id == QCN_SDIO_CLI_ID_QMI) {
-		to_console = 1;
 		qlog(qsb, "client %s\n", qsb->name);
-		to_console = 0;
 	}
 
 	if (id == QCN_SDIO_CLI_ID_DIAG && !qsb->ops) {
