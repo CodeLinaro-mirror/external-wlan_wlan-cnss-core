@@ -587,7 +587,11 @@ cnss_export_symbol(cnss_athdiag_read);
 int cnss_athdiag_write(struct device *dev, u32 offset, u32 mem_type,
 		       u32 data_len, u8 *input)
 {
+#if defined(CONFIG_CNSS2_USB) || defined(CONFIG_CNSS2_SDIO)
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(NULL);
+#else
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+#endif
 	int ret = 0;
 
 	if (!plat_priv) {
