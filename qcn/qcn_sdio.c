@@ -465,25 +465,28 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 		mutex_unlock(&lock);
 		break;
 	case QCN_SDIO_SW_RESET:
-	case QCN_SDIO_SW_MROM:
 		ret = wait_for_completion_timeout(&client_probe_complete,
 							msecs_to_jiffies(3000));
 		if (!ret)
 			pr_err("Timeout waiting for clients\n");
-
+		fallthrough;
+	case QCN_SDIO_SW_MROM:
 		mutex_lock(&lock);
 		list_for_each_entry(cinfo, &cinfo_head, cli_list) {
 			while (!list_empty(&cinfo->ch_head)) {
 				chinfo = list_first_entry(&cinfo->ch_head,
 					      struct qcn_sdio_ch_info, ch_list);
-				sdio_al_deregister_channel(&chinfo->ch_handle);
+				if (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_TTY)
+					sdio_al_deregister_channel(&chinfo->ch_handle);
 			}
 			cinfo->cli_handle.func = NULL;
 
 
 			if (cinfo->is_probed) {
-				cinfo->cli_data.remove(&cinfo->cli_handle);
-				cinfo->is_probed = 0;
+				if (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_TTY) {
+					cinfo->cli_data.remove(&cinfo->cli_handle);
+					cinfo->is_probed = 0;
+				}
 			}
 
 			if ((cinfo->cli_handle.id == QCN_SDIO_CLI_ID_TTY) &&
@@ -499,6 +502,7 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 							&cinfo->cli_handle);
 				qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT,
 									(u32)0);
+				break;
 			}
 		}
 		mutex_unlock(&lock);
