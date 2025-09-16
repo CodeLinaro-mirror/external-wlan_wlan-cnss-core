@@ -42,6 +42,8 @@ int cnss_sdio_dev_shutdown(struct cnss_sdio_data *cnss_info);
 int cnss_sdio_call_driver_probe(struct cnss_sdio_data *sdio_priv);
 int cnss_sdio_call_driver_remove(struct cnss_sdio_data *sdio_priv);
 void cnss_sdio_fw_boot_timeout_hdlr(void *bus_priv);
+int cnss_sdio_alloc_fw_mem(struct cnss_sdio_data *sdio_priv);
+void cnss_sdio_free_fw_mem(struct cnss_sdio_data *sdio_priv);
 #else
 static inline int cnss_sdio_init(struct cnss_plat_data *plat_priv)
 {
@@ -86,6 +88,15 @@ static inline int cnss_sdio_call_driver_remove(struct cnss_sdio_data *sdio_priv)
 static inline void cnss_sdio_fw_boot_timeout_hdlr(struct cnss_sdio_data *sdio_priv)
 {
 	/* no op */
+}
+static inline int cnss_sdio_alloc_fw_mem(struct cnss_pci_data *pci_priv)
+{
+	return 0;
+}
+
+static inline void cnss_sdio_free_fw_mem(struct cnss_sdio_data *sdio_priv)
+{
+	return 0;
 }
 #endif
 

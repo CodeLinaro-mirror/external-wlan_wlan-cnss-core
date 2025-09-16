@@ -768,8 +768,19 @@ int cnss_wlfw_cal_update_req_send_sync(struct cnss_plat_data *plat_priv,
 
 	req.cal_id = 0;
 	req.seg_id = 0;
-	cal_data_write_ptr = (u8 *)plat_priv->caldb_mem +
-			     cal_data->index;
+	if (plat_priv->bus_type == CNSS_BUS_SDIO) {
+		/* Currently, the firmware only requests one block of memory. */
+		if (!plat_priv->fw_mem[FW_MEM_SEG_INDEX_0].va) {
+			cnss_pr_err("No cal data memory");
+			goto out;
+		}
+		cal_data_write_ptr = (u8 *)plat_priv->fw_mem[FW_MEM_SEG_INDEX_0].va +
+				     cal_data->index;
+	} else {
+		cal_data_write_ptr = (u8 *)plat_priv->caldb_mem +
+				     cal_data->index;
+	}
+
 	remaining = cal_data->total_size;
 
 	while (remaining) {

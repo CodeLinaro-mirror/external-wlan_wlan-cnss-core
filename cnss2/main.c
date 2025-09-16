@@ -679,6 +679,23 @@ static int cnss_fw_mem_ready_hdlr(struct cnss_plat_data *plat_priv)
 	if (ret)
 		goto out;
 
+#ifdef CONFIG_CNSS2_SDIO
+	if (!cnss_bus_req_mem_ind_valid(plat_priv)) {
+#ifndef CONFIG_USB_EMULATION
+		if (plat_priv->device_id == COLOGNE_SDIO_DEVICE_ID) {
+			ret = cnss_wlfw_bdf_dnld_send_sync(plat_priv, CNSS_BDF_IU);
+			if (ret)
+				goto out;
+
+			ret = cnss_wlfw_bdf_dnld_send_sync(plat_priv, CNSS_BDF_AUX);
+			if (ret)
+				goto out;
+
+			ret = cnss_wlfw_qdss_dnld_send_sync(plat_priv);
+		}
+#endif
+	}
+#endif
 	if (plat_priv->device_id == QCN7605_DEVICE_ID)
 		goto skip_m3_dnld;
 	ret = cnss_bus_load_m3(plat_priv);
@@ -1443,6 +1460,7 @@ static int cnss_wlfw_server_arrive_hdlr(struct cnss_plat_data *plat_priv)
 	if (ret)
 		goto out;
 
+#ifndef CONFIG_CNSS2_SDIO
 	if (!cnss_bus_req_mem_ind_valid(plat_priv)) {
 		ret = cnss_wlfw_tgt_cap_send_sync(plat_priv);
 		if (ret)
@@ -1469,6 +1487,7 @@ static int cnss_wlfw_server_arrive_hdlr(struct cnss_plat_data *plat_priv)
 		}
 #endif
 	}
+#endif
 out:
 	return ret;
 }

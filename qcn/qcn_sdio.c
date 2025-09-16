@@ -33,6 +33,8 @@
 #include "unified_wlan_cnsscore.h"
 #endif
 
+#include "cnss2/main.h"
+
 static bool tx_dump;
 module_param(tx_dump, bool, S_IRUGO | S_IWUSR | S_IWGRP);
 
@@ -60,6 +62,7 @@ static bool FW_RDDM = false;
 
 int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode);
 int reset_thread(void *data);
+int save_fw_mem_thread(void *data);
 static void qcn_set_host_clock(unsigned int hz);
 
 static struct mmc_host *current_host;
@@ -106,6 +109,7 @@ static atomic_t status;
 static atomic_t xport_status;
 static spinlock_t async_lock;
 static struct task_struct *reset_task;
+static struct task_struct *save_fw_mem_task;
 
 #ifndef CONFIG_NAPIER_X86
 static int qcn_create_sysfs(struct device *dev);
@@ -409,6 +413,82 @@ err:
 	return ret;
 }
 
+#define BUF_SIZE 64
+static int save_fw_mem_to_file(void *buff, char *file_name, u32 total_size)
+{
+	char file_full_path[BUF_SIZE];
+	struct file *fp;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
+	mm_segment_t fs;
+#endif
+	loff_t pos;
+	int status = 0;
+
+	scnprintf(file_full_path,
+			sizeof(file_full_path),
+			"/var/crash/%s",
+			file_name);
+	fp = filp_open(file_full_path, O_RDWR | O_CREAT | O_APPEND, 0644);
+	if (IS_ERR(fp)) {
+		pr_err("create file:%s error\n",file_full_path);
+		return -EIO;
+	}
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+#endif
+	pos = 0;
+	status = kernel_write(fp, buff, total_size, &pos);
+	if (status < 0) {
+		pr_err("write file:%s error\n", file_full_path);
+		return status;
+	}
+
+	/* flush write to file */
+	vfs_fsync(fp, 0);
+
+	status = filp_close(fp, NULL);
+	if (status < 0) {
+		pr_err("close file: %s, error\n", file_full_path);
+		return status;
+	}
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)) || (defined(CONFIG_SET_FS))
+	set_fs(fs);
+#endif
+	return status;
+}
+
+int save_fw_mem_thread(void *data)
+{
+	struct cnss_plat_data *plat_priv = cnss_get_plat_priv(NULL);
+	char file_name[] = "remote.bin";
+	int ret = 0;
+
+	if (plat_priv->fw_mem[FW_MEM_SEG_INDEX_0].va) {
+		/* save the fw memory to file system */
+		ret = save_fw_mem_to_file(plat_priv->fw_mem[FW_MEM_SEG_INDEX_0].va,
+				file_name, plat_priv->fw_mem[FW_MEM_SEG_INDEX_0].size);
+		if (ret < 0) {
+			pr_err("Fail to save fw mem data: %d\n", ret);
+		}
+	}
+
+	return ret;
+}
+
+static int qcn_save_fw_memory_dump(void)
+{
+	int ret = -1;
+
+	save_fw_mem_task = kthread_run(save_fw_mem_thread, NULL,
+			"qcn_save_fw_memory_dump");
+	if (IS_ERR(save_fw_mem_task)) {
+		pr_err("Failed to run qcn_save_fw_memory_dump thread\n");
+		return ret;
+	}
+
+	return 0;
+}
 
 int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 {
@@ -530,10 +610,13 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 	sdio_ctxt->curr_sw_mode = mode;
 	if (sdio_ctxt->curr_sw_mode == QCN_SDIO_SW_RDDM) {
 		char *uevent[2];
+
+		qcn_save_fw_memory_dump();
 		uevent[0] = envp[QCN_SDIO_SW_RDDM];
 		uevent[1] = NULL;
 		kobject_uevent_env(&sdio_ctxt->func->dev.kobj, KOBJ_CHANGE, uevent);
 	}
+
 	return 0;
 }
 

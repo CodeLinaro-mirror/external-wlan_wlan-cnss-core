@@ -95,6 +95,57 @@ int cnss_sdio_call_driver_remove(struct cnss_sdio_data *sdio_priv)
 	return 0;
 }
 
+int cnss_sdio_alloc_fw_mem(struct cnss_sdio_data *sdio_priv)
+{
+	struct cnss_plat_data *plat_priv = sdio_priv->plat_priv;
+	struct cnss_fw_mem *fw_mem = plat_priv->fw_mem;
+	int i;
+
+	for (i = 0; i < plat_priv->fw_mem_seg_len; i++) {
+		if (!fw_mem[i].va && fw_mem[i].size) {
+			fw_mem[i].va = kzalloc(fw_mem[i].size, GFP_KERNEL);
+			if (!fw_mem[i].va) {
+				cnss_pr_err("Failed to allocate memory for FW, size: 0x%zx, type: %u\n",
+					    fw_mem[i].size, fw_mem[i].type);
+
+				goto alloc_fw_mem_err;
+			}
+			fw_mem[i].pa = virt_to_phys(fw_mem[i].va);
+
+			cnss_pr_dbg("va %p pa %llx\n", fw_mem[i].va, fw_mem[i].pa);
+		}
+	}
+
+	return 0;
+
+alloc_fw_mem_err:
+	cnss_sdio_free_fw_mem(sdio_priv);
+	return -ENOMEM;
+}
+
+void cnss_sdio_free_fw_mem(struct cnss_sdio_data *sdio_priv)
+{
+	struct cnss_plat_data *plat_priv = sdio_priv->plat_priv;
+	struct cnss_fw_mem *fw_mem = plat_priv->fw_mem;
+	int i;
+
+	for (i = 0; i < plat_priv->fw_mem_seg_len; i++) {
+		if (fw_mem[i].va && fw_mem[i].size) {
+			cnss_pr_dbg("Freeing memory for FW, va: 0x%pK, size: 0x%zx, type: %u\n",
+				    fw_mem[i].va, fw_mem[i].size, fw_mem[i].type);
+			kfree(fw_mem[i].va);
+			fw_mem[i].va = NULL;
+			fw_mem[i].pa = 0;
+			fw_mem[i].size = 0;
+			fw_mem[i].type = 0;
+			fw_mem[i].pre_aligned = NULL;
+			fw_mem[i].phys_addr = 0;
+		}
+	}
+
+	plat_priv->fw_mem_seg_len = 0;
+}
+
 /**
  * cnss_sdio_wlan_register_driver() - cnss wlan register API
  * @driver: sdio wlan driver interface from wlan driver.
@@ -309,6 +360,8 @@ static int cnss_sdio_remove(struct sdio_al_client_handle *pal_cli_handle)
 {
 	struct cnss_sdio_data *sdio_info = pal_cli_handle->client_priv;
 	struct cnss_plat_data *plat_priv = sdio_info->plat_priv;
+
+	cnss_sdio_free_fw_mem(sdio_info);
 
 	if (pal_cli_handle->func)
 		cnss_pr_err(

@@ -22,6 +22,8 @@
 #include <soc/qcom/msm_qmi_interface.h>
 #endif
 
+#define FW_MEM_SEG_INDEX_0	0
+
 #define WLFW_SERVICE_ID_V01 0x45
 #define WLFW_SERVICE_VERS_V01 0x01
 #define QMI_WLFW_DEVICE_INFO_RESP_V01 0x004C
