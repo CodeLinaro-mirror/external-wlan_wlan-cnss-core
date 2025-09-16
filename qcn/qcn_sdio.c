@@ -56,6 +56,8 @@ module_param(retune, bool, S_IRUGO | S_IWUSR | S_IWGRP);
 static int driver_state;
 module_param(driver_state, int, S_IRUGO | S_IRUSR | S_IRGRP);
 
+static bool FW_RDDM = false;
+
 int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode);
 int reset_thread(void *data);
 static void qcn_set_host_clock(unsigned int hz);
@@ -187,12 +189,17 @@ static void qcn_sdio_purge_rw_buff(void)
 {
 	struct qcn_sdio_rw_info *rw_req = NULL;
 
+	spin_lock(&sdio_ctxt->lock_wait_q);
 	while (!list_empty(&sdio_ctxt->rw_wait_q)) {
 		rw_req = list_first_entry(&sdio_ctxt->rw_wait_q,
 						struct qcn_sdio_rw_info, list);
 		list_del(&rw_req->list);
+		spin_unlock(&sdio_ctxt->lock_wait_q);
 		qcn_sdio_free_rw_req(rw_req);
+		spin_lock(&sdio_ctxt->lock_wait_q);
 	}
+	spin_unlock(&sdio_ctxt->lock_wait_q);
+	atomic_set(&sdio_ctxt->wait_list_count, 0);
 }
 
 void qcn_sdio_client_probe_complete(int id)
@@ -418,11 +425,15 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 		return 0;
 
 	if (mode == QCN_SDIO_SW_RDDM) {
+		FW_RDDM = true;
+		qcn_sdio_purge_rw_buff();
 		if (current_host && current_host->ios.clock &&
 		    current_host->ios.clock > 100000000) {
 			pr_info("Try to reduce the frequency\n");
 			qcn_set_host_clock(50000000);
 		}
+	} else {
+		FW_RDDM = false;
 	}
 
 	if ((sdio_ctxt->curr_sw_mode == QCN_SDIO_SW_PBL) &&
@@ -484,17 +495,14 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 			while (!list_empty(&cinfo->ch_head)) {
 				chinfo = list_first_entry(&cinfo->ch_head,
 					      struct qcn_sdio_ch_info, ch_list);
-				if (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_TTY)
-					sdio_al_deregister_channel(&chinfo->ch_handle);
+				sdio_al_deregister_channel(&chinfo->ch_handle);
 			}
 			cinfo->cli_handle.func = NULL;
 
 
 			if (cinfo->is_probed) {
-				if (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_TTY) {
-					cinfo->cli_data.remove(&cinfo->cli_handle);
-					cinfo->is_probed = 0;
-				}
+				cinfo->cli_data.remove(&cinfo->cli_handle);
+				cinfo->is_probed = 0;
 			}
 
 			if ((cinfo->cli_handle.id == QCN_SDIO_CLI_ID_TTY) &&
@@ -510,7 +518,6 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 							&cinfo->cli_handle);
 				qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT,
 									(u32)0);
-				break;
 			}
 		}
 		mutex_unlock(&lock);
@@ -785,6 +792,9 @@ static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 {
 	int ret = 0;
 
+	if (cid != QCN_SDIO_CH_0 && FW_RDDM)
+		return -EINVAL;
+
 	sdio_claim_host(sdio_ctxt->func);
 	ret = sdio_writesb(sdio_ctxt->func,
 			(sdio_ctxt->tx_addr_base + (cid * (u32)4)), buff, len);
@@ -800,6 +810,9 @@ static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 static int qcn_sdio_recv_buff(u32 cid, void *buff, size_t len)
 {
 	int ret = 0;
+
+	if (cid != QCN_SDIO_CH_0 && FW_RDDM)
+		return -EINVAL;
 
 	sdio_claim_host(sdio_ctxt->func);
 	ret = sdio_readsb(sdio_ctxt->func, buff,
@@ -1649,6 +1662,9 @@ int sdio_al_queue_transfer_async(struct sdio_al_channel_handle *handle,
 
 	cid = handle->channel_id;
 
+	if (cid != QCN_SDIO_CH_0 && FW_RDDM)
+		return -EINVAL;
+
 	if (!(cid < QCN_SDIO_CH_MAX) &&
 				(atomic_read(&sdio_ctxt->ch_status[cid]) < 0))
 		return -EINVAL;
@@ -1693,6 +1709,9 @@ int sdio_al_queue_transfer(struct sdio_al_channel_handle *ch_handle,
 		pr_err("%s: SDIO: Invalid Param\n", __func__);
 		return -EINVAL;
 	}
+
+	if (ch_handle->channel_id != QCN_SDIO_CH_0 && FW_RDDM)
+		return -EINVAL;
 
 	if (dir == SDIO_AL_RX && !list_empty(&sdio_ctxt->rw_wait_q) &&
 				!atomic_read(&sdio_ctxt->wait_list_count)) {
