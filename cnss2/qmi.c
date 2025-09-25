@@ -909,6 +909,7 @@ int cnss_wlfw_bdf_dnld_send_sync(struct cnss_plat_data *plat_priv,
 					 plat_priv->board_info.board_id >> 8 & 0xFF,
 					 plat_priv->board_info.board_id & 0xFF);
 		}
+		cnss_pr_info("firmware: loading 'BDF file name: %s'\n", filename);
 		break;
 	case CNSS_BDF_BIN:
 		if (plat_priv->board_info.board_id == 0xFF) {
