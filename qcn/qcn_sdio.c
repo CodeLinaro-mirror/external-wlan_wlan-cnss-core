@@ -183,26 +183,26 @@ void qcn_sdio_set_cmd52_arg(u32 *arg, u8 rw, u8 func, u8 raw, u32 addr, u8 val)
 
 static void qcn_sdio_free_rw_req(struct qcn_sdio_rw_info *rw_req)
 {
-	spin_lock(&sdio_ctxt->lock_free_q);
+	spin_lock_bh(&sdio_ctxt->lock_free_q);
 	list_add_tail(&rw_req->list, &sdio_ctxt->rw_free_q);
 	atomic_inc(&sdio_ctxt->free_list_count);
-	spin_unlock(&sdio_ctxt->lock_free_q);
+	spin_unlock_bh(&sdio_ctxt->lock_free_q);
 }
 
 static void qcn_sdio_purge_rw_buff(void)
 {
 	struct qcn_sdio_rw_info *rw_req = NULL;
 
-	spin_lock(&sdio_ctxt->lock_wait_q);
+	spin_lock_bh(&sdio_ctxt->lock_wait_q);
 	while (!list_empty(&sdio_ctxt->rw_wait_q)) {
 		rw_req = list_first_entry(&sdio_ctxt->rw_wait_q,
 						struct qcn_sdio_rw_info, list);
 		list_del(&rw_req->list);
-		spin_unlock(&sdio_ctxt->lock_wait_q);
+		spin_unlock_bh(&sdio_ctxt->lock_wait_q);
 		qcn_sdio_free_rw_req(rw_req);
-		spin_lock(&sdio_ctxt->lock_wait_q);
+		spin_lock_bh(&sdio_ctxt->lock_wait_q);
 	}
-	spin_unlock(&sdio_ctxt->lock_wait_q);
+	spin_unlock_bh(&sdio_ctxt->lock_wait_q);
 	atomic_set(&sdio_ctxt->wait_list_count, 0);
 }
 
@@ -216,9 +216,9 @@ static struct qcn_sdio_rw_info *qcn_sdio_alloc_rw_req(void)
 {
 	struct qcn_sdio_rw_info *rw_req = NULL;
 
-	spin_lock(&sdio_ctxt->lock_free_q);
+	spin_lock_bh(&sdio_ctxt->lock_free_q);
 	if (list_empty(&sdio_ctxt->rw_free_q)) {
-		spin_unlock(&sdio_ctxt->lock_free_q);
+		spin_unlock_bh(&sdio_ctxt->lock_free_q);
 		return rw_req;
 	}
 
@@ -226,17 +226,17 @@ static struct qcn_sdio_rw_info *qcn_sdio_alloc_rw_req(void)
 						struct qcn_sdio_rw_info, list);
 	list_del(&rw_req->list);
 	atomic_dec(&sdio_ctxt->free_list_count);
-	spin_unlock(&sdio_ctxt->lock_free_q);
+	spin_unlock_bh(&sdio_ctxt->lock_free_q);
 
 	return rw_req;
 }
 
 static void qcn_sdio_add_rw_req(struct qcn_sdio_rw_info *rw_req)
 {
-	spin_lock(&sdio_ctxt->lock_wait_q);
+	spin_lock_bh(&sdio_ctxt->lock_wait_q);
 	list_add_tail(&rw_req->list, &sdio_ctxt->rw_wait_q);
 	atomic_inc(&sdio_ctxt->wait_list_count);
-	spin_unlock(&sdio_ctxt->lock_wait_q);
+	spin_unlock_bh(&sdio_ctxt->lock_wait_q);
 }
 
 static int qcn_enable_async_irq(bool enable)
@@ -917,15 +917,15 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 	struct sdio_al_channel_handle *ch_handle = NULL;
 
 	while (1) {
-		spin_lock(&sdio_ctxt->lock_wait_q);
+		spin_lock_bh(&sdio_ctxt->lock_wait_q);
 		if (list_empty(&sdio_ctxt->rw_wait_q)) {
-			spin_unlock(&sdio_ctxt->lock_wait_q);
+			spin_unlock_bh(&sdio_ctxt->lock_wait_q);
 			break;
 		}
 		rw_req = list_first_entry(&sdio_ctxt->rw_wait_q,
 						struct qcn_sdio_rw_info, list);
 		list_del(&rw_req->list);
-		spin_unlock(&sdio_ctxt->lock_wait_q);
+		spin_unlock_bh(&sdio_ctxt->lock_wait_q);
 
 		if (rw_req->dir) {
 			ret = qcn_sdio_recv_buff(rw_req->cid, rw_req->buf,
