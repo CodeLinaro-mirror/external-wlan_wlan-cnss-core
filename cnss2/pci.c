@@ -2129,6 +2129,30 @@ u32 cnss_pci_get_wake_msi(struct cnss_pci_data *pci_priv)
 	return user_base_data;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0))
+static inline int cnss_pci_set_dma_mask(struct pci_dev *pci_dev, u64 mask)
+{
+	return dma_set_mask(&pci_dev->dev, mask);
+}
+
+static inline int cnss_pci_set_coherent_dma_mask(struct pci_dev *pci_dev,
+						 u64 mask)
+{
+	return dma_set_coherent_mask(&pci_dev->dev, mask);
+}
+#else /* (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)) */
+static inline int cnss_pci_set_dma_mask(struct pci_dev *pci_dev, u64 mask)
+{
+	return pci_set_dma_mask(pci_dev, mask);
+}
+
+static inline int cnss_pci_set_coherent_dma_mask(struct pci_dev *pci_dev,
+						 u64 mask)
+{
+	return pci_set_consistent_dma_mask(pci_dev, mask);
+}
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)) */
+
 static int cnss_pci_enable_bus(struct cnss_pci_data *pci_priv)
 {
 	int ret = 0;
@@ -2165,14 +2189,14 @@ static int cnss_pci_enable_bus(struct cnss_pci_data *pci_priv)
 	if (device_id == QCA6174_DEVICE_ID)
 		pci_dma_mask = PCI_DMA_MASK_32_BIT;
 
-	ret = pci_set_dma_mask(pci_dev, DMA_BIT_MASK(pci_dma_mask));
+	ret = cnss_pci_set_dma_mask(pci_dev, DMA_BIT_MASK(pci_dma_mask));
 	if (ret) {
 		cnss_pr_err("Failed to set PCI DMA mask (%d), err = %d\n",
 			    ret, pci_dma_mask);
 		goto release_region;
 	}
 
-	ret = pci_set_consistent_dma_mask(pci_dev, DMA_BIT_MASK(pci_dma_mask));
+	ret = cnss_pci_set_coherent_dma_mask(pci_dev, DMA_BIT_MASK(pci_dma_mask));
 	if (ret) {
 		cnss_pr_err("Failed to set PCI consistent DMA mask (%d), err = %d\n",
 			    ret, pci_dma_mask);

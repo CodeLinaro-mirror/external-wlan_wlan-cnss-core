@@ -312,7 +312,9 @@ static void unified_pdrv_deinit(void)
 #ifdef CONFIG_DIAG_IPC_BRIDGE
 	diag_bridge_exit(); /* ipc_bridge  */
 #endif
+#ifdef CONFIG_QCN
 	qcn_sdio_remove_all_clients();
+#endif
 #ifdef CONFIG_HSIC_XPRT
 	msm_ipc_router_hsic_xprt_deinit();
 #endif

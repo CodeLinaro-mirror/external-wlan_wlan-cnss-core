@@ -9,6 +9,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
+#include <linux/version.h>
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
 #include <linux/irq.h>
@@ -388,6 +389,21 @@ void mhi_dump_event_ring(struct mhi_device_ctxt *mhi_dev_ctxt)
 	__mhi_dump_event_ring(mhi_dev_ctxt, 0, U32_MAX);
 }
 
+/**
+ * wlan-cnss-core: code update to support linux kernel 6.1
+ *
+ * 1. update pci dma function to match linux kernel 6.1
+ * 2. remove unused debug message which is not supproted at kernel 6.1
+ *
+ * Change-Id: I75a973141e12c67a57ee03de212e2be99c01d08a
+ * Signed-off-by: Xueqiang Gong <quic_gongx@quicinc.com>
+ */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0))
+void mhi_dump_irq(struct mhi_device_ctxt *mhi_dev_ctxt)
+{
+	return;
+}
+#else
 void mhi_dump_irq(struct mhi_device_ctxt *mhi_dev_ctxt)
 {
 	int irq;
@@ -406,6 +422,7 @@ void mhi_dump_irq(struct mhi_device_ctxt *mhi_dev_ctxt)
 		"MSI1 irq=%d, depth=%d\n", irq, desc->depth);
 #endif
 }
+#endif
 
 void mhi_ev_task(unsigned long data)
 {

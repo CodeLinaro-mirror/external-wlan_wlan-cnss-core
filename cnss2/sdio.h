@@ -96,7 +96,7 @@ static inline int cnss_sdio_alloc_fw_mem(struct cnss_pci_data *pci_priv)
 
 static inline void cnss_sdio_free_fw_mem(struct cnss_sdio_data *sdio_priv)
 {
-	return 0;
+	/* no op */
 }
 #endif
 

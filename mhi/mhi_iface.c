@@ -691,6 +691,18 @@ static int __exit mhi_plat_remove(struct platform_device *pdev)
 }
 #endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0))
+static struct class *mhi_bhi_class_create(const char *name)
+{
+	return class_create(THIS_MODULE, name);
+}
+#else
+static struct class *mhi_bhi_class_create(const char *name)
+{
+	return class_create(name);
+}
+#endif
+
 #ifdef CONFIG_WLAN_CNSS_CORE
 int mhi_init(void)
 #else
@@ -708,7 +720,7 @@ static int __init mhi_init(void)
 	mutex_lock(&mhi_dev_drv->lock);
 	INIT_LIST_HEAD(&mhi_dev_drv->head);
 	mutex_unlock(&mhi_dev_drv->lock);
-	mhi_dev_drv->mhi_bhi_class = class_create(THIS_MODULE, MHI_BHI_CLASS_NAME);
+	mhi_dev_drv->mhi_bhi_class = mhi_bhi_class_create(MHI_BHI_CLASS_NAME);
 	if (IS_ERR(mhi_dev_drv->mhi_bhi_class)) {
 		pr_err("Error creating mhi_bhi_class\n");
 		goto class_error;
