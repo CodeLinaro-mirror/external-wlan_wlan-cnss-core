@@ -171,6 +171,9 @@ struct sdio_al_channel_data {
 			unsigned int data);
 };
 
+#define TX_BUNDLE_BUF_SIZE (2048)
+#define TX_BUNDLE_PADDING (0xA5)
+
 /**
  * sdio_al_is_ready - API Check to know whether the al driver is ready
  * This API can be used to deffer the probe incase of early execution.
@@ -227,6 +230,18 @@ struct sdio_al_channel_handle *sdio_al_register_channel(
  */
 void sdio_al_deregister_channel(struct sdio_al_channel_handle *ch_handle);
 
+/**
+ * register_tx_bundle_buf - register the tx bundle buf
+ * The tx bundle buf size and number is configured from ini.
+ * It will also be notify to target to let target prepare the receive buf
+ *
+ * @buf: Data buffer
+ *
+ * @bundle_num: tx bundle number, 2K byte for one bundle now
+ *
+ * @return none
+ */
+void register_tx_bundle_buf(void *buf, uint32_t bundle_num);
 
 /**
  * sdio_al_queue_transfer_async - Queue asynchronous data transfer request

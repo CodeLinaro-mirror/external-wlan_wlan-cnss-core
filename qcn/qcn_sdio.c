@@ -99,6 +99,8 @@ struct qcn_sdio {
 	int wake_irq_nr;
 	int wake_irq_flag;
 	int wake_irq_pending;
+	void* tx_bundle_buf;
+	uint32_t tx_bundle_num;
 };
 
 static struct qcn_sdio *sdio_ctxt;
@@ -915,6 +917,8 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 	struct qcn_sdio_rw_info *rw_req = NULL;
 	struct sdio_al_xfer_result *result = NULL;
 	struct sdio_al_channel_handle *ch_handle = NULL;
+	static uint32_t seq=0;
+	uint8_t *tmp_d = NULL;
 
 	while (1) {
 		spin_lock_bh(&sdio_ctxt->lock_wait_q);
@@ -934,11 +938,25 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 				HEX_DUMP("ASYNC_RECV: ", rw_req->buf,
 								rw_req->len);
 		} else {
+			if (unlikely(sdio_ctxt->tx_bundle_num >1)
+					&& rw_req->cid == QCN_SDIO_CH_2) {
+				int copylen = rw_req->len > TX_BUNDLE_BUF_SIZE ? TX_BUNDLE_BUF_SIZE:rw_req->len;
+
+				tmp_d = sdio_ctxt->tx_bundle_buf + TX_BUNDLE_BUF_SIZE*seq;
+				memcpy(tmp_d, rw_req->buf, copylen);
+				memset(tmp_d+copylen, TX_BUNDLE_PADDING, TX_BUNDLE_BUF_SIZE-copylen);
+				seq = (seq + 1) % sdio_ctxt->tx_bundle_num;
+				if (!seq) {
+					ret = qcn_sdio_send_buff(rw_req->cid, sdio_ctxt->tx_bundle_buf,TX_BUNDLE_BUF_SIZE*sdio_ctxt->tx_bundle_num);
+				}
+
+			} else {
 			ret = qcn_sdio_send_buff(rw_req->cid, rw_req->buf,
 								rw_req->len);
 			if (tx_dump)
 				HEX_DUMP("ASYNC_SEND: ", rw_req->buf,
 								rw_req->len);
+			}
 		}
 
 		ch_handle = &sdio_ctxt->ch[rw_req->cid]->ch_handle;
@@ -955,6 +973,12 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 		atomic_set(&sdio_ctxt->ch_status[rw_req->cid], 0);
 		qcn_sdio_free_rw_req(rw_req);
 		atomic_dec(&sdio_ctxt->wait_list_count);
+	}
+
+	if (seq) {
+		memset(tmp_d+TX_BUNDLE_BUF_SIZE, TX_BUNDLE_PADDING, TX_BUNDLE_BUF_SIZE*(sdio_ctxt->tx_bundle_num - seq));
+		qcn_sdio_send_buff(QCN_SDIO_CH_2, sdio_ctxt->tx_bundle_buf, TX_BUNDLE_BUF_SIZE * sdio_ctxt->tx_bundle_num);
+		seq = (seq + 1) % sdio_ctxt->tx_bundle_num;
 	}
 }
 
@@ -1727,6 +1751,13 @@ void sdio_al_deregister_channel(struct sdio_al_channel_handle *ch_handle)
 	}
 }
 EXPORT_SYMBOL(sdio_al_deregister_channel);
+
+void register_tx_bundle_buf(void *buf, uint32_t bundle_num)
+{
+	sdio_ctxt->tx_bundle_buf=buf;
+	sdio_ctxt->tx_bundle_num=bundle_num;
+}
+EXPORT_SYMBOL(register_tx_bundle_buf);
 
 int sdio_al_queue_transfer_async(struct sdio_al_channel_handle *handle,
 		enum sdio_al_dma_direction dir,
