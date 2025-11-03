@@ -61,11 +61,16 @@ module_param(driver_state, int, S_IRUGO | S_IRUSR | S_IRGRP);
 static bool FW_RDDM = false;
 
 int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode);
+int qcn_channel_change(enum qcn_sdio_sw_mode mode);
 int reset_thread(void *data);
 int save_fw_mem_thread(void *data);
+int switch_to_rddm_thread(void *data);
 static void qcn_set_host_clock(unsigned int hz);
 
 static struct mmc_host *current_host;
+
+#define IS_TX_INVALID(cid, dir)	\
+	(cid != QCN_SDIO_CH_0 && FW_RDDM && dir == SDIO_AL_TX)
 
 #define HEX_DUMP(mode, buf, len)				\
 	print_hex_dump(KERN_ERR, mode, 2, 32, 4, buf,		\
@@ -112,6 +117,7 @@ static atomic_t xport_status;
 static spinlock_t async_lock;
 static struct task_struct *reset_task;
 static struct task_struct *save_fw_mem_task;
+static struct task_struct *switch_rddm_task;
 
 #ifndef CONFIG_NAPIER_X86
 static int qcn_create_sysfs(struct device *dev);
@@ -492,10 +498,90 @@ static int qcn_save_fw_memory_dump(void)
 	return 0;
 }
 
-int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
+int qcn_channel_change(enum qcn_sdio_sw_mode mode)
 {
 	struct qcn_sdio_client_info *cinfo = NULL;
 	struct qcn_sdio_ch_info *chinfo = NULL;
+
+	mutex_lock(&lock);
+	list_for_each_entry(cinfo, &cinfo_head, cli_list) {
+		while (!list_empty(&cinfo->ch_head)) {
+			chinfo = list_first_entry(&cinfo->ch_head,
+				      struct qcn_sdio_ch_info, ch_list);
+			sdio_al_deregister_channel(&chinfo->ch_handle);
+		}
+		cinfo->cli_handle.func = NULL;
+
+
+		if (cinfo->is_probed) {
+			cinfo->cli_data.remove(&cinfo->cli_handle);
+			cinfo->is_probed = 0;
+		}
+
+		if (mode > QCN_SDIO_SW_MROM)
+			continue;
+
+		if (cinfo->cli_handle.id != QCN_SDIO_CLI_ID_TTY &&
+		    mode != QCN_SDIO_SW_MROM)
+			continue;
+
+		qcn_send_meta_info((u8)QCN_SDIO_SW_MODE_HEVENT,
+				(u32)(mode | QCN_SDIO_MAJOR_VER
+				| QCN_SDIO_MINOR_VER));
+		if (mode == QCN_SDIO_SW_MROM)
+			cinfo->cli_handle.block_size = QCN_SDIO_MROM_BLK_SZ;
+		else
+			cinfo->cli_handle.block_size = QCN_SDIO_TTY_BLK_SZ;
+		cinfo->cli_handle.func = sdio_ctxt->func;
+		qcn_sdio_config(cinfo);
+		cinfo->is_probed = !cinfo->cli_data.probe(
+					&cinfo->cli_handle);
+		qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT, (u32)0);
+	}
+	mutex_unlock(&lock);
+
+	driver_state = mode;
+	sdio_ctxt->curr_sw_mode = mode;
+	return 0;
+}
+
+int switch_to_rddm_thread(void *data)
+{
+	enum qcn_sdio_sw_mode mode = QCN_SDIO_SW_RDDM;
+
+	/* wait for sdio rw work to finish */
+	flush_work(&sdio_ctxt->sdio_rw_w);
+
+	qcn_channel_change(mode);
+
+	if (FW_RDDM) {
+		char *uevent[2];
+
+		qcn_save_fw_memory_dump();
+		uevent[0] = envp[QCN_SDIO_SW_RDDM];
+		uevent[1] = NULL;
+		kobject_uevent_env(&sdio_ctxt->func->dev.kobj, KOBJ_CHANGE, uevent);
+	}
+
+	return 0;
+}
+
+static int qcn_sdio_rddm_handler(void)
+{
+	int ret = -1;
+
+	switch_rddm_task = kthread_run(switch_to_rddm_thread, NULL,
+				       "qcn_sdio_rddm_handler");
+	if (IS_ERR(switch_rddm_task)) {
+		pr_err("Failed to run switch_to_rddm_thread thread\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
+{
 	int ret = 0;
 
 	if (!(mode) && !(mode < QCN_SDIO_SW_MAX))
@@ -508,7 +594,6 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 
 	if (mode == QCN_SDIO_SW_RDDM) {
 		FW_RDDM = true;
-		qcn_sdio_purge_rw_buff();
 		if (current_host && current_host->ios.clock &&
 		    current_host->ios.clock > 100000000) {
 			pr_info("Try to reduce the frequency\n");
@@ -531,92 +616,25 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 	case QCN_SDIO_SW_PBL:
 	case QCN_SDIO_SW_SBL:
 	case QCN_SDIO_SW_RDDM:
-		mutex_lock(&lock);
-		list_for_each_entry(cinfo, &cinfo_head, cli_list) {
-			while (!list_empty(&cinfo->ch_head)) {
-				chinfo = list_first_entry(&cinfo->ch_head,
-					      struct qcn_sdio_ch_info, ch_list);
-				sdio_al_deregister_channel(&chinfo->ch_handle);
-			}
-			cinfo->cli_handle.func = NULL;
-
-			if (cinfo->is_probed) {
-				cinfo->cli_data.remove(&cinfo->cli_handle);
-				cinfo->is_probed = 0;
-			}
-			if (((cinfo->cli_handle.id == QCN_SDIO_CLI_ID_WLAN) ||
-			     (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_QMI) ||
-			     (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_TTY) ||
-			     (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_DIAG)) &&
-			     (mode == QCN_SDIO_SW_MROM)) {
-				qcn_send_meta_info((u8)QCN_SDIO_SW_MODE_HEVENT,
-						(u32)(mode | QCN_SDIO_MAJOR_VER
-						| QCN_SDIO_MINOR_VER));
-				cinfo->cli_handle.block_size =
-							QCN_SDIO_MROM_BLK_SZ;
-				cinfo->cli_handle.func = sdio_ctxt->func;
-				qcn_sdio_config(cinfo);
-				cinfo->is_probed = !cinfo->cli_data.probe(
-							&cinfo->cli_handle);
-				qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT,
-									(u32)0);
-				pr_err("Calling client probe\n");
-			}
-		}
-		mutex_unlock(&lock);
+		qcn_channel_change(mode);
 		break;
 	case QCN_SDIO_SW_RESET:
 		ret = wait_for_completion_timeout(&client_probe_complete,
 							msecs_to_jiffies(3000));
 		if (!ret)
 			pr_err("Timeout waiting for clients\n");
-		fallthrough;
+		qcn_channel_change(mode);
+		break;
 	case QCN_SDIO_SW_MROM:
-		mutex_lock(&lock);
-		list_for_each_entry(cinfo, &cinfo_head, cli_list) {
-			while (!list_empty(&cinfo->ch_head)) {
-				chinfo = list_first_entry(&cinfo->ch_head,
-					      struct qcn_sdio_ch_info, ch_list);
-				sdio_al_deregister_channel(&chinfo->ch_handle);
-			}
-			cinfo->cli_handle.func = NULL;
-
-
-			if (cinfo->is_probed) {
-				cinfo->cli_data.remove(&cinfo->cli_handle);
-				cinfo->is_probed = 0;
-			}
-
-			if ((cinfo->cli_handle.id == QCN_SDIO_CLI_ID_TTY) &&
-						   (mode <= QCN_SDIO_SW_MROM)) {
-				qcn_send_meta_info((u8)QCN_SDIO_SW_MODE_HEVENT,
-						(u32)(mode | QCN_SDIO_MAJOR_VER
-						| QCN_SDIO_MINOR_VER));
-				cinfo->cli_handle.block_size =
-							QCN_SDIO_TTY_BLK_SZ;
-				cinfo->cli_handle.func = sdio_ctxt->func;
-				qcn_sdio_config(cinfo);
-				cinfo->is_probed = !cinfo->cli_data.probe(
-							&cinfo->cli_handle);
-				qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT,
-									(u32)0);
-			}
-		}
-		mutex_unlock(&lock);
+		qcn_sdio_rddm_handler();
 		break;
 	default:
 		pr_err("Invalid mode\n");
 	}
 
-	driver_state = mode;
-	sdio_ctxt->curr_sw_mode = mode;
-	if (sdio_ctxt->curr_sw_mode == QCN_SDIO_SW_RDDM) {
-		char *uevent[2];
-
-		qcn_save_fw_memory_dump();
-		uevent[0] = envp[QCN_SDIO_SW_RDDM];
-		uevent[1] = NULL;
-		kobject_uevent_env(&sdio_ctxt->func->dev.kobj, KOBJ_CHANGE, uevent);
+	if (mode != QCN_SDIO_SW_RDDM) {
+		driver_state = mode;
+		sdio_ctxt->curr_sw_mode = mode;
 	}
 
 	return 0;
@@ -895,9 +913,6 @@ static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 static int qcn_sdio_recv_buff(u32 cid, void *buff, size_t len)
 {
 	int ret = 0;
-
-	if (cid != QCN_SDIO_CH_0 && FW_RDDM)
-		return -EINVAL;
 
 	sdio_claim_host(sdio_ctxt->func);
 	ret = sdio_readsb(sdio_ctxt->func, buff,
@@ -1776,7 +1791,7 @@ int sdio_al_queue_transfer_async(struct sdio_al_channel_handle *handle,
 
 	cid = handle->channel_id;
 
-	if (cid != QCN_SDIO_CH_0 && FW_RDDM)
+	if (IS_TX_INVALID(cid, dir))
 		return -EINVAL;
 
 	if (!(cid < QCN_SDIO_CH_MAX) &&
@@ -1824,7 +1839,7 @@ int sdio_al_queue_transfer(struct sdio_al_channel_handle *ch_handle,
 		return -EINVAL;
 	}
 
-	if (ch_handle->channel_id != QCN_SDIO_CH_0 && FW_RDDM)
+	if (IS_TX_INVALID(ch_handle->channel_id, dir))
 		return -EINVAL;
 
 	if (dir == SDIO_AL_RX && !list_empty(&sdio_ctxt->rw_wait_q) &&
