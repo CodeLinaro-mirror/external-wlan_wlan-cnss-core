@@ -63,7 +63,6 @@ static bool FW_RDDM = false;
 int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode);
 int qcn_channel_change(enum qcn_sdio_sw_mode mode);
 int reset_thread(void *data);
-int save_fw_mem_thread(void *data);
 int switch_to_rddm_thread(void *data);
 static void qcn_set_host_clock(unsigned int hz);
 
@@ -116,7 +115,6 @@ static atomic_t status;
 static atomic_t xport_status;
 static spinlock_t async_lock;
 static struct task_struct *reset_task;
-static struct task_struct *save_fw_mem_task;
 static struct task_struct *switch_rddm_task;
 
 #ifndef CONFIG_NAPIER_X86
@@ -466,7 +464,7 @@ static int save_fw_mem_to_file(void *buff, char *file_name, u32 total_size)
 	return status;
 }
 
-int save_fw_mem_thread(void *data)
+static int qcn_save_fw_memory_dump(void)
 {
 	struct cnss_plat_data *plat_priv = cnss_get_plat_priv(NULL);
 	char file_name[] = "remote.bin";
@@ -482,20 +480,6 @@ int save_fw_mem_thread(void *data)
 	}
 
 	return ret;
-}
-
-static int qcn_save_fw_memory_dump(void)
-{
-	int ret = -1;
-
-	save_fw_mem_task = kthread_run(save_fw_mem_thread, NULL,
-			"qcn_save_fw_memory_dump");
-	if (IS_ERR(save_fw_mem_task)) {
-		pr_err("Failed to run qcn_save_fw_memory_dump thread\n");
-		return ret;
-	}
-
-	return 0;
 }
 
 int qcn_channel_change(enum qcn_sdio_sw_mode mode)
@@ -548,20 +532,17 @@ int qcn_channel_change(enum qcn_sdio_sw_mode mode)
 int switch_to_rddm_thread(void *data)
 {
 	enum qcn_sdio_sw_mode mode = QCN_SDIO_SW_RDDM;
+	char *uevent[2];
 
 	/* wait for sdio rw work to finish */
 	flush_work(&sdio_ctxt->sdio_rw_w);
 
+	qcn_save_fw_memory_dump();
 	qcn_channel_change(mode);
 
-	if (FW_RDDM) {
-		char *uevent[2];
-
-		qcn_save_fw_memory_dump();
-		uevent[0] = envp[QCN_SDIO_SW_RDDM];
-		uevent[1] = NULL;
-		kobject_uevent_env(&sdio_ctxt->func->dev.kobj, KOBJ_CHANGE, uevent);
-	}
+	uevent[0] = envp[QCN_SDIO_SW_RDDM];
+	uevent[1] = NULL;
+	kobject_uevent_env(&sdio_ctxt->func->dev.kobj, KOBJ_CHANGE, uevent);
 
 	return 0;
 }
