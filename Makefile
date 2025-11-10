@@ -73,6 +73,8 @@ ifeq ($(lpm_support), 1)
 KBUILD_OPTIONS += CONFIG_LPM=y
 endif
 
+KBUILD_OPTIONS += CONFIG_NOT_SET_PCI_DSTATE=y
+
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(shell pwd) modules $(KBUILD_OPTIONS)
 
