@@ -610,6 +610,7 @@ int cnss_pci_get_iommu_addr(struct cnss_pci_data *pci_priv,
 }
 #endif
 
+#ifndef CONFIG_CNSS2_X86
 int cnss_pci_init_smmu(struct cnss_pci_data *pci_priv)
 {
 	struct pci_dev *pci_dev = pci_priv->pci_dev;
@@ -665,6 +666,7 @@ int cnss_pci_init_smmu(struct cnss_pci_data *pci_priv)
 
 	return 0;
 }
+#endif
 
 int _cnss_pci_get_reg_dump(struct cnss_pci_data *pci_priv,
 			   u8 *buf, u32 len)

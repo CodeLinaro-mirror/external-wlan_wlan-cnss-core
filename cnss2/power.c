@@ -1333,6 +1333,7 @@ static u32 cnss_cmd_db_read_addr(struct cnss_plat_data *plat_priv,
 }
 #endif
 
+#ifndef CONFIG_CNSS2_X86
 int cnss_get_tcs_info(struct cnss_plat_data *plat_priv)
 {
 	struct platform_device *plat_dev = plat_priv->plat_dev;
@@ -1406,6 +1407,7 @@ int cnss_get_cpr_info(struct cnss_plat_data *plat_priv)
 out:
 	return ret;
 }
+#endif
 
 #if IS_ENABLED(CONFIG_MSM_QMP)
 /**
@@ -1645,6 +1647,7 @@ static inline bool cnss_aop_interface_ready(struct cnss_plat_data *plat_priv)
 	return (plat_priv->mbox_chan || plat_priv->qmp);
 }
 
+#ifndef CONFIG_CNSS2_X86
 /* cnss_pdc_reconfig: Send PDC init table as configured in DT for wlan device */
 int cnss_aop_pdc_reconfig(struct cnss_plat_data *plat_priv)
 {
@@ -1664,6 +1667,7 @@ int cnss_aop_pdc_reconfig(struct cnss_plat_data *plat_priv)
 	}
 	return ret;
 }
+#endif
 
 /* cnss_aop_pdc_name_str: Get PDC name corresponding to VReg from DT Mapiping */
 static const char *cnss_aop_pdc_name_str(struct cnss_plat_data *plat_priv,
@@ -1837,6 +1841,7 @@ end:
 	return ret;
 }
 
+#ifndef CONFIG_CNSS2_X86
 void cnss_power_misc_params_init(struct cnss_plat_data *plat_priv)
 {
 	struct device *dev = &plat_priv->plat_dev->dev;
@@ -1941,6 +1946,7 @@ void cnss_power_misc_params_init(struct cnss_plat_data *plat_priv)
 		cnss_pr_dbg("On chip PMIC device ids not configured\n");
 	}
 }
+#endif
 
 int cnss_update_cpr_info(struct cnss_plat_data *plat_priv)
 {

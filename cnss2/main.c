@@ -361,6 +361,7 @@ void cnss_get_sleep_clk_supported(struct cnss_plat_data *plat_priv)
 }
 #endif
 
+#ifndef CONFIG_CNSS2_X86
 void cnss_get_bwscal_info(struct cnss_plat_data *plat_priv)
 {
 	plat_priv->no_bwscale = of_property_read_bool(plat_priv->dev_node,
@@ -373,6 +374,12 @@ cnss_get_rc_num(struct cnss_plat_data *plat_priv)
 	return of_property_read_u32(plat_priv->plat_dev->dev.of_node,
 		"qcom,wlan-rc-num", &plat_priv->rc_num);
 }
+#else
+void cnss_get_bwscal_info(struct cnss_plat_data *plat_priv)
+{
+	plat_priv->no_bwscale = false;
+}
+#endif
 
 bool cnss_is_dual_wlan_enabled(void)
 {
@@ -1924,6 +1931,25 @@ static inline int cnss_register_esoc(struct cnss_plat_data *plat_priv)
 static inline void cnss_unregister_esoc(struct cnss_plat_data *plat_priv) {}
 #endif
 
+#ifdef CONFIG_CNSS2_X86
+int cnss_get_dev_sol_value(struct cnss_plat_data *plat_priv)
+{
+    return -EINVAL;
+}
+int cnss_set_host_sol_value(struct cnss_plat_data *plat_priv, int value)
+{
+    return -EINVAL;
+}
+int cnss_get_host_sol_value(struct cnss_plat_data *plat_priv)
+{
+    return -EINVAL;
+}
+static int cnss_init_sol_gpio(struct cnss_plat_data *plat_priv)
+{
+    return 0;
+}
+static void cnss_deinit_sol_gpio(struct cnss_plat_data *plat_priv) {};
+#else /* CONFIG_CNSS2_X86 */
 int cnss_enable_dev_sol_irq(struct cnss_plat_data *plat_priv)
 {
 	struct cnss_sol_gpio *sol_gpio = &plat_priv->sol_gpio;
@@ -2130,6 +2156,7 @@ static void cnss_deinit_sol_gpio(struct cnss_plat_data *plat_priv)
 	cnss_deinit_host_sol_gpio(plat_priv);
 	cnss_deinit_dev_sol_gpio(plat_priv);
 }
+#endif /* CONFIG_CNSS2_X86 */
 
 #if IS_ENABLED(CONFIG_MSM_SUBSYSTEM_RESTART)
 static int cnss_subsys_powerup(const struct subsys_desc *subsys_desc)
@@ -4123,8 +4150,8 @@ int cnss_register_ramdump(struct cnss_plat_data *plat_priv)
 
 	struct cnss_ramdump_info_v2 *info_v2 = &plat_priv->ramdump_info_v2;
 	struct cnss_dump_data *dump_data = dump_data = &info_v2->dump_data;
-	struct device *dev = &plat_priv->plat_dev->dev;
 #ifndef CONFIG_CNSS2_X86
+	struct device *dev = &plat_priv->plat_dev->dev;
 	u32 ramdump_size = 0;
 
 	if (of_property_read_u32(dev->of_node, "qcom,wlan-ramdump-dynamic",
@@ -4146,8 +4173,9 @@ int cnss_register_ramdump(struct cnss_plat_data *plat_priv)
 	dump_data->seg_version = CNSS_DUMP_SEG_VER;
 	strlcpy(dump_data->name, CNSS_DUMP_NAME,
 		sizeof(dump_data->name));
-
+#ifndef CONFIG_CNSS2_X86
 	info_v2->ramdump_dev = dev;
+#endif
 	return 0;
 }
 
@@ -4314,7 +4342,8 @@ int cnss_request_firmware_direct(struct cnss_plat_data *plat_priv,
 #endif
 }
 
-#if IS_ENABLED(CONFIG_INTERCONNECT)
+#if IS_ENABLED(CONFIG_INTERCONNECT) && defined(CONFIG_CNSS2_X86)
+
 /**
  * cnss_register_bus_scale() - Setup interconnect voting data
  * @plat_priv: Platform data structure
@@ -5033,9 +5062,15 @@ static int devm_cnss_group_match(struct device *dev, void *res, void *data)
 static void cnss_remove_sysfs(struct cnss_plat_data *plat_priv)
 {
 	cnss_remove_sysfs_link(plat_priv);
+#ifdef CONFIG_CNSS2_X86
+	WARN_ON(devres_release(&plat_priv->pci_dev->dev,
+			       devm_cnss_group_remove, devm_cnss_group_match,
+			       (void *)&cnss_attr_group));
+#else
 	WARN_ON(devres_release(&plat_priv->plat_dev->dev,
 			       devm_cnss_group_remove, devm_cnss_group_match,
 			       (void *)&cnss_attr_group));
+#endif
 }
 #else
 static void cnss_remove_sysfs(struct cnss_plat_data *plat_priv)
@@ -5300,9 +5335,11 @@ static int cnss_misc_init(struct cnss_plat_data *plat_priv)
 
 	cnss_sram_dump_init(plat_priv);
 
+#ifndef CONFIG_CNSS2_X86
 	if (of_property_read_bool(plat_priv->plat_dev->dev.of_node,
 				  "qcom,rc-ep-short-channel"))
 		cnss_set_feature_list(plat_priv, CNSS_RC_EP_ULTRASHORT_CHANNEL_V01);
+#endif
 	if (plat_priv->device_id == PEACH_DEVICE_ID ||
 	    plat_priv->device_id == COLOGNE_DEVICE_ID)
 		cnss_set_feature_list(plat_priv, CNSS_AUX_UC_SUPPORT_V01);
@@ -5469,6 +5506,7 @@ static const struct of_device_id cnss_of_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, cnss_of_match_table);
 
+#ifndef CONFIG_CNSS2_X86
 static inline bool
 cnss_use_nv_mac(struct cnss_plat_data *plat_priv)
 {
@@ -5476,7 +5514,6 @@ cnss_use_nv_mac(struct cnss_plat_data *plat_priv)
 				     "use-nv-mac");
 }
 
-#ifndef CONFIG_CNSS2_X86
 static int cnss_get_dev_cfg_node(struct cnss_plat_data *plat_priv)
 {
 	struct device_node *child;
@@ -5540,7 +5577,6 @@ static int cnss_get_dev_cfg_node(struct cnss_plat_data *plat_priv)
 
 	return -EINVAL;
 }
-#endif
 
 static inline u32
 cnss_dt_type(struct cnss_plat_data *plat_priv)
@@ -5559,6 +5595,7 @@ cnss_dt_type(struct cnss_plat_data *plat_priv)
 		return CNSS_DTT_MULTIEXCHG;
 	return CNSS_DTT_LEGACY;
 }
+#endif
 
 static int cnss_wlan_device_init(struct cnss_plat_data *plat_priv)
 {

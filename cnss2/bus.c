@@ -22,6 +22,7 @@ enum cnss_dev_bus_type cnss_get_dev_bus_type(struct device *dev)
 		return CNSS_BUS_NONE;
 }
 
+#ifndef CONFIG_CNSS2_X86
 enum cnss_dev_bus_type cnss_get_bus_type(struct cnss_plat_data *plat_priv)
 {
 	int ret;
@@ -60,6 +61,7 @@ enum cnss_dev_bus_type cnss_get_bus_type(struct cnss_plat_data *plat_priv)
 		return CNSS_BUS_NONE;
 	}
 }
+#endif
 
 void *cnss_bus_dev_to_bus_priv(struct device *dev)
 {

@@ -5784,11 +5784,13 @@ void cnss_pci_fw_boot_timeout_hdlr(struct cnss_pci_data *pci_priv)
 				   CNSS_REASON_TIMEOUT);
 }
 
+#ifndef CONFIG_CNSS2_X86
 static void cnss_pci_deinit_smmu(struct cnss_pci_data *pci_priv)
 {
 	cnss_unregister_iommu_fault_handler(pci_priv);
 	pci_priv->iommu_domain = NULL;
 }
+#endif
 
 int cnss_pci_get_iova(struct cnss_pci_data *pci_priv, u64 *addr, u64 *size)
 {
@@ -7932,7 +7934,7 @@ static int cnss_pci_get_dev_cfg_node(struct cnss_plat_data *plat_priv)
 		cnss_pr_err("Invalid device id\n");
 		return -EINVAL;
 	}
-
+#ifndef CONFIG_CNSS2_X86
 	for_each_available_child_of_node(plat_priv->plat_dev->dev.of_node,
 					 child) {
 		if (strcmp(child->name, "chip_cfg"))
@@ -7961,6 +7963,9 @@ static int cnss_pci_get_dev_cfg_node(struct cnss_plat_data *plat_priv)
 			}
 		}
 	}
+#else
+	return 0;
+#endif
 
 	return -EINVAL;
 }
