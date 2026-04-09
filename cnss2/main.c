@@ -478,6 +478,7 @@ int cnss_get_mem_segment_info(enum cnss_remote_mem_type type,
 }
 EXPORT_SYMBOL(cnss_get_mem_segment_info);
 
+#ifndef CONFIG_CNSS2_X86
 static int cnss_get_audio_iommu_domain(struct cnss_plat_data *plat_priv)
 {
 	struct device_node *audio_ion_node;
@@ -551,6 +552,17 @@ bool cnss_get_audio_shared_iommu_group_cap(struct device *dev)
 
 	return plat_priv->is_audio_shared_iommu_group;
 }
+#else
+static int cnss_get_audio_iommu_domain(struct cnss_plat_data *plat_priv)
+{
+	return -EINVAL;
+}
+bool cnss_get_audio_shared_iommu_group_cap(struct device *dev)
+{
+	return false;
+}
+#endif
+
 EXPORT_SYMBOL(cnss_get_audio_shared_iommu_group_cap);
 
 int cnss_set_feature_list(struct cnss_plat_data *plat_priv,
@@ -4342,7 +4354,7 @@ int cnss_request_firmware_direct(struct cnss_plat_data *plat_priv,
 #endif
 }
 
-#if IS_ENABLED(CONFIG_INTERCONNECT) && defined(CONFIG_CNSS2_X86)
+#if IS_ENABLED(CONFIG_INTERCONNECT) && !defined(CONFIG_CNSS2_X86)
 
 /**
  * cnss_register_bus_scale() - Setup interconnect voting data
