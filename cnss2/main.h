@@ -15,7 +15,7 @@
 #endif
 #include <linux/etherdevice.h>
 #include <linux/firmware.h>
-#if IS_ENABLED(CONFIG_INTERCONNECT)
+#if IS_ENABLED(CONFIG_INTERCONNECT) && !defined(CONFIG_CNSS2_X86)
 #include <linux/interconnect.h>
 #endif
 #include <linux/mailbox_client.h>
@@ -198,7 +198,7 @@ struct cnss_esoc_info {
 };
 #endif
 
-#if IS_ENABLED(CONFIG_INTERCONNECT)
+#if IS_ENABLED(CONFIG_INTERCONNECT) && !defined(CONFIG_CNSS2_X86)
 /**
  * struct cnss_bus_bw_cfg - Interconnect vote data
  * @avg_bw: Vote for average bandwidth
