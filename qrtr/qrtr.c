@@ -1249,7 +1249,21 @@ static int qrtr_release(struct socket *sock)
 }
 
 static const struct proto_ops qrtr_proto_ops = {
+#ifdef CONFIG_WLAN_CNSS_CORE
+	/* NULL owner: for unified module, it creates kernel QRTR sockets
+	 * internally. With THIS_MODULE, each sock_create_kern(AF_QIPCRTR)
+	 * call holds a persistent module ref
+	 * (via __sock_create's try_module_get), and sock_release() would
+	 * decrement it via module_put(ops->owner). Together with
+	 * qrtr_proto.owner below, that creates 10 refs that block rmmod.
+	 * The unified module's exit function closes all sockets before
+	 * returning, so the standard owner-based unload guard is not needed
+	 * here.
+	 */
+	.owner		= NULL,
+#else
 	.owner		= THIS_MODULE,
+#endif
 	.family		= AF_QIPCRTR,
 	.bind		= qrtr_bind,
 	.connect	= qrtr_connect,
@@ -1270,7 +1284,14 @@ static const struct proto_ops qrtr_proto_ops = {
 
 static struct proto qrtr_proto = {
 	.name		= "QIPCRTR",
+#ifdef CONFIG_WLAN_CNSS_CORE
+	/* NULL owner: set to NULL to avoid circular refs that block
+	 * rmmod of the unified wlan_cnss_core_pcie module.
+	 */
+	.owner		= NULL,
+#else
 	.owner		= THIS_MODULE,
+#endif
 	.obj_size	= sizeof(struct qrtr_sock),
 };
 
