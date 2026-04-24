@@ -5008,6 +5008,9 @@ static void cnss_remove_sysfs_link(struct cnss_plat_data *plat_priv)
 	char shutdown_name[32];
 
 	if (cnss_is_dual_wlan_enabled()) {
+		if (!plat_priv)
+			return;
+
 		snprintf(cnss_name, CNSS_FS_NAME_SIZE,
 			 CNSS_FS_NAME "_%d", plat_priv->plat_idx);
 		snprintf(shutdown_name, sizeof(shutdown_name),
@@ -5089,17 +5092,17 @@ static void cnss_remove_sysfs(struct cnss_plat_data *plat_priv)
 {
 #ifdef CONFIG_CNSS2_X86
 	struct cnss_pci_data *pci_priv = plat_priv->bus_priv;
-        if (!pci_priv)
-                return;
+	cnss_remove_sysfs_link(plat_priv);
+	if (!pci_priv)
+		return;
+	if (!pci_priv->pci_dev)
+		return;
+	devm_device_remove_group(&pci_priv->pci_dev->dev, &cnss_attr_group);
 #else
 	if (!plat_priv->plat_dev)
 		return;
-#endif
 
 	cnss_remove_sysfs_link(plat_priv);
-#ifdef CONFIG_CNSS2_X86
-	devm_device_remove_group(&pci_priv->pci_dev->dev, &cnss_attr_group);
-#else
 	devm_device_remove_group(&plat_priv->plat_dev->dev, &cnss_attr_group);
 #endif
 }
