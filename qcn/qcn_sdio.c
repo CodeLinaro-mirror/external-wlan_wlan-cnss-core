@@ -974,7 +974,7 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 	if (seq) {
 		memset(tmp_d+TX_BUNDLE_BUF_SIZE, TX_BUNDLE_PADDING, TX_BUNDLE_BUF_SIZE*(sdio_ctxt->tx_bundle_num - seq));
 		qcn_sdio_send_buff(QCN_SDIO_CH_2, sdio_ctxt->tx_bundle_buf, TX_BUNDLE_BUF_SIZE * sdio_ctxt->tx_bundle_num);
-		seq = (seq + 1) % sdio_ctxt->tx_bundle_num;
+		seq = 0;
 	}
 }
 
