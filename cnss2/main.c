@@ -265,6 +265,7 @@ int cnss_get_fw_files_for_target(struct device *dev,
 }
 cnss_export_symbol(cnss_get_fw_files_for_target);
 
+#ifndef CONFIG_NAPIER_X86
 int cnss_request_bus_bandwidth(struct device *dev, int bandwidth)
 {
 	int ret = 0;
@@ -283,7 +284,6 @@ int cnss_request_bus_bandwidth(struct device *dev, int bandwidth)
 	case CNSS_BUS_WIDTH_LOW:
 	case CNSS_BUS_WIDTH_MEDIUM:
 	case CNSS_BUS_WIDTH_HIGH:
-#ifndef CONFIG_NAPIER_X86
 		ret = msm_bus_scale_client_update_request(
 			bus_bw_info->bus_client, bandwidth);
 		if (!ret)
@@ -291,7 +291,6 @@ int cnss_request_bus_bandwidth(struct device *dev, int bandwidth)
 		else
 			cnss_pr_err("Could not set bus bandwidth: %d, err = %d\n",
 				    bandwidth, ret);
-#endif
 		break;
 	default:
 		cnss_pr_err("Invalid bus bandwidth: %d", bandwidth);
@@ -300,6 +299,12 @@ int cnss_request_bus_bandwidth(struct device *dev, int bandwidth)
 
 	return ret;
 }
+#else
+int cnss_request_bus_bandwidth(struct device *dev, int bandwidth)
+{
+    return 0;
+}
+#endif
 cnss_export_symbol(cnss_request_bus_bandwidth);
 
 int cnss_get_platform_cap(struct device *dev, struct cnss_platform_cap *cap)
