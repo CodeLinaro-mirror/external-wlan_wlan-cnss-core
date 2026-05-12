@@ -118,10 +118,11 @@ int qti_client_write(int id, char *buf, size_t count);
 int qti_client_debug_init(int id);
 void qti_client_debug_deinit(int id);
 
+
 #ifdef CONFIG_NAPIER_X86
 #define qlog(qsb, _msg, ...) do {                                            \
-        if (to_console)                                                      \
-                pr_err("[%s] " _msg, __func__, ##__VA_ARGS__);   \
+	if (to_console)                                                      \
+		pr_err("[%s:%d] " _msg, __func__, __LINE__, ##__VA_ARGS__);   \
 } while (0)
 #else
 #define	qlog(qsb, _msg, ...) do {					     \
@@ -214,9 +215,15 @@ static struct completion read_complete;
 void qti_client_queue_rx(int id, u8 *buf, unsigned int bytes)
 {
 	struct data_avail_node *data_node;
+	bool ret = 0;
 
 	if ((id < QCN_SDIO_CLI_ID_TTY) || (id > QCN_SDIO_CLI_ID_DIAG)) {
 		pr_err("%s invalid client ID %d\n", __func__, id);
+		return;
+	}
+
+	if (atomic_read(&qsbdev[id]->is_client_closing)) {
+		pr_warn("[%s:%d]%s is closing, drop data\n", __func__, __LINE__, qsbdev[id]->name);
 		return;
 	}
 
@@ -236,7 +243,9 @@ void qti_client_queue_rx(int id, u8 *buf, unsigned int bytes)
 	list_add_tail(&data_node->list, &data_avail_list);
 	spin_unlock(&list_lock);
 
-	queue_kthread_work(&kworker, &kwork);
+	ret = queue_kthread_work(&kworker, &kwork);
+	if(!ret)
+		pr_warn("[%s:%d]queue work failed, as for it is running\n", __func__, __LINE__);
 }
 
 void qti_client_ul_xfer_cb(struct sdio_al_channel_handle *ch_handle,
@@ -323,7 +332,7 @@ void qti_client_data_avail_cb(struct sdio_al_channel_handle *ch_handle,
 			qlog(qsb, "%s: data queueing failed %d\n", qsb->name,
 									ret);
 			to_console = 0;
-			return;
+			goto error_exit;
 		}
 	} else {
 		ret = sdio_al_queue_transfer(qsb->channel_handle,
@@ -337,13 +346,19 @@ void qti_client_data_avail_cb(struct sdio_al_channel_handle *ch_handle,
 			qlog(qsb, "%s: data transfer failed %d\n", qsb->name,
 									ret);
 			to_console = 0;
-			return;
+			goto error_exit;
 		}
 		qti_client_queue_rx(cl_data->id, rx_dma_buf, bytes);
 	}
 out:
 	qlog(qsb, "%s: data %s success\n", qsb->name,
 					qsb->mode ? "queueing" : "transfer");
+	return;
+error_exit:
+	if (rx_dma_buf) {
+		kfree(rx_dma_buf);
+	}
+	qlog(qsb, "%s: failed exit\n", qsb->name);
 }
 
 static void sdio_dl_meta_data_cb(struct sdio_al_channel_handle *ch_handle,
@@ -496,8 +511,16 @@ int qti_client_read(int id, char *buf, size_t count)
 
 	wait_event(qsb->wait_q, qsb->data_avail ||
 					atomic_read(&qsb->is_client_closing));
-	if (atomic_read(&qsb->is_client_closing))
-		return count;
+	/**
+	 * if is_client_closing but data is valid, should read the data,
+	 * to avoid data_avail_worker hung, (it's waiting read completed)
+	 */
+	if (atomic_read(&qsb->is_client_closing)){
+		if (!qsb->data_avail) {
+		    pr_warn("[%s:%d] %s is client closing\n", __func__, __LINE__, qsb->name);
+		    return -ENODEV;
+		}
+	}
 
 	bytes = qsb->data_avail;
 
@@ -947,8 +970,20 @@ static int qti_client_probe(struct sdio_al_client_handle *client_handle)
 		} else
 			pr_err("platform_device_add_data done for ipc_bridge_sdio\n");
 
+		/**
+		 * Workaround:
+		 * temp set is_client_closing=0, if error occures, revert it to 1.
+		 *
+		 * Reason:
+		 * platform_device_add() maybe not have returned yet, which
+		 * qti_client_read() could be triggered occurrently, the race condition will 
+		 * cause read failure, the thread work will exit.
+		 * and then the reset msg will not read.
+		 */
+		atomic_set(&qsb->is_client_closing, 0);
 		ret = platform_device_add(ipc_pdev);
 		if (ret) {
+			atomic_set(&qsb->is_client_closing, 1);
 			to_console = 1;
 			qlog(qsb, "failed to add ipc_pdev\n");
 			to_console = 0;
@@ -1075,6 +1110,7 @@ static void data_avail_worker(struct kthread_work *work)
 			wake_up(&qsb->wait_q);
 
 		wait_for_completion(&read_complete);
+		kfree(data_node->rx_dma_buf);
 		kfree(data_node);
 		spin_lock(&list_lock);
 	}
@@ -1096,10 +1132,10 @@ static int register_client(int id, int mode)
 	}
 
 	client_data = kzalloc(sizeof(struct sdio_al_client_data), GFP_KERNEL);
-        if (!client_data) {
-                ret = -ENOMEM;
-                goto bridge_alloc_error;
-        }
+	if (!client_data) {
+		ret = -ENOMEM;
+		goto bridge_alloc_error;
+	}
 
 	qsbdev[id]->id = id;
 	if (id == 3) {
@@ -1152,13 +1188,13 @@ static int register_client(int id, int mode)
 	return 0;
 	
 client_reg_error:
-        sdio_al_deregister_client(client_handle);
+	sdio_al_deregister_client(client_handle);
 client_error:
-        kfree(client_data);
+	kfree(client_data);
 bridge_alloc_error:
-        kfree(qsbdev[id]);
+	kfree(qsbdev[id]);
 out:
-        return ret;
+	return ret;
 	
 }
 #endif
