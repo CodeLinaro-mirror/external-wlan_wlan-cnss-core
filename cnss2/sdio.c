@@ -283,6 +283,7 @@ int cnss_sdio_unregister_driver_hdlr(struct cnss_sdio_data *cnss_info)
 	cnss_power_off_device(plat_priv);
 	clear_bit(CNSS_FW_READY, &plat_priv->driver_state);
 	clear_bit(CNSS_DRIVER_UNLOADING, &plat_priv->driver_state);
+	qcn_sdio_card_state(true);
 
 	cnss_info->ops = NULL;
 	return 0;
