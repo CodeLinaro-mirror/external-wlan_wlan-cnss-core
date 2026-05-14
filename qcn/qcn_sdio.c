@@ -75,6 +75,14 @@ static struct mmc_host *current_host;
 	print_hex_dump(KERN_ERR, mode, 2, 32, 4, buf,		\
 			dump_len > len ? len : dump_len, 0)
 
+#define IS_WLAN_CH(cid)	\
+	(cid == QCN_SDIO_CH_1 || cid == QCN_SDIO_CH_2)
+
+#define HTC_FRAME_HDR 8
+#define MAX_HTC_HDR_RECORD 10
+static u64 HTC_HDR_HISTORY[MAX_HTC_HDR_RECORD] = {0};
+static u8 htc_hdr_index = 0;
+
 struct qcn_sdio {
 	enum qcn_sdio_sw_mode curr_sw_mode;
 	struct sdio_func *func;
@@ -210,6 +218,16 @@ static void qcn_sdio_purge_rw_buff(void)
 	}
 	spin_unlock_bh(&sdio_ctxt->lock_wait_q);
 	atomic_set(&sdio_ctxt->wait_list_count, 0);
+}
+
+static void dump_htc_hdr_history(void)
+{
+	int i;
+
+	for (i = htc_hdr_index; i < MAX_HTC_HDR_RECORD; i++)
+		HEX_DUMP("HTC_HDR history: ", &HTC_HDR_HISTORY[i], HTC_FRAME_HDR);
+	for (i = 0; i < htc_hdr_index; i++)
+		HEX_DUMP("HTC_HDR history: ", &HTC_HDR_HISTORY[i], HTC_FRAME_HDR);
 }
 
 void qcn_sdio_client_probe_complete(int id)
@@ -538,6 +556,7 @@ int switch_to_rddm_thread(void *data)
 	flush_work(&sdio_ctxt->sdio_rw_w);
 
 	qcn_save_fw_memory_dump();
+	dump_htc_hdr_history();
 	qcn_channel_change(mode);
 
 	uevent[0] = envp[QCN_SDIO_SW_RDDM];
@@ -875,6 +894,7 @@ static void qcn_sdio_irq_handler(struct sdio_func *func)
 static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 {
 	int ret = 0;
+	int i = 0;
 
 	if (cid != QCN_SDIO_CH_0 && FW_RDDM)
 		return -EINVAL;
@@ -885,6 +905,22 @@ static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 
 	if (ret)
 		qcn_send_io_abort();
+
+	if (IS_WLAN_CH(cid) && !ret) {
+		if (len < TX_BUNDLE_BUF_SIZE) {
+			memcpy(&HTC_HDR_HISTORY[htc_hdr_index], buff,
+			       HTC_FRAME_HDR);
+			htc_hdr_index =
+				(htc_hdr_index + 1) % MAX_HTC_HDR_RECORD;
+		}
+
+		for (i = 0; i < (len / TX_BUNDLE_BUF_SIZE); i++) {
+			memcpy(&HTC_HDR_HISTORY[htc_hdr_index],
+			       buff + (i * TX_BUNDLE_BUF_SIZE), HTC_FRAME_HDR);
+			htc_hdr_index =
+				(htc_hdr_index + 1) % MAX_HTC_HDR_RECORD;
+		}
+	}
 
 	sdio_release_host(sdio_ctxt->func);
 
