@@ -1344,6 +1344,12 @@ int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 		mmc_retune_disable(current_host);
 	}
 
+#ifdef BLOCK_SIZE_FIX
+	/* After setting this flag, the current block size will be the maximum
+	 * size in byte mode transmission.
+	 */
+	func->card->quirks |= MMC_QUIRK_BLKSZ_FOR_BYTE_MODE;
+#endif
 	qcn_sdio_debugfs_create(sdio_ctxt);
 	atomic_set(&xport_status, 1);
 	return 0;

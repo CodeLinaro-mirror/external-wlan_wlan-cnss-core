@@ -7,6 +7,7 @@ unified_prealloc ?= 0
 diag_support ?= 1
 lpm_support ?= 0
 oob_wake ?= 0
+block_size_fix ?= 0
 
 ifeq ($(diag_support), 1)
 KBUILD_OPTIONS += CONFIG_MSM_DIAG_INTERFACE=y
@@ -43,6 +44,9 @@ ifeq ($(interface_type), sdio)
 KBUILD_OPTIONS += CONFIG_SDIO_XPRT=y CONFIG_QCN=y CONFIG_QTI_SDIO_CLIENT=y CONFIG_CNSS2_SDIO=y
 ifeq ($(oob_wake), 1)
 KBUILD_OPTIONS += CONFIG_OOB_WAKEUP=y
+endif
+ifeq ($(block_size_fix), 1)
+KBUILD_OPTIONS += CONFIG_BLOCK_SIZE_FIX=y
 endif
 endif
 

@@ -21,7 +21,11 @@
 #define MANUFACTURER_ID_QCN_BASE	(0x400B)
 #define MANUFACTURER_ID_QCN_V2		(0x4029)
 #define QCN_SDIO_TTY_BLK_SZ		(512)
+#ifdef BLOCK_SIZE_FIX
+#define QCN_SDIO_MROM_BLK_SZ		(128)
+#else
 #define QCN_SDIO_MROM_BLK_SZ		(512)
+#endif
 #define QCN_SDIO_RW_REQ_MAX		(128)
 
 #define QCN_SDIO_DMA0_RX_CNUM		(0x4)
