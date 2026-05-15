@@ -1052,6 +1052,13 @@ static int qti_client_remove(struct sdio_al_client_handle *client_handle)
 
 	qsb = qsbdev[client_handle->id];
 
+	/* Wait for client to read all data */
+	if (qsb->data_avail) {
+		pr_info("[%s:%d] wait data to read complete\n",__func__, __LINE__);
+		kthread_flush_work(&kwork);
+		pr_info("[%s:%d] data read complete\n",__func__, __LINE__);
+	}
+
 	atomic_set(&qsb->is_client_closing, 1);
 	wake_up(&qsb->wait_q);
 
@@ -1124,7 +1131,7 @@ static int register_client(int id, int mode)
 	struct sdio_al_client_data *client_data = NULL;
 	struct sdio_al_client_handle *client_handle = NULL;
 	int ret = -EPROBE_DEFER;
-	
+
 	qsbdev[id] = kzalloc(sizeof(struct qti_sdio_bridge), GFP_KERNEL);
 	if (!qsbdev[id]) {
 		ret = -ENOMEM;
