@@ -950,6 +950,7 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 	struct sdio_al_xfer_result *result = NULL;
 	struct sdio_al_channel_handle *ch_handle = NULL;
 	static uint32_t seq=0;
+	uint32_t buf_num = 0;
 	uint8_t *tmp_d = NULL;
 
 	while (1) {
@@ -974,12 +975,14 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 					&& rw_req->cid == QCN_SDIO_CH_2) {
 				int copylen = rw_req->len > TX_BUNDLE_BUF_SIZE ? TX_BUNDLE_BUF_SIZE:rw_req->len;
 
-				tmp_d = sdio_ctxt->tx_bundle_buf + TX_BUNDLE_BUF_SIZE*seq;
+				tmp_d = sdio_ctxt->tx_bundle_buf + TX_BUNDLE_BUF_SIZE*buf_num;
 				memcpy(tmp_d, rw_req->buf, copylen);
 				memset(tmp_d+copylen, TX_BUNDLE_PADDING, TX_BUNDLE_BUF_SIZE-copylen);
-				seq = (seq + 1) % sdio_ctxt->tx_bundle_num;
-				if (!seq) {
-					ret = qcn_sdio_send_buff(rw_req->cid, sdio_ctxt->tx_bundle_buf,TX_BUNDLE_BUF_SIZE*sdio_ctxt->tx_bundle_num);
+				buf_num++;
+				if (!((buf_num + seq) % sdio_ctxt->tx_bundle_num)) {
+					ret = qcn_sdio_send_buff(rw_req->cid, sdio_ctxt->tx_bundle_buf,TX_BUNDLE_BUF_SIZE*buf_num);
+					buf_num = 0;
+					seq = 0;
 				}
 
 			} else {
@@ -1007,10 +1010,10 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 		atomic_dec(&sdio_ctxt->wait_list_count);
 	}
 
-	if (seq) {
-		memset(tmp_d+TX_BUNDLE_BUF_SIZE, TX_BUNDLE_PADDING, TX_BUNDLE_BUF_SIZE*(sdio_ctxt->tx_bundle_num - seq));
-		qcn_sdio_send_buff(QCN_SDIO_CH_2, sdio_ctxt->tx_bundle_buf, TX_BUNDLE_BUF_SIZE * sdio_ctxt->tx_bundle_num);
-		seq = 0;
+	if (buf_num) {
+		memset(tmp_d+TX_BUNDLE_BUF_SIZE, TX_BUNDLE_PADDING, TX_BUNDLE_BUF_SIZE*(sdio_ctxt->tx_bundle_num - buf_num));
+		qcn_sdio_send_buff(QCN_SDIO_CH_2, sdio_ctxt->tx_bundle_buf, TX_BUNDLE_BUF_SIZE * buf_num);
+		seq += buf_num;
 	}
 }
 
