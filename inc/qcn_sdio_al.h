@@ -171,7 +171,6 @@ struct sdio_al_channel_data {
 			unsigned int data);
 };
 
-#define TX_BUNDLE_BUF_SIZE (2048)
 #define TX_BUNDLE_PADDING (0xA5)
 
 /**
@@ -237,11 +236,12 @@ void sdio_al_deregister_channel(struct sdio_al_channel_handle *ch_handle);
  *
  * @buf: Data buffer
  *
- * @bundle_num: tx bundle number, 2K byte for one bundle now
+ * @bundle_num: tx bundle number
  *
+ * @bundle_buf_size: tx bundle buffer size
  * @return none
  */
-void register_tx_bundle_buf(void *buf, uint32_t bundle_num);
+void register_tx_bundle_buf(void *buf, uint32_t bundle_num, int bundle_buf_size);
 
 /**
  * sdio_al_queue_transfer_async - Queue asynchronous data transfer request

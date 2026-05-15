@@ -113,6 +113,7 @@ struct qcn_sdio {
 	int wake_irq_pending;
 	void* tx_bundle_buf;
 	uint32_t tx_bundle_num;
+	int tx_bundle_buf_size;
 };
 
 static struct qcn_sdio *sdio_ctxt;
@@ -907,16 +908,16 @@ static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 		qcn_send_io_abort();
 
 	if (IS_WLAN_CH(cid) && !ret) {
-		if (len < TX_BUNDLE_BUF_SIZE) {
+		if (len < sdio_ctxt->tx_bundle_buf_size) {
 			memcpy(&HTC_HDR_HISTORY[htc_hdr_index], buff,
 			       HTC_FRAME_HDR);
 			htc_hdr_index =
 				(htc_hdr_index + 1) % MAX_HTC_HDR_RECORD;
 		}
 
-		for (i = 0; i < (len / TX_BUNDLE_BUF_SIZE); i++) {
+		for (i = 0; i < (len / sdio_ctxt->tx_bundle_buf_size); i++) {
 			memcpy(&HTC_HDR_HISTORY[htc_hdr_index],
-			       buff + (i * TX_BUNDLE_BUF_SIZE), HTC_FRAME_HDR);
+			       buff + (i * sdio_ctxt->tx_bundle_buf_size), HTC_FRAME_HDR);
 			htc_hdr_index =
 				(htc_hdr_index + 1) % MAX_HTC_HDR_RECORD;
 		}
@@ -973,14 +974,14 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 		} else {
 			if (unlikely(sdio_ctxt->tx_bundle_num >1)
 					&& rw_req->cid == QCN_SDIO_CH_2) {
-				int copylen = rw_req->len > TX_BUNDLE_BUF_SIZE ? TX_BUNDLE_BUF_SIZE:rw_req->len;
+				int copylen = rw_req->len > sdio_ctxt->tx_bundle_buf_size ? sdio_ctxt->tx_bundle_buf_size:rw_req->len;
 
-				tmp_d = sdio_ctxt->tx_bundle_buf + TX_BUNDLE_BUF_SIZE*buf_num;
+				tmp_d = sdio_ctxt->tx_bundle_buf + sdio_ctxt->tx_bundle_buf_size*buf_num;
 				memcpy(tmp_d, rw_req->buf, copylen);
-				memset(tmp_d+copylen, TX_BUNDLE_PADDING, TX_BUNDLE_BUF_SIZE-copylen);
+				memset(tmp_d+copylen, TX_BUNDLE_PADDING, sdio_ctxt->tx_bundle_buf_size-copylen);
 				buf_num++;
 				if (!((buf_num + seq) % sdio_ctxt->tx_bundle_num)) {
-					ret = qcn_sdio_send_buff(rw_req->cid, sdio_ctxt->tx_bundle_buf,TX_BUNDLE_BUF_SIZE*buf_num);
+					ret = qcn_sdio_send_buff(rw_req->cid, sdio_ctxt->tx_bundle_buf,sdio_ctxt->tx_bundle_buf_size*buf_num);
 					buf_num = 0;
 					seq = 0;
 				}
@@ -1011,8 +1012,8 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 	}
 
 	if (buf_num) {
-		memset(tmp_d+TX_BUNDLE_BUF_SIZE, TX_BUNDLE_PADDING, TX_BUNDLE_BUF_SIZE*(sdio_ctxt->tx_bundle_num - buf_num));
-		qcn_sdio_send_buff(QCN_SDIO_CH_2, sdio_ctxt->tx_bundle_buf, TX_BUNDLE_BUF_SIZE * buf_num);
+		memset(tmp_d+sdio_ctxt->tx_bundle_buf_size, TX_BUNDLE_PADDING, sdio_ctxt->tx_bundle_buf_size*(sdio_ctxt->tx_bundle_num - buf_num));
+		qcn_sdio_send_buff(QCN_SDIO_CH_2, sdio_ctxt->tx_bundle_buf, sdio_ctxt->tx_bundle_buf_size * buf_num);
 		seq += buf_num;
 	}
 }
@@ -1787,10 +1788,11 @@ void sdio_al_deregister_channel(struct sdio_al_channel_handle *ch_handle)
 }
 EXPORT_SYMBOL(sdio_al_deregister_channel);
 
-void register_tx_bundle_buf(void *buf, uint32_t bundle_num)
+void register_tx_bundle_buf(void *buf, uint32_t bundle_num, int bundle_buf_size)
 {
-	sdio_ctxt->tx_bundle_buf=buf;
-	sdio_ctxt->tx_bundle_num=bundle_num;
+	sdio_ctxt->tx_bundle_buf = buf;
+	sdio_ctxt->tx_bundle_num = bundle_num;
+	sdio_ctxt->tx_bundle_buf_size = bundle_buf_size;
 }
 EXPORT_SYMBOL(register_tx_bundle_buf);
 
