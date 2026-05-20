@@ -178,6 +178,7 @@ struct qcn_sdio_rw_info {
 	void *buf;
 	size_t len;
 	void *ctxt;
+	struct sdio_al_xfer_result result;
 };
 
 #endif /* _QCN_SDIO_H_ */

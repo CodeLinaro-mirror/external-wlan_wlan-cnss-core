@@ -94,6 +94,7 @@ struct qcn_sdio {
 	atomic_t ch_status[QCN_SDIO_CH_MAX];
 	spinlock_t lock_free_q;
 	spinlock_t lock_wait_q;
+	struct mutex lock_cmpl_q;
 	u32 rx_addr_base;
 	u32 tx_addr_base;
 	u8 rx_cnum_base;
@@ -101,10 +102,13 @@ struct qcn_sdio {
 	struct qcn_sdio_rw_info rw_req_info[QCN_SDIO_RW_REQ_MAX];
 	struct list_head rw_free_q;
 	struct list_head rw_wait_q;
+	struct list_head rw_cmpl_q;
 	atomic_t free_list_count;
 	atomic_t wait_list_count;
 	struct workqueue_struct *qcn_sdio_wq;
+	struct workqueue_struct *qcn_sdio_cmpl_wq;
 	struct work_struct sdio_rw_w;
+	struct work_struct sdio_cmpl_w;
 	struct dentry *dbg_dentry;
 #ifdef CONFIG_LPM
 	bool low_power_disabled;
@@ -223,6 +227,8 @@ static void qcn_sdio_purge_rw_buff(void)
 	}
 	spin_unlock_bh(&sdio_ctxt->lock_wait_q);
 	atomic_set(&sdio_ctxt->wait_list_count, 0);
+	/* wait for sdio complete work to finish */
+	flush_work(&sdio_ctxt->sdio_cmpl_w);
 }
 
 static void dump_htc_hdr_history(void)
@@ -258,6 +264,13 @@ static struct qcn_sdio_rw_info *qcn_sdio_alloc_rw_req(void)
 	spin_unlock_bh(&sdio_ctxt->lock_free_q);
 
 	return rw_req;
+}
+
+static void qcn_sdio_add_cmpl_req(struct qcn_sdio_rw_info *rw_req)
+{
+	mutex_lock(&sdio_ctxt->lock_cmpl_q);
+	list_add_tail(&rw_req->list, &sdio_ctxt->rw_cmpl_q);
+	mutex_unlock(&sdio_ctxt->lock_cmpl_q);
 }
 
 static void qcn_sdio_add_rw_req(struct qcn_sdio_rw_info *rw_req)
@@ -559,6 +572,8 @@ int switch_to_rddm_thread(void *data)
 
 	/* wait for sdio rw work to finish */
 	flush_work(&sdio_ctxt->sdio_rw_w);
+	/* wait for sdio complete work to finish */
+	flush_work(&sdio_ctxt->sdio_cmpl_w);
 	qcn_save_fw_memory_dump();
 	dump_htc_hdr_history();
 	qcn_channel_change(mode);
@@ -965,12 +980,40 @@ static int qcn_sdio_recv_buff(u32 cid, void *buff, size_t len)
 	return ret;
 }
 
+static void qcn_sdio_cmpl_work(struct work_struct *work)
+{
+	struct qcn_sdio_rw_info *rw_req = NULL;
+	struct sdio_al_channel_handle *ch_handle = NULL;
+
+	while (1) {
+		mutex_lock(&sdio_ctxt->lock_cmpl_q);
+		if (list_empty(&sdio_ctxt->rw_cmpl_q)) {
+			mutex_unlock(&sdio_ctxt->lock_cmpl_q);
+			break;
+		}
+		rw_req = list_first_entry(&sdio_ctxt->rw_cmpl_q,
+						struct qcn_sdio_rw_info, list);
+		list_del(&rw_req->list);
+		mutex_unlock(&sdio_ctxt->lock_cmpl_q);
+
+		ch_handle = &sdio_ctxt->ch[rw_req->cid]->ch_handle;
+		rw_req->result.buf_addr = rw_req->buf;
+		rw_req->result.xfer_len = rw_req->len;
+		if (rw_req->dir)
+			sdio_ctxt->ch[rw_req->cid]->ch_data.dl_xfer_cb(
+					ch_handle, &rw_req->result, rw_req->ctxt);
+		else
+			sdio_ctxt->ch[rw_req->cid]->ch_data.ul_xfer_cb(
+					ch_handle, &rw_req->result, rw_req->ctxt);
+		qcn_sdio_free_rw_req(rw_req);
+		atomic_dec(&sdio_ctxt->wait_list_count);
+	}
+}
+
 static void qcn_sdio_rw_work(struct work_struct *work)
 {
 	int ret = 0;
 	struct qcn_sdio_rw_info *rw_req = NULL;
-	struct sdio_al_xfer_result *result = NULL;
-	struct sdio_al_channel_handle *ch_handle = NULL;
 	static uint32_t seq=0;
 	uint32_t buf_num = 0;
 	uint8_t *tmp_d = NULL;
@@ -1016,20 +1059,9 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 			}
 		}
 
-		ch_handle = &sdio_ctxt->ch[rw_req->cid]->ch_handle;
-		result = &sdio_ctxt->ch[rw_req->cid]->result;
-		result->xfer_status = ret;
-		result->buf_addr = rw_req->buf;
-		result->xfer_len = rw_req->len;
-		if (rw_req->dir)
-			sdio_ctxt->ch[rw_req->cid]->ch_data.dl_xfer_cb(
-					ch_handle, result, rw_req->ctxt);
-		else
-			sdio_ctxt->ch[rw_req->cid]->ch_data.ul_xfer_cb(
-					ch_handle, result, rw_req->ctxt);
-		atomic_set(&sdio_ctxt->ch_status[rw_req->cid], 0);
-		qcn_sdio_free_rw_req(rw_req);
-		atomic_dec(&sdio_ctxt->wait_list_count);
+		rw_req->result.xfer_status = ret;
+		qcn_sdio_add_cmpl_req(rw_req);
+		queue_work(sdio_ctxt->qcn_sdio_cmpl_wq, &sdio_ctxt->sdio_cmpl_w);
 	}
 
 	if (buf_num) {
@@ -1326,6 +1358,12 @@ int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 		goto err;
 	}
 
+	sdio_ctxt->qcn_sdio_cmpl_wq = create_singlethread_workqueue("qcn_sdio_complete");
+	if (!sdio_ctxt->qcn_sdio_cmpl_wq) {
+		pr_err("%s: Error: SDIO create complete wq\n", __func__);
+		goto err;
+	}
+
 	for (ret = 0; ret < QCN_SDIO_CH_MAX; ret++) {
 		sdio_ctxt->ch[ret] = NULL;
 		atomic_set(&sdio_ctxt->ch_status[ret], -1);
@@ -1334,9 +1372,12 @@ int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 	spin_lock_init(&sdio_ctxt->lock_free_q);
 	spin_lock_init(&sdio_ctxt->lock_wait_q);
 	spin_lock_init(&async_lock);
+	mutex_init(&sdio_ctxt->lock_cmpl_q);
 	INIT_WORK(&sdio_ctxt->sdio_rw_w, qcn_sdio_rw_work);
+	INIT_WORK(&sdio_ctxt->sdio_cmpl_w, qcn_sdio_cmpl_work);
 	INIT_LIST_HEAD(&sdio_ctxt->rw_free_q);
 	INIT_LIST_HEAD(&sdio_ctxt->rw_wait_q);
+	INIT_LIST_HEAD(&sdio_ctxt->rw_cmpl_q);
 
 	for (ret = 0; ret < QCN_SDIO_RW_REQ_MAX; ret++)
 		qcn_sdio_free_rw_req(&sdio_ctxt->rw_req_info[ret]);
@@ -1402,6 +1443,9 @@ static void qcn_sdio_remove(struct sdio_func *func)
 	qcn_sdio_purge_rw_buff();
 
 	destroy_workqueue(sdio_ctxt->qcn_sdio_wq);
+	destroy_workqueue(sdio_ctxt->qcn_sdio_cmpl_wq);
+	mutex_destroy(&sdio_ctxt->lock_cmpl_q);
+
 	mutex_lock(&lock);
 	list_for_each_entry(cinfo, &cinfo_head, cli_list) {
 		while (!list_empty(&cinfo->ch_head)) {
@@ -1547,6 +1591,8 @@ static int qcn_sdio_plat_remove(struct platform_device *pdev)
 	mutex_destroy(&lock);
 	if (sdio_ctxt) {
 		destroy_workqueue(sdio_ctxt->qcn_sdio_wq);
+		destroy_workqueue(sdio_ctxt->qcn_sdio_cmpl_wq);
+		mutex_destroy(&sdio_ctxt->lock_cmpl_q);
 		sdio_claim_host(sdio_ctxt->func);
 		sdio_release_irq(sdio_ctxt->func);
 		sdio_release_host(sdio_ctxt->func);
@@ -1865,14 +1911,8 @@ int sdio_al_queue_transfer_async(struct sdio_al_channel_handle *handle,
 	rw_req->len = len;
 	rw_req->ctxt = ctxt;
 
-	if (dir == SDIO_AL_RX)
-		spin_lock(&async_lock);
-
 	qcn_sdio_add_rw_req(rw_req);
 	queue_work(sdio_ctxt->qcn_sdio_wq, &sdio_ctxt->sdio_rw_w);
-
-	if (dir == SDIO_AL_RX)
-		spin_unlock(&async_lock);
 
 	return 0;
 }
