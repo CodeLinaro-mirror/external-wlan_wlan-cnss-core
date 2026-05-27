@@ -1367,10 +1367,13 @@ cnss_export_symbol(cnss_schedule_recovery);
 
 int cnss_force_fw_assert(struct device *dev)
 {
+#if defined(CONFIG_CNSS2_USB) || defined(CONFIG_CNSS2_SDIO)
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(NULL);
+#else
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
-
+#endif
 	if (!plat_priv) {
-		cnss_pr_err("plat_priv is NULL\n");
+		cnss_pr_err("[%s] plat_priv is NULL\n", __func__);
 		return -ENODEV;
 	}
 

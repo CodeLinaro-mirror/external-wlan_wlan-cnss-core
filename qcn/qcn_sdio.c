@@ -1238,6 +1238,10 @@ static ssize_t qcn_sdio_action_write(struct file *fp,
 
 	return count;
 }
+int qcn_sdio_inject_sys_err_handle(struct device *dev)
+{
+	return qcn_sdio_inject_sys_err(dev);
+}
 
 static const struct file_operations qcn_sdio_action_fops = {
 	.read		= seq_read,

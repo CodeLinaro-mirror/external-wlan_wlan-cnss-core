@@ -146,6 +146,18 @@ void cnss_sdio_free_fw_mem(struct cnss_sdio_data *sdio_priv)
 	plat_priv->fw_mem_seg_len = 0;
 }
 
+int cnss_sdio_force_fw_assert_hdlr(struct cnss_sdio_data *cnss_info)
+{
+	struct device *dev;
+	if ((!cnss_info) ||
+	    (!cnss_info->al_client_handle) ||
+	    (!cnss_info->al_client_handle->func)) {
+		cnss_pr_err("cnss_info is NULL\n");
+		return -ENODEV;
+	}
+	dev = &cnss_info->al_client_handle->func->dev;
+	return qcn_sdio_inject_sys_err_handle(dev);
+}
 /**
  * cnss_sdio_wlan_register_driver() - cnss wlan register API
  * @driver: sdio wlan driver interface from wlan driver.

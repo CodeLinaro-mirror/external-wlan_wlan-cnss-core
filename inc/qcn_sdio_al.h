@@ -308,4 +308,5 @@ int sdio_al_meta_transfer(struct sdio_al_channel_handle *ch_handle,
 
 extern void qcn_sdio_client_probe_complete(int id);
 int qcn_sdio_card_state(bool enable);
+int qcn_sdio_inject_sys_err_handle(struct device *dev);
 #endif /* _QCN_SDIO_AL_ */

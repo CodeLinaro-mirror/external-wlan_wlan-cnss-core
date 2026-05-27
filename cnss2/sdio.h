@@ -44,6 +44,7 @@ int cnss_sdio_call_driver_remove(struct cnss_sdio_data *sdio_priv);
 void cnss_sdio_fw_boot_timeout_hdlr(void *bus_priv);
 int cnss_sdio_alloc_fw_mem(struct cnss_sdio_data *sdio_priv);
 void cnss_sdio_free_fw_mem(struct cnss_sdio_data *sdio_priv);
+int cnss_sdio_force_fw_assert_hdlr(struct cnss_sdio_data *cnss_info);
 #else
 static inline int cnss_sdio_init(struct cnss_plat_data *plat_priv)
 {
