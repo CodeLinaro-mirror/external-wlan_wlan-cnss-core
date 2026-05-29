@@ -59,6 +59,9 @@ static int driver_state;
 module_param(driver_state, int, S_IRUGO | S_IRUSR | S_IRGRP);
 
 static bool FW_RDDM = false;
+/* Maximum duration the system can remain in RDDM state */
+#define QCN_SDIO_SW_RDDM_TIMEOUT_MS (5000)
+static DECLARE_COMPLETION(rddm_completion);
 
 int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode);
 int qcn_channel_change(enum qcn_sdio_sw_mode mode);
@@ -171,6 +174,7 @@ char *envp[QCN_SDIO_SW_MAX] = {
 #define	SDIO_DATA_MASK		0xFF
 
 #define VALID_IRQ(irq_nr)	(irq_nr > 0 ? true : false)
+
 
 static inline
 void qcn_sdio_set_cmd53_arg(u32 *arg, u8 rw, u8 func, u8 mode, u8 opcode,
@@ -555,7 +559,6 @@ int switch_to_rddm_thread(void *data)
 
 	/* wait for sdio rw work to finish */
 	flush_work(&sdio_ctxt->sdio_rw_w);
-
 	qcn_save_fw_memory_dump();
 	dump_htc_hdr_history();
 	qcn_channel_change(mode);
@@ -563,9 +566,25 @@ int switch_to_rddm_thread(void *data)
 	uevent[0] = envp[QCN_SDIO_SW_RDDM];
 	uevent[1] = NULL;
 	kobject_uevent_env(&sdio_ctxt->func->dev.kobj, KOBJ_CHANGE, uevent);
-
+	//wait rddm exit
+	reinit_completion(&rddm_completion);
+	if (!wait_for_completion_timeout(&rddm_completion,
+					 msecs_to_jiffies(QCN_SDIO_SW_RDDM_TIMEOUT_MS)))
+		pr_err("[%s:%d] RDDM completion timeout!\n",
+		       __func__, __LINE__);
+	// if rddm mode not change, the driver should reset sdio
+	if(sdio_ctxt->curr_sw_mode == QCN_SDIO_SW_RDDM) {
+		qcn_sdio_card_state(false);
+		qcn_sdio_card_state(true);
+	}
 	return 0;
 }
+
+bool qcn_rddm_is_processing(void)
+{
+	return FW_RDDM;
+}
+EXPORT_SYMBOL(qcn_rddm_is_processing);
 
 static int qcn_sdio_rddm_handler(void)
 {
@@ -620,6 +639,8 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 		qcn_channel_change(mode);
 		break;
 	case QCN_SDIO_SW_RESET:
+		//Reached after RDDM
+		complete(&rddm_completion);
 		ret = wait_for_completion_timeout(&client_probe_complete,
 							msecs_to_jiffies(3000));
 		if (!ret)
@@ -1156,6 +1177,7 @@ static int qcn_sdio_inject_sys_err(struct device *dev)
 
 	pr_info("%s: func %d curr_sw_mode=%d\n", __func__,
 		func->num, sdio_ctxt->curr_sw_mode);
+
 	value = META_INFO(QCN_SDIO_SYS_ERR_HEVENT, (u32)0);
 
 	sdio_claim_host(func);
@@ -1574,7 +1596,7 @@ static void __exit qcn_sdio_exit(void)
 #endif
 {
 #ifdef CONFIG_NAPIER_X86
-        qcn_sdio_plat_remove(NULL);
+	qcn_sdio_plat_remove(NULL);
 #else
 	platform_driver_unregister(&qcn_sdio_plat_driver);
 #endif

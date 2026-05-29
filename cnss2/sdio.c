@@ -286,16 +286,28 @@ int cnss_sdio_register_driver_hdlr(struct cnss_sdio_data *cnss_info,
 int cnss_sdio_unregister_driver_hdlr(struct cnss_sdio_data *cnss_info)
 {
 	struct cnss_plat_data *plat_priv = cnss_info->plat_priv;
+	bool sdio_reset = 0;
 
 	set_bit(CNSS_DRIVER_UNLOADING, &plat_priv->driver_state);
 	cnss_sdio_call_driver_remove(cnss_info);
 	cnss_request_bus_bandwidth(&plat_priv->plat_dev->dev,
 				   CNSS_BUS_WIDTH_NONE);
-	qcn_sdio_card_state(false);
+	/*
+	 * Block SDIO card reset while RDDM dump collection is in progress.
+	 * fw_rddm_waiting_thread will perform the reset after RDDM completes.
+	 */
+	if (qcn_rddm_is_processing()) {
+		pr_err("[%s:%d] rddm in processing, skip sdio card reset\n", __func__, __LINE__);
+	} else {
+		qcn_sdio_card_state(false);
+		sdio_reset = true;
+	}
+
 	cnss_power_off_device(plat_priv);
 	clear_bit(CNSS_FW_READY, &plat_priv->driver_state);
 	clear_bit(CNSS_DRIVER_UNLOADING, &plat_priv->driver_state);
-	qcn_sdio_card_state(true);
+	if (sdio_reset)
+		qcn_sdio_card_state(true);
 
 	cnss_info->ops = NULL;
 	return 0;
