@@ -1,4 +1,5 @@
 /* Copyright (c) 2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -114,10 +115,6 @@ struct qcn_sdio {
 	bool low_power_disabled;
 	atomic_t suspended;
 #endif
-	bool wake_irq_enable;
-	int wake_irq_nr;
-	int wake_irq_flag;
-	int wake_irq_pending;
 	void* tx_bundle_buf;
 	uint32_t tx_bundle_num;
 	int tx_bundle_buf_size;
@@ -176,8 +173,6 @@ char *envp[QCN_SDIO_SW_MAX] = {
 #define	SDIO_STUFF_MASK		1
 #define	SDIO_BLOCKSZ_MASK	0x1FF
 #define	SDIO_DATA_MASK		0xFF
-
-#define VALID_IRQ(irq_nr)	(irq_nr > 0 ? true : false)
 
 
 static inline
@@ -783,87 +778,6 @@ static int qcn_sdio_reset(void)
 	return 0;
 }
 
-#ifdef OOB_WAKEUP
-
-#define WAKE_IRQ_NAME "oob-wake"
-
-static irqreturn_t qcn_sdio_wake_irq_handler(int irq, void *func)
-{
-	pr_info("%s: wake IRQ %d triggered\n", __func__, irq);
-
-	disable_irq_nosync(sdio_ctxt->wake_irq_nr);
-
-	/* TODO - IRQ service */
-
-	return IRQ_HANDLED;
-}
-
-static int qcn_sdio_wake_irq_init(struct sdio_func *func)
-{
-	struct device *sdio_dev = &func->dev;
-	int ret = 0;
-
-	if (sdio_dev->of_node) {
-		sdio_ctxt->wake_irq_nr = of_irq_get_byname(sdio_dev->of_node, WAKE_IRQ_NAME);
-		if (!VALID_IRQ(sdio_ctxt->wake_irq_nr)) {
-			dev_err(sdio_dev, "Failed to get IRQ %s\n", WAKE_IRQ_NAME);
-			ret = -ENODEV;
-		} else {
-			dev_info(sdio_dev, "wake IRQ: number %d\n", sdio_ctxt->wake_irq_nr);
-			sdio_ctxt->wake_irq_flag =
-				irq_get_trigger_type(sdio_ctxt->wake_irq_nr);
-			if (!sdio_ctxt->wake_irq_flag) {
-				/* Fall back to default, if not provided */
-				sdio_ctxt->wake_irq_flag = IRQF_TRIGGER_LOW;
-			}
-			sdio_ctxt->wake_irq_flag |= IRQF_ONESHOT;
-			dev_info(sdio_dev, "wake IRQ: %s level trigger\n",
-				 sdio_ctxt->wake_irq_flag & IRQF_TRIGGER_HIGH ?
-				 "high" : "low");
-
-			ret = devm_request_threaded_irq(sdio_dev, sdio_ctxt->wake_irq_nr,
-							NULL,
-							qcn_sdio_wake_irq_handler,
-							sdio_ctxt->wake_irq_flag,
-							WAKE_IRQ_NAME,
-							func);
-			if (ret) {
-				dev_err(sdio_dev, "Failed to request IRQ: %d\n", ret);
-				return ret;
-			}
-
-			ret = enable_irq_wake(sdio_ctxt->wake_irq_nr);
-			if (ret) {
-				dev_err(sdio_dev, "Failed to enable_irq_wake %d\n", ret);
-				return ret;
-			}
-			disable_irq_wake(sdio_ctxt->wake_irq_nr);
-
-			device_init_wakeup(sdio_dev, true);
-		}
-	} else {
-		dev_err(sdio_dev, "of_node not found!\n");
-		ret = -ENODEV;
-	}
-
-	return ret;
-}
-
-static void qcn_sdio_wake_irq_deinit(struct sdio_func *func)
-{
-	if (VALID_IRQ(sdio_ctxt->wake_irq_nr))
-		device_init_wakeup(&func->dev, false);
-}
-#else
-static int qcn_sdio_wake_irq_init(struct sdio_func *func)
-{
-	return 0;
-}
-static void qcn_sdio_wake_irq_deinit(struct sdio_func *func)
-{
-}
-#endif
-
 static void qcn_set_host_clock(unsigned int hz)
 {
 	if (current_host->ios.clock <= hz)
@@ -1119,11 +1033,6 @@ static int qcn_sdio_suspend(struct device *dev)
 		return 0;
 	}
 
-	if (sdio_ctxt->wake_irq_pending) {
-		dev_err(dev, "wake IRQ pending\n");
-		return -EBUSY;
-	}
-
 	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 0, 1);
 	if (suspended) {
 		pr_info("Already suspended\n");
@@ -1156,11 +1065,7 @@ static int qcn_sdio_suspend(struct device *dev)
 	 */
 	msleep(5);
 
-	if (VALID_IRQ(sdio_ctxt->wake_irq_nr)) {
-		dev_info(dev, "enable_irq_wake");
-		enable_irq_wake(sdio_ctxt->wake_irq_nr);
-		sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
-	}
+	sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
 
 out:
 	sdio_release_host(func);
@@ -1176,12 +1081,6 @@ static int qcn_sdio_resume(struct device *dev)
 	if (sdio_ctxt->low_power_disabled) {
 		pr_err("Low power has been disabled\n");
 		return 0;
-	}
-
-	if (VALID_IRQ(sdio_ctxt->wake_irq_nr)) {
-		dev_info(dev, "disable_irq_wake\n");
-		disable_irq_wake(sdio_ctxt->wake_irq_nr);
-		sdio_ctxt->wake_irq_pending = 0;
 	}
 
 	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 1, 0);
@@ -1370,10 +1269,6 @@ int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 	sdio_ctxt->id = id;
 	sdio_set_drvdata(func, sdio_ctxt);
 
-	ret = qcn_sdio_wake_irq_init(func);
-	if (ret)
-		goto err;
-
 	sdio_ctxt->qcn_sdio_wq = create_singlethread_workqueue("qcn_sdio");
 	if (!sdio_ctxt->qcn_sdio_wq) {
 		pr_err("%s: Error: SDIO create wq\n", __func__);
@@ -1488,8 +1383,6 @@ static void qcn_sdio_remove(struct sdio_func *func)
 	sdio_claim_host(sdio_ctxt->func);
 	sdio_release_irq(sdio_ctxt->func);
 	sdio_release_host(sdio_ctxt->func);
-
-	qcn_sdio_wake_irq_deinit(func);
 
 	kfree(sdio_ctxt);
 	sdio_ctxt = NULL;

@@ -6,7 +6,12 @@ unified_driver ?= 0
 unified_prealloc ?= 0
 diag_support ?= 1
 lpm_support ?= 0
-oob_wake ?= 0
+# GPIO wakeup backends. Space-separated subset of: legacy gpiod of_irq
+# Examples:
+#   gpio_wakeup=legacy
+#   gpio_wakeup="legacy gpiod"
+#   gpio_wakeup="legacy gpiod of_irq"
+gpio_wakeup ?= of_irq
 block_size_fix ?= 0
 
 ifeq ($(diag_support), 1)
@@ -42,8 +47,14 @@ endif
 endif
 ifeq ($(interface_type), sdio)
 KBUILD_OPTIONS += CONFIG_SDIO_XPRT=y CONFIG_QCN=y CONFIG_QTI_SDIO_CLIENT=y CONFIG_CNSS2_SDIO=y
-ifeq ($(oob_wake), 1)
-KBUILD_OPTIONS += CONFIG_OOB_WAKEUP=y
+ifneq ($(filter legacy,$(gpio_wakeup)),)
+KBUILD_OPTIONS += CONFIG_WLAN_GPIO_WAKEUP_LEGACY=y
+endif
+ifneq ($(filter gpiod,$(gpio_wakeup)),)
+KBUILD_OPTIONS += CONFIG_WLAN_GPIO_WAKEUP_GPIOD=y
+endif
+ifneq ($(filter of_irq,$(gpio_wakeup)),)
+KBUILD_OPTIONS += CONFIG_WLAN_GPIO_WAKEUP_OF_IRQ=y
 endif
 ifeq ($(block_size_fix), 1)
 KBUILD_OPTIONS += CONFIG_BLOCK_SIZE_FIX=y
