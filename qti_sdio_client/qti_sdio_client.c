@@ -219,18 +219,18 @@ void qti_client_queue_rx(int id, u8 *buf, unsigned int bytes)
 
 	if ((id < QCN_SDIO_CLI_ID_TTY) || (id > QCN_SDIO_CLI_ID_DIAG)) {
 		pr_err("%s invalid client ID %d\n", __func__, id);
-		return;
+		goto err;
 	}
 
 	if (atomic_read(&qsbdev[id]->is_client_closing)) {
 		pr_warn("[%s:%d]%s is closing, drop data\n", __func__, __LINE__, qsbdev[id]->name);
-		return;
+		goto err;
 	}
 
 	data_node = kzalloc(sizeof(struct data_avail_node), GFP_ATOMIC);
 	if (!data_node) {
 		qlog(qsbdev[id], "client %d dnode allocation failed\n", id);
-		return;
+		goto err;
 	}
 
 	qlog(qsbdev[id], "%s Queuing to work %d %p\n", qsbdev[id]->name, bytes,
@@ -246,6 +246,9 @@ void qti_client_queue_rx(int id, u8 *buf, unsigned int bytes)
 	ret = queue_kthread_work(&kworker, &kwork);
 	if(!ret)
 		pr_warn("[%s:%d]queue work failed, as for it is running\n", __func__, __LINE__);
+	return;
+err:
+	kfree(buf);
 }
 
 void qti_client_ul_xfer_cb(struct sdio_al_channel_handle *ch_handle,
@@ -278,6 +281,8 @@ void qti_client_dl_xfer_cb(struct sdio_al_channel_handle *ch_handle,
 	if (!xfer || xfer->xfer_status || !cl_data ||
 		(cl_data->id < QCN_SDIO_CLI_ID_TTY) ||
 		(cl_data->id > QCN_SDIO_CLI_ID_DIAG)) {
+		if (xfer && xfer->buf_addr)
+			kfree(xfer->buf_addr);
 		pr_err("%s invalid client ID\n", __func__);
 		return;
 	}

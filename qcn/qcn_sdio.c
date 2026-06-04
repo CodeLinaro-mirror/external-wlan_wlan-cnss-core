@@ -209,12 +209,15 @@ static void qcn_sdio_free_rw_req(struct qcn_sdio_rw_info *rw_req)
 	spin_lock_bh(&sdio_ctxt->lock_free_q);
 	list_add_tail(&rw_req->list, &sdio_ctxt->rw_free_q);
 	atomic_inc(&sdio_ctxt->free_list_count);
+	atomic_dec(&sdio_ctxt->wait_list_count);
 	spin_unlock_bh(&sdio_ctxt->lock_free_q);
 }
 
 static void qcn_sdio_purge_rw_buff(void)
 {
 	struct qcn_sdio_rw_info *rw_req = NULL;
+	struct sdio_al_xfer_result result ;
+	struct sdio_al_channel_handle *ch_handle = NULL;
 
 	spin_lock_bh(&sdio_ctxt->lock_wait_q);
 	while (!list_empty(&sdio_ctxt->rw_wait_q)) {
@@ -222,11 +225,22 @@ static void qcn_sdio_purge_rw_buff(void)
 						struct qcn_sdio_rw_info, list);
 		list_del(&rw_req->list);
 		spin_unlock_bh(&sdio_ctxt->lock_wait_q);
+
+		ch_handle = &sdio_ctxt->ch[rw_req->cid]->ch_handle;
+		result.xfer_status = -EINVAL;
+		result.buf_addr = rw_req->buf;
+		result.xfer_len = rw_req->len;
+		if (rw_req->dir)
+			sdio_ctxt->ch[rw_req->cid]->ch_data.dl_xfer_cb(
+					ch_handle, &result, rw_req->ctxt);
+		else
+			sdio_ctxt->ch[rw_req->cid]->ch_data.ul_xfer_cb(
+					ch_handle, &result, rw_req->ctxt);
+
 		qcn_sdio_free_rw_req(rw_req);
 		spin_lock_bh(&sdio_ctxt->lock_wait_q);
 	}
 	spin_unlock_bh(&sdio_ctxt->lock_wait_q);
-	atomic_set(&sdio_ctxt->wait_list_count, 0);
 	/* wait for sdio complete work to finish */
 	flush_work(&sdio_ctxt->sdio_cmpl_w);
 }
@@ -1006,7 +1020,6 @@ static void qcn_sdio_cmpl_work(struct work_struct *work)
 			sdio_ctxt->ch[rw_req->cid]->ch_data.ul_xfer_cb(
 					ch_handle, &rw_req->result, rw_req->ctxt);
 		qcn_sdio_free_rw_req(rw_req);
-		atomic_dec(&sdio_ctxt->wait_list_count);
 	}
 }
 
