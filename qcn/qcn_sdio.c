@@ -1014,7 +1014,6 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 {
 	int ret = 0;
 	struct qcn_sdio_rw_info *rw_req = NULL;
-	static uint32_t seq=0;
 	uint32_t buf_num = 0;
 	uint8_t *tmp_d = NULL;
 
@@ -1044,10 +1043,9 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 				memcpy(tmp_d, rw_req->buf, copylen);
 				memset(tmp_d+copylen, TX_BUNDLE_PADDING, sdio_ctxt->tx_bundle_buf_size-copylen);
 				buf_num++;
-				if (!((buf_num + seq) % sdio_ctxt->tx_bundle_num)) {
+				if (!(buf_num % sdio_ctxt->tx_bundle_num)) {
 					ret = qcn_sdio_send_buff(rw_req->cid, sdio_ctxt->tx_bundle_buf,sdio_ctxt->tx_bundle_buf_size*buf_num);
 					buf_num = 0;
-					seq = 0;
 				}
 
 			} else {
@@ -1067,7 +1065,6 @@ static void qcn_sdio_rw_work(struct work_struct *work)
 	if (buf_num) {
 		memset(tmp_d+sdio_ctxt->tx_bundle_buf_size, TX_BUNDLE_PADDING, sdio_ctxt->tx_bundle_buf_size*(sdio_ctxt->tx_bundle_num - buf_num));
 		qcn_sdio_send_buff(QCN_SDIO_CH_2, sdio_ctxt->tx_bundle_buf, sdio_ctxt->tx_bundle_buf_size * buf_num);
-		seq += buf_num;
 	}
 }
 
