@@ -1389,6 +1389,7 @@ int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 	INIT_LIST_HEAD(&sdio_ctxt->rw_wait_q);
 	INIT_LIST_HEAD(&sdio_ctxt->rw_cmpl_q);
 
+	atomic_set(&sdio_ctxt->wait_list_count, QCN_SDIO_RW_REQ_MAX);
 	for (ret = 0; ret < QCN_SDIO_RW_REQ_MAX; ret++)
 		qcn_sdio_free_rw_req(&sdio_ctxt->rw_req_info[ret]);
 
