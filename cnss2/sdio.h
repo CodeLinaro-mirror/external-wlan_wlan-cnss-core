@@ -99,6 +99,10 @@ static inline void cnss_sdio_free_fw_mem(struct cnss_sdio_data *sdio_priv)
 {
 	/* no op */
 }
+int cnss_sdio_force_fw_assert_hdlr(struct cnss_sdio_data *cnss_info)
+{
+	return 0;
+}
 #endif
 
 #endif
