@@ -877,69 +877,81 @@ static void qcn_set_host_clock(unsigned int hz)
 	sdio_release_host(sdio_ctxt->func);
 }
 
+#ifdef SDIO_IRQ_LOOP
+#define MAX_SDIO_IRQ_LOOPS	16
+#else
+#define MAX_SDIO_IRQ_LOOPS	1
+#endif
+
 static void qcn_sdio_irq_handler(struct sdio_func *func)
 {
 	u8 data = 0;
 	int ret = 0;
+	int max_loops = MAX_SDIO_IRQ_LOOPS;
 
-	sdio_claim_host(sdio_ctxt->func);
-	data = sdio_readb(sdio_ctxt->func, SDIO_QCN_IRQ_STATUS, &ret);
-	if (ret) {
-		sdio_release_host(sdio_ctxt->func);
+	do {
+		sdio_claim_host(sdio_ctxt->func);
+		data = sdio_readb(sdio_ctxt->func, SDIO_QCN_IRQ_STATUS, &ret);
+		if (ret) {
+			sdio_release_host(sdio_ctxt->func);
 
-		pr_err("%s: IRQ status read error ret = %d\n", __func__, ret);
+			pr_err("%s: IRQ status read error ret = %d\n", __func__, ret);
 
-		if (current_host && current_host->ios.clock &&
-		    current_host->ios.clock > 100000000) {
-			pr_info("Try to reduce the frequency\n");
-			qcn_set_host_clock(50000000);
+			if (current_host && current_host->ios.clock &&
+			    current_host->ios.clock > 100000000) {
+				pr_info("Try to reduce the frequency\n");
+				qcn_set_host_clock(50000000);
+				return;
+			}
+
+			ret = qcn_sdio_reset();
+			if (ret)
+				pr_err("Failed to run qcn_sdio_reset thread\n");
+
 			return;
 		}
-
-		ret = qcn_sdio_reset();
-		if (ret)
-			pr_err("Failed to run qcn_sdio_reset thread\n");
-
-		return;
-	}
-	sdio_release_host(sdio_ctxt->func);
-
-	if (data & SDIO_QCN_IRQ_CRQ_READY_MASK) {
-		qcn_read_crq_info();
-	} else if (data & SDIO_QCN_IRQ_LOCAL_MASK) {
-		qcn_read_meta_info();
-	} else if (data & SDIO_QCN_IRQ_EN_SYS_ERR_MASK) {
-		sdio_claim_host(sdio_ctxt->func);
-		sdio_writeb(sdio_ctxt->func, (u8)SDIO_QCN_IRQ_CLR_SYS_ERR_MASK,
-				SDIO_QCN_IRQ_CLR, NULL);
 		sdio_release_host(sdio_ctxt->func);
-		pr_err("%s: sys_err interrupt triggered\n", __func__);
-	} else if (data & SDIO_QCN_IRQ_EN_UNDERFLOW_MASK) {
-		sdio_claim_host(sdio_ctxt->func);
-		sdio_writeb(sdio_ctxt->func,
-					(u8)SDIO_QCN_IRQ_CLR_UNDERFLOW_MASK,
+
+		if (!data)
+			break;
+
+		if (data & SDIO_QCN_IRQ_CRQ_READY_MASK) {
+			qcn_read_crq_info();
+		} else if (data & SDIO_QCN_IRQ_LOCAL_MASK) {
+			qcn_read_meta_info();
+		} else if (data & SDIO_QCN_IRQ_EN_SYS_ERR_MASK) {
+			sdio_claim_host(sdio_ctxt->func);
+			sdio_writeb(sdio_ctxt->func, (u8)SDIO_QCN_IRQ_CLR_SYS_ERR_MASK,
 					SDIO_QCN_IRQ_CLR, NULL);
-		sdio_release_host(sdio_ctxt->func);
-		pr_err("%s: underflow interrupt triggered\n", __func__);
-	} else if (data & SDIO_QCN_IRQ_EN_OVERFLOW_MASK) {
-		sdio_claim_host(sdio_ctxt->func);
-		sdio_writeb(sdio_ctxt->func, (u8)SDIO_QCN_IRQ_CLR_OVERFLOW_MASK,
-				SDIO_QCN_IRQ_CLR, NULL);
-		sdio_release_host(sdio_ctxt->func);
-		pr_err("%s: overflow interrupt triggered\n", __func__);
-	} else if (data & SDIO_QCN_IRQ_EN_CH_MISMATCH_MASK) {
-		sdio_claim_host(sdio_ctxt->func);
-		sdio_writeb(sdio_ctxt->func,
-					(u8)SDIO_QCN_IRQ_CLR_CH_MISMATCH_MASK,
+			sdio_release_host(sdio_ctxt->func);
+			pr_err("%s: sys_err interrupt triggered\n", __func__);
+		} else if (data & SDIO_QCN_IRQ_EN_UNDERFLOW_MASK) {
+			sdio_claim_host(sdio_ctxt->func);
+			sdio_writeb(sdio_ctxt->func,
+						(u8)SDIO_QCN_IRQ_CLR_UNDERFLOW_MASK,
+						SDIO_QCN_IRQ_CLR, NULL);
+			sdio_release_host(sdio_ctxt->func);
+			pr_err("%s: underflow interrupt triggered\n", __func__);
+		} else if (data & SDIO_QCN_IRQ_EN_OVERFLOW_MASK) {
+			sdio_claim_host(sdio_ctxt->func);
+			sdio_writeb(sdio_ctxt->func, (u8)SDIO_QCN_IRQ_CLR_OVERFLOW_MASK,
 					SDIO_QCN_IRQ_CLR, NULL);
-		sdio_release_host(sdio_ctxt->func);
-		pr_err("%s: channel mismatch interrupt triggered\n", __func__);
-	} else {
-		pr_err("%s: Unknown interrupt: 0x%02x\n", __func__, data);
-		sdio_claim_host(sdio_ctxt->func);
-		sdio_writeb(sdio_ctxt->func, (u8)data, SDIO_QCN_IRQ_CLR, NULL);
-		sdio_release_host(sdio_ctxt->func);
-	}
+			sdio_release_host(sdio_ctxt->func);
+			pr_err("%s: overflow interrupt triggered\n", __func__);
+		} else if (data & SDIO_QCN_IRQ_EN_CH_MISMATCH_MASK) {
+			sdio_claim_host(sdio_ctxt->func);
+			sdio_writeb(sdio_ctxt->func,
+						(u8)SDIO_QCN_IRQ_CLR_CH_MISMATCH_MASK,
+						SDIO_QCN_IRQ_CLR, NULL);
+			sdio_release_host(sdio_ctxt->func);
+			pr_err("%s: channel mismatch interrupt triggered\n", __func__);
+		} else {
+			pr_err("%s: Unknown interrupt: 0x%02x\n", __func__, data);
+			sdio_claim_host(sdio_ctxt->func);
+			sdio_writeb(sdio_ctxt->func, (u8)data, SDIO_QCN_IRQ_CLR, NULL);
+			sdio_release_host(sdio_ctxt->func);
+		}
+	} while (--max_loops > 0);
 }
 
 static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)

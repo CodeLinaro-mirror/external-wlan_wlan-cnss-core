@@ -48,6 +48,9 @@ endif
 ifeq ($(block_size_fix), 1)
 KBUILD_OPTIONS += CONFIG_BLOCK_SIZE_FIX=y
 endif
+ifeq ($(sdio_irq_loop), 1)
+KBUILD_OPTIONS += CONFIG_SDIO_IRQ_LOOP=y
+endif
 endif
 
 else #unified_driver 0
