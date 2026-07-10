@@ -734,6 +734,7 @@ static int cnss_fw_ready_hdlr(struct cnss_plat_data *plat_priv)
 	cnss_pr_err("%s %d  \n",__func__,__LINE__);
 	del_timer(&plat_priv->fw_boot_timer);
 	set_bit(CNSS_FW_READY, &plat_priv->driver_state);
+	clear_bit(CNSS_DEV_ERR_NOTIFY, &plat_priv->driver_state);
 
 	if (test_bit(CNSS_FW_BOOT_RECOVERY, &plat_priv->driver_state)) {
 		clear_bit(CNSS_FW_BOOT_RECOVERY, &plat_priv->driver_state);

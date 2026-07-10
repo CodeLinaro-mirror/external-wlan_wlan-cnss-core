@@ -299,8 +299,8 @@ int cnss_sdio_unregister_driver_hdlr(struct cnss_sdio_data *cnss_info)
 	if (qcn_rddm_is_processing()) {
 		pr_err("[%s:%d] rddm in processing, skip sdio card reset\n", __func__, __LINE__);
 	} else {
-		qcn_sdio_card_state(false);
-		sdio_reset = true;
+		if(!qcn_sdio_card_state(false))
+			sdio_reset = true;
 	}
 
 	cnss_power_off_device(plat_priv);
@@ -396,15 +396,6 @@ static int cnss_sdio_remove(struct sdio_al_client_handle *pal_cli_handle)
 
 	clear_bit(CNSS_FW_READY, &plat_priv->driver_state);
 	set_bit(CNSS_DEV_REMOVED, &plat_priv->driver_state);
-	if (sdio_info->ops &&
-	    test_bit(CNSS_DRIVER_PROBED, &plat_priv->driver_state)) {
-		cnss_pr_err("Triggering driver_ops remove\n");
-		sdio_info->ops->update_status(
-				sdio_info->al_client_handle->func,
-				CNSS_FW_DOWN);
-		sdio_info->ops->remove(sdio_info->al_client_handle->func);
-		clear_bit(CNSS_DRIVER_PROBED, &plat_priv->driver_state);
-	}
 
 	cnss_unregister_subsys(plat_priv);
 
@@ -433,6 +424,38 @@ static int cnss_sdio_pm(struct sdio_al_client_handle *pal_cli_handle,
 
 	return ret;
 }
+
+int cnss_sdio_notify_fw_down(struct sdio_al_client_handle *pal_cli_handle)
+{
+	struct cnss_sdio_data *sdio_info = pal_cli_handle->client_priv;
+	struct cnss_plat_data *plat_priv = sdio_info->plat_priv;
+
+	if (!sdio_info || !sdio_info->ops) {
+		cnss_pr_err("[%s:%d] ops is null\n", __func__, __LINE__);
+		return 0;
+	}
+
+	set_bit(CNSS_DEV_ERR_NOTIFY, &plat_priv->driver_state);
+
+	if (test_bit(CNSS_DRIVER_PROBED, &plat_priv->driver_state))
+		sdio_info->ops->update_status(sdio_info->al_client_handle->func,
+					      CNSS_FW_DOWN);
+
+	return 0;
+}
+
+int cnss_sdio_is_device_down(struct device *dev)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(NULL);
+
+	if (!plat_priv) {
+		cnss_pr_err("plat_priv is NULL\n");
+		return -ENODEV;
+	}
+
+	return test_bit(CNSS_DEV_ERR_NOTIFY, &plat_priv->driver_state);
+}
+EXPORT_SYMBOL(cnss_sdio_is_device_down);
 
 struct sdio_al_client_data al_cli_data = {
 	.name = "SDIO_AL_CLIENT_WLAN",

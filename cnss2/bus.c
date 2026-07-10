@@ -21,7 +21,7 @@ enum cnss_dev_bus_type cnss_get_dev_bus_type(struct device *dev)
 	if (!dev)
 		return CNSS_BUS_NONE;
 
-	if (!dev->bus)
+	if (!dev->bus || !dev->bus->name)
 		return CNSS_BUS_NONE;
 
 	if (memcmp(dev->bus->name, "pci", 3) == 0)

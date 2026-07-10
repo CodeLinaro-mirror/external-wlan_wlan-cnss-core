@@ -59,6 +59,15 @@ module_param(retune, bool, S_IRUGO | S_IWUSR | S_IWGRP);
 static int driver_state;
 module_param(driver_state, int, S_IRUGO | S_IRUSR | S_IRGRP);
 
+/*
+ * ssr_enable :
+ *	Gate for qcn_daemon.sh's automatic SSR recovery (rmmod/fw-dl/insmod).
+ *	Off by default; set via insmod ssr_enable=1 or
+ *	/sys/module/wlan_cnss_core_sdio/parameters/ssr_enable at runtime.
+ */
+static bool ssr_enable;
+module_param(ssr_enable, bool, S_IRUGO | S_IWUSR | S_IWGRP);
+
 static bool FW_RDDM = false;
 /* Maximum duration the system can remain in RDDM state */
 #define QCN_SDIO_SW_RDDM_TIMEOUT_MS (5000)
@@ -120,6 +129,7 @@ struct qcn_sdio {
 
 static struct qcn_sdio *sdio_ctxt;
 struct completion client_probe_complete;
+static bool client_probe_complete_flag;
 static struct mutex lock;
 static struct list_head cinfo_head;
 static atomic_t status;
@@ -477,7 +487,7 @@ static int save_fw_mem_to_file(void *buff, char *file_name, u32 total_size)
 			sizeof(file_full_path),
 			"/var/crash/%s",
 			file_name);
-	fp = filp_open(file_full_path, O_RDWR | O_CREAT | O_APPEND, 0644);
+	fp = filp_open(file_full_path, O_RDWR | O_CREAT | O_TRUNC, 0644);
 	if (IS_ERR(fp)) {
 		pr_err("create file:%s error\n",file_full_path);
 		return -EIO;
@@ -549,8 +559,18 @@ int qcn_channel_change(enum qcn_sdio_sw_mode mode)
 			continue;
 
 		if (cinfo->cli_handle.id != QCN_SDIO_CLI_ID_TTY &&
-		    mode != QCN_SDIO_SW_MROM)
-			continue;
+		    mode != QCN_SDIO_SW_MROM) {
+			/*
+			 * At PBL the new sdio_func is available after card reset.
+			 * Update func for WLAN so pld_sdio_remove receives the
+			 * correct new dev when rmmod is triggered at PBL.
+			 * Other clients (non-TTY, non-WLAN) skip as before.
+			 */
+			if (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_WLAN)
+				cinfo->cli_handle.func = sdio_ctxt->func;
+			else
+				continue;
+		}
 
 		qcn_send_meta_info((u8)QCN_SDIO_SW_MODE_HEVENT,
 				(u32)(mode | QCN_SDIO_MAJOR_VER
@@ -584,20 +604,19 @@ int switch_to_rddm_thread(void *data)
 	qcn_save_fw_memory_dump();
 	dump_htc_hdr_history();
 	qcn_channel_change(mode);
-
+	reinit_completion(&rddm_completion);
 	uevent[0] = envp[QCN_SDIO_SW_RDDM];
 	uevent[1] = NULL;
 	kobject_uevent_env(&sdio_ctxt->func->dev.kobj, KOBJ_CHANGE, uevent);
 	//wait rddm exit
-	reinit_completion(&rddm_completion);
 	if (!wait_for_completion_timeout(&rddm_completion,
 					 msecs_to_jiffies(QCN_SDIO_SW_RDDM_TIMEOUT_MS)))
 		pr_err("[%s:%d] RDDM completion timeout!\n",
 		       __func__, __LINE__);
 	// if rddm mode not change, the driver should reset sdio
 	if(sdio_ctxt->curr_sw_mode == QCN_SDIO_SW_RDDM) {
-		qcn_sdio_card_state(false);
-		qcn_sdio_card_state(true);
+		if(!qcn_sdio_card_state(false))
+			qcn_sdio_card_state(true);
 	}
 	return 0;
 }
@@ -610,7 +629,16 @@ EXPORT_SYMBOL(qcn_rddm_is_processing);
 
 static int qcn_sdio_rddm_handler(void)
 {
+	struct qcn_sdio_client_info *cinfo = NULL;
 	int ret = -1;
+
+	list_for_each_entry(cinfo, &cinfo_head, cli_list) {
+		if (cinfo->cli_handle.id == QCN_SDIO_CLI_ID_WLAN &&
+		    cinfo->is_probed) {
+			cnss_sdio_notify_fw_down(&cinfo->cli_handle);
+			break;
+		}
+	}
 
 	switch_rddm_task = kthread_run(switch_to_rddm_thread, NULL,
 				       "qcn_sdio_rddm_handler");
@@ -661,12 +689,15 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 		qcn_channel_change(mode);
 		break;
 	case QCN_SDIO_SW_RESET:
-		//Reached after RDDM
+		/* Reached after RDDM */
 		complete(&rddm_completion);
-		ret = wait_for_completion_timeout(&client_probe_complete,
-							msecs_to_jiffies(3000));
-		if (!ret)
-			pr_err("Timeout waiting for clients\n");
+		if (!client_probe_complete_flag) {
+			client_probe_complete_flag = true;
+			ret = wait_for_completion_timeout(&client_probe_complete,
+								msecs_to_jiffies(3000));
+			if (!ret)
+				pr_err("Timeout waiting for clients\n");
+		}
 		qcn_channel_change(mode);
 		break;
 	case QCN_SDIO_SW_MROM:
@@ -755,9 +786,9 @@ static int qcn_read_meta_info(void)
 int reset_thread(void *data)
 {
 	qcn_sdio_purge_rw_buff();
-	qcn_sdio_card_state(false);
-	qcn_sdio_card_state(true);
-	kthread_stop(reset_task);
+	if(!qcn_sdio_card_state(false))
+		qcn_sdio_card_state(true);
+	/* Safe to drop reference here; kthread_stop(reset_task) not needed */
 	reset_task = NULL;
 
 	return 0;
@@ -1826,6 +1857,12 @@ int sdio_al_queue_transfer(struct sdio_al_channel_handle *ch_handle,
 	if (IS_TX_INVALID(ch_handle->channel_id, dir))
 		return -EINVAL;
 
+	/*
+	 * DEAD CODE: This branch condition is logically contradictory and
+	 * can never be true in practice.
+	 *
+	 * Condition: rw_wait_q is NOT empty  AND  wait_list_count == 0
+	 */
 	if (dir == SDIO_AL_RX && !list_empty(&sdio_ctxt->rw_wait_q) &&
 				!atomic_read(&sdio_ctxt->wait_list_count)) {
 		sdio_al_queue_transfer_async(ch_handle, dir, buf, len, true,
@@ -1924,9 +1961,14 @@ int qcn_sdio_card_state(bool enable)
 			pr_err("QCN: Ignore add mmc host call");
 		if (ret)
 			pr_err("%s ret = %d\n", __func__, ret);
-	} else if (atomic_read(&xport_status)) {
-		mmc_remove_host(current_host);
-		pr_err("QCN: Removed mmc host");
+	} else {
+		if (atomic_read(&xport_status)) {
+			mmc_remove_host(current_host);
+			pr_err("QCN: Removed mmc host");
+		}else{
+			ret = -EINVAL;
+			pr_err("QCN: Can't remove mmc host\n");
+		}
 	}
 	mmc_release_host(current_host);
 

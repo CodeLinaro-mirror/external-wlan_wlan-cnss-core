@@ -304,4 +304,5 @@ extern void qcn_sdio_client_probe_complete(int id);
 int qcn_sdio_card_state(bool enable);
 int qcn_sdio_inject_sys_err_handle(struct device *dev);
 bool qcn_rddm_is_processing(void);
+int cnss_sdio_notify_fw_down(struct sdio_al_client_handle *pal_cli_handle);
 #endif /* _QCN_SDIO_AL_ */
