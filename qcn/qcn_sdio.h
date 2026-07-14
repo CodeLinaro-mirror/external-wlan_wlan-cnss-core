@@ -26,7 +26,7 @@
 #else
 #define QCN_SDIO_MROM_BLK_SZ		(512)
 #endif
-#define QCN_SDIO_RW_REQ_MAX		(128)
+#define QCN_SDIO_RW_REQ_MAX		(256)
 
 #define QCN_SDIO_DMA0_RX_CNUM		(0x4)
 #define QCN_SDIO_DMA0_TX_CNUM		(0xC)
