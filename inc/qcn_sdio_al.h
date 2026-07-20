@@ -230,18 +230,12 @@ struct sdio_al_channel_handle *sdio_al_register_channel(
 void sdio_al_deregister_channel(struct sdio_al_channel_handle *ch_handle);
 
 /**
- * register_tx_bundle_buf - register the tx bundle buf
- * The tx bundle buf size and number is configured from ini.
- * It will also be notify to target to let target prepare the receive buf
- *
- * @buf: Data buffer
- *
- * @bundle_num: tx bundle number
+ * register_tx_bundle_size - register the tx bundle size
  *
  * @bundle_buf_size: tx bundle buffer size
  * @return none
  */
-void register_tx_bundle_buf(void *buf, uint32_t bundle_num, int bundle_buf_size);
+void register_tx_bundle_size(int bundle_buf_size);
 
 /**
  * sdio_al_queue_transfer_async - Queue asynchronous data transfer request
