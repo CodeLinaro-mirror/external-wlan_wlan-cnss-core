@@ -826,11 +826,15 @@ static void qcn_set_host_clock(unsigned int hz)
 #define MAX_SDIO_IRQ_LOOPS	1
 #endif
 
+static int irq_max_loops = MAX_SDIO_IRQ_LOOPS;
+module_param(irq_max_loops, int, S_IRUGO | S_IWUSR | S_IWGRP);
+MODULE_PARM_DESC(irq_max_loops, "Max IRQ handler loop count (1-16, default MAX_SDIO_IRQ_LOOPS)");
+
 static void qcn_sdio_irq_handler(struct sdio_func *func)
 {
 	u8 data = 0;
 	int ret = 0;
-	int max_loops = MAX_SDIO_IRQ_LOOPS;
+	int max_loops = clamp(irq_max_loops, 1, 16);
 
 	do {
 		sdio_claim_host(sdio_ctxt->func);
