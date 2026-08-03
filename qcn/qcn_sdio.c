@@ -359,10 +359,9 @@ static int qcn_send_meta_info(u8 event, u32 data)
 	return ret;
 }
 
-static int qcn_read_crq_info(void)
+static int qcn_read_crq_info(const u8 *crq)
 {
 	int ret = 0;
-	u32 i = 0;
 	u32 temp = 0;
 	u32 data = 0;
 	u32 len = 0;
@@ -370,21 +369,7 @@ static int qcn_read_crq_info(void)
 
 	struct sdio_al_channel_handle *ch_handle = NULL;
 
-	sdio_claim_host(sdio_ctxt->func);
-	if (sdio_ctxt->curr_sw_mode < QCN_SDIO_SW_SBL) {
-		for (i = 0; i < 4; i++) {
-			temp = sdio_readb(sdio_ctxt->func,
-						(SDIO_QCN_CRQ_PULL + i), &ret);
-			temp = temp << (i * 8);
-			data |= temp;
-		}
-	} else {
-		data = sdio_readl(sdio_ctxt->func, SDIO_QCN_CRQ_PULL, &ret);
-	}
-
-	sdio_release_host(sdio_ctxt->func);
-	if (ret)
-		return ret;
+	data = get_unaligned_le32(crq);
 
 	if (data & SDIO_QCN_CRQ_PULL_TRANS_MASK) {
 		cid = (u8)(data & SDIO_QCN_CRQ_PULL_CH_NUM_MASK);
@@ -830,15 +815,19 @@ static int irq_max_loops = MAX_SDIO_IRQ_LOOPS;
 module_param(irq_max_loops, int, S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(irq_max_loops, "Max IRQ handler loop count (1-16, default MAX_SDIO_IRQ_LOOPS)");
 
+#define IRQ_STATUS_LEN	(SDIO_QCN_CRQ_PULL - SDIO_QCN_IRQ_STATUS + 4)
+#define CRQ_OFFSET	(SDIO_QCN_CRQ_PULL - SDIO_QCN_IRQ_STATUS)
+
 static void qcn_sdio_irq_handler(struct sdio_func *func)
 {
-	u8 data = 0;
+	u8 buf[IRQ_STATUS_LEN];
 	int ret = 0;
 	int max_loops = clamp(irq_max_loops, 1, 16);
 
 	do {
 		sdio_claim_host(sdio_ctxt->func);
-		data = sdio_readb(sdio_ctxt->func, SDIO_QCN_IRQ_STATUS, &ret);
+		ret = sdio_memcpy_fromio(sdio_ctxt->func, buf,
+					 SDIO_QCN_IRQ_STATUS, sizeof(buf));
 		if (ret) {
 			sdio_release_host(sdio_ctxt->func);
 
@@ -859,33 +848,33 @@ static void qcn_sdio_irq_handler(struct sdio_func *func)
 		}
 		sdio_release_host(sdio_ctxt->func);
 
-		if (!data)
+		if (!buf[0])
 			break;
 
-		if (data & SDIO_QCN_IRQ_CRQ_READY_MASK) {
-			qcn_read_crq_info();
-		} else if (data & SDIO_QCN_IRQ_LOCAL_MASK) {
+		if (buf[0] & SDIO_QCN_IRQ_CRQ_READY_MASK) {
+			qcn_read_crq_info(&buf[CRQ_OFFSET]);
+		} else if (buf[0] & SDIO_QCN_IRQ_LOCAL_MASK) {
 			qcn_read_meta_info();
-		} else if (data & SDIO_QCN_IRQ_EN_SYS_ERR_MASK) {
+		} else if (buf[0] & SDIO_QCN_IRQ_EN_SYS_ERR_MASK) {
 			sdio_claim_host(sdio_ctxt->func);
 			sdio_writeb(sdio_ctxt->func, (u8)SDIO_QCN_IRQ_CLR_SYS_ERR_MASK,
 					SDIO_QCN_IRQ_CLR, NULL);
 			sdio_release_host(sdio_ctxt->func);
 			pr_err("%s: sys_err interrupt triggered\n", __func__);
-		} else if (data & SDIO_QCN_IRQ_EN_UNDERFLOW_MASK) {
+		} else if (buf[0] & SDIO_QCN_IRQ_EN_UNDERFLOW_MASK) {
 			sdio_claim_host(sdio_ctxt->func);
 			sdio_writeb(sdio_ctxt->func,
 						(u8)SDIO_QCN_IRQ_CLR_UNDERFLOW_MASK,
 						SDIO_QCN_IRQ_CLR, NULL);
 			sdio_release_host(sdio_ctxt->func);
 			pr_err("%s: underflow interrupt triggered\n", __func__);
-		} else if (data & SDIO_QCN_IRQ_EN_OVERFLOW_MASK) {
+		} else if (buf[0] & SDIO_QCN_IRQ_EN_OVERFLOW_MASK) {
 			sdio_claim_host(sdio_ctxt->func);
 			sdio_writeb(sdio_ctxt->func, (u8)SDIO_QCN_IRQ_CLR_OVERFLOW_MASK,
 					SDIO_QCN_IRQ_CLR, NULL);
 			sdio_release_host(sdio_ctxt->func);
 			pr_err("%s: overflow interrupt triggered\n", __func__);
-		} else if (data & SDIO_QCN_IRQ_EN_CH_MISMATCH_MASK) {
+		} else if (buf[0] & SDIO_QCN_IRQ_EN_CH_MISMATCH_MASK) {
 			sdio_claim_host(sdio_ctxt->func);
 			sdio_writeb(sdio_ctxt->func,
 						(u8)SDIO_QCN_IRQ_CLR_CH_MISMATCH_MASK,
@@ -893,9 +882,9 @@ static void qcn_sdio_irq_handler(struct sdio_func *func)
 			sdio_release_host(sdio_ctxt->func);
 			pr_err("%s: channel mismatch interrupt triggered\n", __func__);
 		} else {
-			pr_err("%s: Unknown interrupt: 0x%02x\n", __func__, data);
+			pr_err("%s: Unknown interrupt: 0x%02x\n", __func__, buf[0]);
 			sdio_claim_host(sdio_ctxt->func);
-			sdio_writeb(sdio_ctxt->func, (u8)data, SDIO_QCN_IRQ_CLR, NULL);
+			sdio_writeb(sdio_ctxt->func, buf[0], SDIO_QCN_IRQ_CLR, NULL);
 			sdio_release_host(sdio_ctxt->func);
 		}
 	} while (--max_loops > 0);
