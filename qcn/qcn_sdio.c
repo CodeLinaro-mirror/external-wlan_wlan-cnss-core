@@ -805,13 +805,7 @@ static void qcn_set_host_clock(unsigned int hz)
 	sdio_release_host(sdio_ctxt->func);
 }
 
-#ifdef SDIO_IRQ_LOOP
-#define MAX_SDIO_IRQ_LOOPS	16
-#else
-#define MAX_SDIO_IRQ_LOOPS	1
-#endif
-
-static int irq_max_loops = MAX_SDIO_IRQ_LOOPS;
+static int irq_max_loops = 1;
 module_param(irq_max_loops, int, S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(irq_max_loops, "Max IRQ handler loop count (1-16, default MAX_SDIO_IRQ_LOOPS)");
 
