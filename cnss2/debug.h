@@ -17,6 +17,7 @@
 #include <linux/ipc_logging.h>
 #endif
 #include <linux/printk.h>
+#include "cnss2/main.h"
 
 extern void *cnss_ipc_log_context;
 

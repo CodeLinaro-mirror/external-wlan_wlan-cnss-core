@@ -69,6 +69,8 @@ struct sdio_al_xfer_result {
 enum sdio_al_lpm_event {
 	LPM_ENTER, /* SDIO client will be put to LPM mode soon */
 	LPM_EXIT,  /* SDIO client has exited LPM mode */
+	LPM_RUNTIME_SUSPEND,
+	LPM_RUNTIME_RESUME,
 };
 
 /**

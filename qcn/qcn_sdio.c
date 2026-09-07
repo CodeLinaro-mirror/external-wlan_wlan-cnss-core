@@ -30,12 +30,15 @@
 #include <linux/of_irq.h>
 #include <linux/interrupt.h>
 #include <linux/version.h>
+#include <linux/pm_runtime.h>
 #include "qcn_sdio.h"
 #ifdef CONFIG_WLAN_CNSS_CORE
 #include "unified_wlan_cnsscore.h"
 #endif
 
 #include "cnss2/main.h"
+#include "cnss2/debug.h"
+#include "oob_wake.h"
 
 static bool tx_dump;
 module_param(tx_dump, bool, S_IRUGO | S_IWUSR | S_IWGRP);
@@ -74,11 +77,16 @@ static bool FW_RDDM = false;
 #define QCN_SDIO_SW_RDDM_TIMEOUT_MS (5000)
 static DECLARE_COMPLETION(rddm_completion);
 
+static atomic_t rpm_in_own_transition = ATOMIC_INIT(0);
+static atomic_t rpm_suspended = ATOMIC_INIT(0);
+
 int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode);
 int qcn_channel_change(enum qcn_sdio_sw_mode mode);
 int reset_thread(void *data);
 int switch_to_rddm_thread(void *data);
 static void qcn_set_host_clock(unsigned int hz);
+void qcn_set_rpm_suspended(int val);
+int qcn_get_rpm_suspended(void);
 
 static struct mmc_host *current_host;
 
@@ -224,6 +232,16 @@ char *envp[QCN_SDIO_SW_MAX] = {
 #define	SDIO_BLOCKSZ_MASK	0x1FF
 #define	SDIO_DATA_MASK		0xFF
 
+
+void qcn_set_rpm_suspended(int val)
+{
+	atomic_set(&rpm_suspended, val);
+}
+
+int qcn_get_rpm_suspended(void)
+{
+	return atomic_read(&rpm_suspended);
+}
 
 static inline
 void qcn_sdio_set_cmd53_arg(u32 *arg, u8 rw, u8 func, u8 mode, u8 opcode,
@@ -382,6 +400,50 @@ static int qcn_send_io_abort(void)
 	return ret;
 }
 
+/**
+ * qcn_sdio_rpm_get() - Resume the SDIO func device before accessing it
+ *
+ * Wraps pm_runtime_get_sync() so every SDIO access site shares the same
+ * error-logging behavior. The usage count is incremented even on failure,
+ * so callers must always pair this with qcn_sdio_rpm_put().
+ *
+ * Runtime PM for this device is enabled by HIF (hif_rtpm_init(), via
+ * hif_rtpm_start()), not by this driver, and that only happens once WLAN
+ * bring-up reaches that point (and may never happen at all, e.g. ini
+ * "gRuntimePM"=0 or single-MSI mode). Until/unless it does,
+ * pm_runtime_get_sync() returns -EACCES here, which is expected and not
+ * logged; any other negative return is unexpected and logged.
+ */
+static void qcn_sdio_rpm_get(void)
+{
+	int ret = 0;
+
+	if (atomic_read(&rpm_in_own_transition)) {
+		pm_runtime_get_noresume(&sdio_ctxt->func->dev);
+	} else {
+		ret = pm_runtime_get_sync(&sdio_ctxt->func->dev);
+	}
+
+	if (ret < 0 && ret != -EACCES)
+		pr_warn("%s: pm_runtime_get_sync failed, ret=%d\n",
+			__func__, ret);
+}
+
+/**
+ * qcn_sdio_rpm_put() - Allow the SDIO func device to autosuspend
+ */
+static void qcn_sdio_rpm_put(void)
+{
+	int ret;
+	if (atomic_read(&rpm_in_own_transition)) {
+		pm_runtime_put_noidle(&sdio_ctxt->func->dev);
+	} else {
+		pm_runtime_mark_last_busy(&sdio_ctxt->func->dev);
+		ret = pm_runtime_put_autosuspend(&sdio_ctxt->func->dev);
+	}
+}
+
+
 static int qcn_send_meta_info(u8 event, u32 data)
 {
 	int ret = 0;
@@ -391,6 +453,7 @@ static int qcn_send_meta_info(u8 event, u32 data)
 
 	value =	META_INFO(event, data);
 
+	qcn_sdio_rpm_get();
 	sdio_claim_host(sdio_ctxt->func);
 	if (sdio_ctxt->curr_sw_mode < QCN_SDIO_SW_SBL) {
 		for (i = 0; i < 4; i++) {
@@ -403,6 +466,7 @@ static int qcn_send_meta_info(u8 event, u32 data)
 	}
 
 	sdio_release_host(sdio_ctxt->func);
+	qcn_sdio_rpm_put();
 
 	return ret;
 }
@@ -459,6 +523,8 @@ static int qcn_sdio_config(struct qcn_sdio_client_info *cinfo)
 	int ret = 0;
 	u32 data = 0;
 
+	qcn_sdio_rpm_get();
+
 	sdio_claim_host(sdio_ctxt->func);
 	ret = sdio_set_block_size(sdio_ctxt->func,
 				  cinfo->cli_handle.block_size);
@@ -506,6 +572,7 @@ static int qcn_sdio_config(struct qcn_sdio_client_info *cinfo)
 #endif
 	ret = qcn_send_meta_info(QCN_SDIO_BLK_SZ_HEVENT, data);
 err:
+	qcn_sdio_rpm_put();
 	return ret;
 }
 
@@ -635,9 +702,11 @@ static int qcn_sdio_read_oob_ready(bool *ready)
 	int ret;
 	u32 value;
 
+	qcn_sdio_rpm_get();
 	sdio_claim_host(sdio_ctxt->func);
 	value = sdio_readl(sdio_ctxt->func, SDIO_QCN_CLIENT_TRANS_REG0, &ret);
 	sdio_release_host(sdio_ctxt->func);
+	qcn_sdio_rpm_put();
 
 	if (ret)
 		return ret;
@@ -652,10 +721,12 @@ static int qcn_sdio_write_oob_en(bool enable)
 	int ret;
 	u8 config;
 
+	qcn_sdio_rpm_get();
 	sdio_claim_host(sdio_ctxt->func);
 	config = sdio_readb(sdio_ctxt->func, SDIO_QCN_CONFIG, &ret);
 	if (ret) {
 		sdio_release_host(sdio_ctxt->func);
+		qcn_sdio_rpm_put();
 		return ret;
 	}
 
@@ -666,6 +737,7 @@ static int qcn_sdio_write_oob_en(bool enable)
 
 	sdio_writeb(sdio_ctxt->func, config, SDIO_QCN_CONFIG, &ret);
 	sdio_release_host(sdio_ctxt->func);
+	qcn_sdio_rpm_put();
 
 	return ret;
 }
@@ -924,6 +996,8 @@ static int qcn_read_meta_info(void)
 	u32 data = 0;
 	u32 temp = 0;
 
+	qcn_sdio_rpm_get();
+
 	sdio_claim_host(sdio_ctxt->func);
 
 	if (sdio_ctxt->curr_sw_mode < QCN_SDIO_SW_SBL) {
@@ -941,6 +1015,8 @@ static int qcn_read_meta_info(void)
 		    SDIO_QCN_IRQ_CLR, NULL);
 
 	sdio_release_host(sdio_ctxt->func);
+
+	qcn_sdio_rpm_put();
 
 	if (ret)
 		return ret;
@@ -1015,11 +1091,13 @@ static void qcn_set_host_clock(unsigned int hz)
 		return;
 
 	pr_info("%s: %u hz", __func__, hz);
+	qcn_sdio_rpm_get();
 	sdio_claim_host(sdio_ctxt->func);
 	current_host->ios.clock = hz;
 	if (current_host->ops->set_ios)
 		current_host->ops->set_ios(current_host, &current_host->ios);
 	sdio_release_host(sdio_ctxt->func);
+	qcn_sdio_rpm_put();
 }
 
 static int irq_max_loops = 1;
@@ -1034,6 +1112,8 @@ static void qcn_sdio_irq_service(void)
 	u8 buf[IRQ_STATUS_LEN];
 	int ret = 0;
 	int max_loops = clamp(irq_max_loops, 1, 16);
+
+	qcn_sdio_rpm_get();
 
 	do {
 		sdio_claim_host(sdio_ctxt->func);
@@ -1062,6 +1142,7 @@ static void qcn_sdio_irq_service(void)
 			    current_host->ios.clock > 100000000) {
 				pr_info("Try to reduce the frequency\n");
 				qcn_set_host_clock(50000000);
+				qcn_sdio_rpm_put();
 				return;
 			}
 
@@ -1069,6 +1150,7 @@ static void qcn_sdio_irq_service(void)
 			if (ret)
 				pr_err("Failed to run qcn_sdio_reset thread\n");
 
+			qcn_sdio_rpm_put();
 			return;
 		}
 		sdio_release_host(sdio_ctxt->func);
@@ -1113,6 +1195,9 @@ static void qcn_sdio_irq_service(void)
 			sdio_release_host(sdio_ctxt->func);
 		}
 	} while (--max_loops > 0);
+
+	qcn_sdio_rpm_put();
+
 }
 
 #ifdef CONFIG_QCN_SDIO_OOB_IRQ
@@ -1171,6 +1256,8 @@ static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 	if (cid != QCN_SDIO_CH_0 && FW_RDDM)
 		return -EINVAL;
 
+	qcn_sdio_rpm_get();
+
 	sdio_claim_host(sdio_ctxt->func);
 	ret = sdio_writesb(sdio_ctxt->func,
 			(sdio_ctxt->tx_addr_base + (cid * (u32)4)), buff, len);
@@ -1195,6 +1282,7 @@ static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 	}
 
 	sdio_release_host(sdio_ctxt->func);
+	qcn_sdio_rpm_put();
 
 	return ret;
 }
@@ -1202,6 +1290,8 @@ static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 static int qcn_sdio_recv_buff(u32 cid, void *buff, size_t len)
 {
 	int ret = 0;
+
+	qcn_sdio_rpm_get();
 
 	sdio_claim_host(sdio_ctxt->func);
 	ret = sdio_readsb(sdio_ctxt->func, buff,
@@ -1211,6 +1301,7 @@ static int qcn_sdio_recv_buff(u32 cid, void *buff, size_t len)
 		qcn_send_io_abort();
 
 	sdio_release_host(sdio_ctxt->func);
+	qcn_sdio_rpm_put();
 
 	return ret;
 }
@@ -1295,33 +1386,11 @@ static int qcn_sdio_lpm_notify_client(enum sdio_al_lpm_event event)
 	return ret;
 }
 
-static int qcn_sdio_suspend(struct device *dev)
+static int qcn_sdio_suspend_bus(struct device *dev)
 {
 	struct sdio_func *func = dev_to_sdio_func(dev);
 	u8 value = 0;
-	int ret = 0, suspended;
-
-	if (sdio_ctxt->low_power_disabled) {
-		pr_err("Low power has been disabled\n");
-		return 0;
-	}
-
-	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 0, 1);
-	if (suspended) {
-		pr_info("Already suspended\n");
-		return 0;
-	}
-
-	dev_info(dev, "Notify client to suspend");
-	ret = qcn_sdio_lpm_notify_client(LPM_ENTER);
-	if (ret) {
-		dev_err(dev, "Client failed to suspend: %d", ret);
-		atomic_set(&sdio_ctxt->suspended, 0);
-		return ret;
-	}
-
-	pr_info("%s: func %d curr_sw_mode=%d\n", __func__,
-		func->num, sdio_ctxt->curr_sw_mode);
+	int ret = 0;
 
 	sdio_claim_host(func);
 	value = sdio_readb(func, SDIO_QCN_LOW_PWR, &ret);
@@ -1346,6 +1415,37 @@ static int qcn_sdio_suspend(struct device *dev)
 
 out:
 	sdio_release_host(func);
+	return ret;
+}
+
+static int qcn_sdio_suspend(struct device *dev)
+{
+	struct sdio_func *func = dev_to_sdio_func(dev);
+	int ret = 0, suspended;
+
+	if (sdio_ctxt->low_power_disabled) {
+		pr_err("Low power has been disabled\n");
+		return 0;
+	}
+
+	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 0, 1);
+	if (suspended) {
+		pr_info("Already suspended\n");
+		return 0;
+	}
+
+	dev_info(dev, "Notify client to suspend");
+	ret = qcn_sdio_lpm_notify_client(LPM_ENTER);
+	if (ret) {
+		dev_err(dev, "Client failed to suspend: %d", ret);
+		atomic_set(&sdio_ctxt->suspended, 0);
+		return ret;
+	}
+
+	pr_info("%s: func %d curr_sw_mode=%d\n", __func__,
+		func->num, sdio_ctxt->curr_sw_mode);
+
+	ret = qcn_sdio_suspend_bus(dev);
 
 	dev_info(dev, "suspend exit with ret %d", ret);
 	return ret;
@@ -1368,12 +1468,115 @@ static int qcn_sdio_resume(struct device *dev)
 
 	qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT, (u32)0);
 
-	dev_info(dev, "Notify client to resume");
+	cnss_pr_dbg("Notify client to resume");
 	if ((ret = qcn_sdio_lpm_notify_client(LPM_EXIT)) != 0)
 		dev_err(dev, "Client failed to resume: %d", ret);
 
-	dev_info(dev, "resume exit\n");
+	cnss_pr_dbg("resume exit\n");
 	return ret;
+}
+
+int cnss_auto_suspend(struct device *dev)
+{
+	int ret = 0;
+	
+	ret = qcn_sdio_suspend_bus(dev);
+	qcn_set_rpm_suspended(1);
+
+	return ret;
+}
+EXPORT_SYMBOL(cnss_auto_suspend);
+
+static int qcn_sdio_runtime_suspend(struct device *dev)
+{
+	struct sdio_func *func = dev_to_sdio_func(dev);
+	int ret = 0, suspended;
+
+	if (sdio_ctxt->low_power_disabled) {
+		pr_err("Low power has been disabled\n");
+		return 0;
+	}
+
+	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 0, 1);
+	if (suspended) {
+		pr_info("Already suspended\n");
+		return 0;
+	}
+
+	cnss_pr_dbg("Notify client to runtime suspend");
+	atomic_set(&rpm_in_own_transition, 1);
+	ret = qcn_sdio_lpm_notify_client(LPM_RUNTIME_SUSPEND);
+	if (ret) {
+		dev_err(dev, "Client failed to runtime suspend: %d", ret);
+		ret = -EBUSY;
+		goto fail;
+	}
+	atomic_set(&rpm_in_own_transition, 0);
+
+	cnss_pr_dbg("%s: func %d curr_sw_mode=%d\n", __func__,
+		func->num, sdio_ctxt->curr_sw_mode);
+
+	qcn_enable_gpio_wakeup_irq();
+	cnss_pr_dbg("runtime suspend done with ret %d", ret);
+	return ret;
+fail:
+	atomic_set(&sdio_ctxt->suspended, 0);
+	atomic_set(&rpm_in_own_transition, 0);
+	return ret;
+}
+
+int cnss_auto_resume(struct device *dev)
+{
+	qcn_set_rpm_suspended(0);
+	return 0;
+}
+EXPORT_SYMBOL(cnss_auto_resume);
+
+/* extern void cnss2_gpio_rtpm_enable_wakeup(void); */
+static int qcn_sdio_runtime_resume(struct device *dev)
+{
+	int ret = 0, suspended;
+
+	if (sdio_ctxt->low_power_disabled) {
+		pr_err("Low power has been disabled\n");
+		return 0;
+	}
+
+	suspended = atomic_cmpxchg(&sdio_ctxt->suspended, 1, 0);
+	if (!suspended) {
+		pr_info("Already resumed\n");
+		return 0;
+	}
+
+	atomic_set(&rpm_in_own_transition, 1);
+	ret = qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT, (u32)0);
+	if (ret) {
+		pr_err("%s: ret = %d\n", __func__, ret);
+	}
+
+	if ((ret = qcn_sdio_lpm_notify_client(LPM_RUNTIME_RESUME)) != 0) {
+		dev_err(dev, "Client failed to resume: %d", ret);
+		ret = -EBUSY;
+		goto fail;
+	}
+	atomic_set(&rpm_in_own_transition, 0);
+
+	cnss_auto_resume(dev);
+	cnss_pr_dbg("runtime resume done with ret = %d\n", ret);
+	return ret;
+fail:
+	atomic_set(&sdio_ctxt->suspended, 1);
+	atomic_set(&rpm_in_own_transition, 0);
+	return ret;
+}
+
+static int qcn_sdio_runtime_idle(struct device *dev)
+{
+	dev_dbg(dev, "Runtime idle\n");
+
+	pm_request_autosuspend(dev);
+
+	return -EBUSY;
 }
 
 static int qcn_sdio_lpm_set(struct qcn_sdio *sdio_ctxt, bool enable)
@@ -1389,6 +1592,21 @@ static inline int qcn_sdio_suspend(struct device *dev)
 }
 
 static inline int qcn_sdio_resume(struct device *dev)
+{
+	return -ENOTSUPP;
+}
+
+static inline int qcn_sdio_runtime_suspend(struct device *dev)
+{
+	return -ENOTSUPP;
+}
+
+static inline int qcn_sdio_runtime_resume(struct device *dev)
+{
+	return -ENOTSUPP;
+}
+
+static inline int qcn_sdio_runtime_idle(struct device *dev)
 {
 	return -ENOTSUPP;
 }
@@ -1410,9 +1628,13 @@ static int qcn_sdio_inject_sys_err(struct device *dev)
 
 	value = META_INFO(QCN_SDIO_SYS_ERR_HEVENT, (u32)0);
 
+	qcn_sdio_rpm_get();
+
 	sdio_claim_host(func);
 	sdio_writel(func, value, SDIO_QCN_HRQ_PUSH, &ret);
 	sdio_release_host(func);
+
+	qcn_sdio_rpm_put();
 
 	pr_info("%s: exit with ret %d\n", __func__, ret);
 	return ret;
@@ -1778,6 +2000,8 @@ static void qcn_sdio_remove(struct sdio_func *func)
 	struct qcn_sdio_client_info *cinfo = NULL;
 	struct qcn_sdio_ch_info *ch_info = NULL;
 
+	pm_runtime_get_sync(&func->dev);
+
 	qcn_sdio_debugfs_destroy(sdio_ctxt);
 	atomic_set(&xport_status, 0);
 
@@ -1811,6 +2035,7 @@ static void qcn_sdio_remove(struct sdio_func *func)
 	mutex_unlock(&lock);
 
 	qcn_sdio_ctxt_free();
+	pm_runtime_put(&func->dev);
 	mmc_retune_enable(current_host);
 }
 
@@ -1826,6 +2051,8 @@ MODULE_DEVICE_TABLE(sdio, qcn_sdio_devices);
 static const struct dev_pm_ops qcn_sdio_pm_ops = {
     .suspend = qcn_sdio_suspend,
     .resume = qcn_sdio_resume,
+    SET_RUNTIME_PM_OPS(qcn_sdio_runtime_suspend, qcn_sdio_runtime_resume,
+			   qcn_sdio_runtime_idle)
 };
 #endif
 

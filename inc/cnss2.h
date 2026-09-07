@@ -147,6 +147,10 @@ struct cnss_usb_wlan_driver {
 	const struct usb_device_id *id_table;
 };
 
+struct cnss_wlan_sdio_runtime_ops {
+	int (*runtime_suspend)(struct device *dev);
+	int (*runtime_resume)(struct device *dev);
+};
 struct cnss_sdio_wlan_driver {
 	const char *name;
 	const struct sdio_device_id *id_table;
@@ -158,6 +162,7 @@ struct cnss_sdio_wlan_driver {
 	int (*suspend)(struct device *);
 	int (*resume)(struct device *);
 	void (*update_status)(struct sdio_func *, uint32_t status);
+	struct cnss_wlan_sdio_runtime_ops *runtime_ops;
 };
 
 struct cnss_ce_tgt_pipe_cfg {

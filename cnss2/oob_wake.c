@@ -29,17 +29,39 @@
 #include <linux/of_irq.h>
 #endif
 #include "oob_wake.h"
+#include <linux/pm_runtime.h>
+#include "cnss2/debug.h"
 
 #if defined(WLAN_GPIO_WAKEUP_LEGACY) || defined(WLAN_GPIO_WAKEUP_GPIOD) || \
     defined(WLAN_GPIO_WAKEUP_OF_IRQ)
 
 static int gpio_wakeup_irq = -1;
 static struct gpio_wakeup_cfg gpio_cfg;
+static atomic_t wakeup_irq_disabled = ATOMIC_INIT(0);
+extern int qcn_get_rpm_suspended(void);
+
+void qcn_enable_gpio_wakeup_irq(void)
+{
+	if (atomic_read(&wakeup_irq_disabled)) {
+		enable_irq(gpio_wakeup_irq);
+		atomic_set(&wakeup_irq_disabled, 0);
+	}
+}
 
 static irqreturn_t cnss_gpio_wakeup_isr(int irq, void *dev)
 {
-	dev_info(dev, "gpio wakeup IRQ %d triggered\n", irq);
+	enum rpm_status status;
+
+	status = ((struct device*)dev)->power.runtime_status;
+	cnss_pr_dbg("gpio wakeup IRQ %d triggered\n", irq);
+
 	disable_irq_nosync(gpio_wakeup_irq);
+	atomic_set(&wakeup_irq_disabled, 1);
+	if (qcn_get_rpm_suspended() &&
+	    (status == RPM_SUSPENDING || status == RPM_SUSPENDED)) {
+		cnss_pr_dbg("wakeup for runtime suspend\n");
+		pm_request_resume(dev);
+	}
 	return IRQ_HANDLED;
 }
 

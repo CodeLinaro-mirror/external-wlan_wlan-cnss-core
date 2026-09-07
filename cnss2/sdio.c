@@ -413,12 +413,30 @@ static int cnss_sdio_pm(struct sdio_al_client_handle *pal_cli_handle,
 		return 0;
 	}
 
-	if (event == LPM_ENTER) {
+	switch (event) {
+	case LPM_ENTER:
 		cnss_pr_info("Entering LPM\n");
 		ret = sdio_info->ops->suspend(&func->dev);
-	} else {
+		break;
+	case LPM_EXIT:
 		cnss_pr_info("Exiting LPM\n");
 		ret = sdio_info->ops->resume(&func->dev);
+		break;
+	case LPM_RUNTIME_SUSPEND:
+		cnss_pr_dbg("Entering runtime suspend\n");
+		if (sdio_info->ops->runtime_ops &&
+		    sdio_info->ops->runtime_ops->runtime_suspend)
+			ret = sdio_info->ops->runtime_ops->runtime_suspend(&func->dev);
+		break;
+	case LPM_RUNTIME_RESUME:
+		cnss_pr_dbg("Exiting runtime resume\n");
+		if (sdio_info->ops->runtime_ops &&
+		    sdio_info->ops->runtime_ops->runtime_resume)
+			ret = sdio_info->ops->runtime_ops->runtime_resume(&func->dev);
+		break;
+	default:
+		ret = -EINVAL;
+		cnss_pr_err("unknown pm event: %d\n", event);
 	}
 
 	return ret;

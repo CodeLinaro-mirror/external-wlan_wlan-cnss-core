@@ -65,4 +65,5 @@ int cnss_gpio_wakeup_init(struct device *dev,
 			  const struct gpio_wakeup_cfg *cfg);
 int cnss_gpio_wakeup_deinit(struct device *dev);
 
+void qcn_enable_gpio_wakeup_irq(void);
 #endif /* __QCN_OOB_WAKE_H__ */
