@@ -180,8 +180,7 @@ int cnss_sdio_wlan_register_driver(struct cnss_sdio_wlan_driver *driver_ops)
 
 	cnss_info = plat_priv->bus_priv;
 	if ((!cnss_info) ||
-	    (!cnss_info->al_client_handle) ||
-	    (!cnss_info->al_client_handle->func)) {
+	    (!cnss_info->al_client_handle)) {
 		cnss_pr_err("cnss_info is NULL\n");
 		return -ENODEV;
 	}
