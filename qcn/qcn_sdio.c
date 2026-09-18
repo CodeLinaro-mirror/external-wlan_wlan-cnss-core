@@ -28,6 +28,7 @@
 #include <linux/debugfs.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
+#include <linux/interrupt.h>
 #include <linux/version.h>
 #include "qcn_sdio.h"
 #ifdef CONFIG_WLAN_CNSS_CORE
@@ -96,6 +97,37 @@ static struct mmc_host *current_host;
 static u64 HTC_HDR_HISTORY[MAX_HTC_HDR_RECORD] = {0};
 static u8 htc_hdr_index = 0;
 
+#ifdef CONFIG_QCN_SDIO_OOB_IRQ
+/**
+ * enum qcn_sdio_irq_mode - current owner of the SDIO status path
+ * @QCN_SDIO_IRQ_NONE: unowned, before probe and after teardown.
+ * @QCN_SDIO_IRQ_POLLING: register polling from the poll work.
+ * @QCN_SDIO_IRQ_OOB: GPIO out-of-band interrupt.
+ */
+enum qcn_sdio_irq_mode {
+	QCN_SDIO_IRQ_NONE = 0,
+	QCN_SDIO_IRQ_POLLING,
+	QCN_SDIO_IRQ_OOB,
+};
+
+/* Gap the status-path poll work sleeps between register reads, so the resulting
+ * period is this plus the time one poll iteration takes. usleep_range() keeps it
+ * at sub-jiffy resolution. 0 polls back-to-back; values below ~10us are
+ * dominated by the wakeup overhead itself.
+ */
+static uint oob_poll_interval_us = 500;
+module_param(oob_poll_interval_us, uint, S_IRUGO | S_IWUSR | S_IWGRP);
+MODULE_PARM_DESC(oob_poll_interval_us,
+		 "Gap between status-path polls in us (default 500, 0 = back-to-back)");
+
+#ifndef QCN_SDIO_OOB_GPIO_NUM_DEFAULT
+#define QCN_SDIO_OOB_GPIO_NUM_DEFAULT 43
+#endif
+
+static uint oob_irq_gpio = QCN_SDIO_OOB_GPIO_NUM_DEFAULT;
+module_param(oob_irq_gpio, uint, S_IRUGO);
+#endif
+
 struct qcn_sdio {
 	enum qcn_sdio_sw_mode curr_sw_mode;
 	struct sdio_func *func;
@@ -125,6 +157,16 @@ struct qcn_sdio {
 	atomic_t suspended;
 #endif
 	int tx_bundle_buf_size;
+#ifdef CONFIG_QCN_SDIO_OOB_IRQ
+		struct workqueue_struct *oob_poll_wq;
+		struct work_struct oob_poll_work;
+		enum qcn_sdio_irq_mode irq_mode;
+		struct mutex oob_lock;
+		bool oob_irq_enabled;
+		int oob_irq;
+		bool oob_ready_seen;
+		bool poll_stopping;
+#endif
 };
 
 static struct qcn_sdio *sdio_ctxt;
@@ -298,6 +340,11 @@ static void qcn_sdio_add_rw_req(struct qcn_sdio_rw_info *rw_req)
 	spin_unlock_bh(&sdio_ctxt->lock_wait_q);
 }
 
+/*
+ * qcn_enable_async_irq() is unused only when both CONFIG_QCN_SDIO_OOB_IRQ
+ * and CONFIG_NAPIER_X86 are defined (both call sites below are then compiled out).
+ */
+#if !defined(CONFIG_QCN_SDIO_OOB_IRQ) || !defined(CONFIG_NAPIER_X86)
 static int qcn_enable_async_irq(bool enable)
 {
 	unsigned int num = 0;
@@ -318,6 +365,7 @@ static int qcn_enable_async_irq(bool enable)
 
 	return ret;
 }
+#endif
 
 static int qcn_send_io_abort(void)
 {
@@ -420,8 +468,12 @@ static int qcn_sdio_config(struct qcn_sdio_client_info *cinfo)
 		goto err;
 	}
 
-	data = SDIO_QCN_CONFIG_QE_MASK;
-
+	data = sdio_readb(sdio_ctxt->func, SDIO_QCN_CONFIG, &ret);
+	if (ret) {
+		sdio_release_host(sdio_ctxt->func);
+		goto err;
+	}
+	data |= SDIO_QCN_CONFIG_QE_MASK;
 	sdio_writeb(sdio_ctxt->func, (u8)data, SDIO_QCN_CONFIG, &ret);
 	if (ret) {
 		sdio_release_host(sdio_ctxt->func);
@@ -576,6 +628,171 @@ int qcn_channel_change(enum qcn_sdio_sw_mode mode)
 	sdio_ctxt->curr_sw_mode = mode;
 	return 0;
 }
+
+#ifdef CONFIG_QCN_SDIO_OOB_IRQ
+static int qcn_sdio_read_oob_ready(bool *ready)
+{
+	int ret;
+	u32 value;
+
+	sdio_claim_host(sdio_ctxt->func);
+	value = sdio_readl(sdio_ctxt->func, SDIO_QCN_CLIENT_TRANS_REG0, &ret);
+	sdio_release_host(sdio_ctxt->func);
+
+	if (ret)
+		return ret;
+
+	*ready = value & BIT(0);
+
+	return 0;
+}
+
+static int qcn_sdio_write_oob_en(bool enable)
+{
+	int ret;
+	u8 config;
+
+	sdio_claim_host(sdio_ctxt->func);
+	config = sdio_readb(sdio_ctxt->func, SDIO_QCN_CONFIG, &ret);
+	if (ret) {
+		sdio_release_host(sdio_ctxt->func);
+		return ret;
+	}
+
+	if (enable)
+		config |= SDIO_QCN_CONFIG_OOB_MASK;
+	else
+		config &= ~SDIO_QCN_CONFIG_OOB_MASK;
+
+	sdio_writeb(sdio_ctxt->func, config, SDIO_QCN_CONFIG, &ret);
+	sdio_release_host(sdio_ctxt->func);
+
+	return ret;
+}
+
+static const char *qcn_sdio_irq_mode_str(enum qcn_sdio_irq_mode mode)
+{
+	switch (mode) {
+	case QCN_SDIO_IRQ_POLLING:
+		return "polling";
+	case QCN_SDIO_IRQ_OOB:
+		return "oob_irq";
+	case QCN_SDIO_IRQ_NONE:
+	default:
+		return "none";
+	}
+}
+
+/**
+ * qcn_sdio_enter_polling_locked() - hand the status path to the poll worker
+ *
+ * Undoes the OOB setup if it was active, then arms the poll work. Also serves
+ * the initial NONE -> POLLING arm from qcn_sdio_setup_irq_path(), where there
+ * is nothing to undo. Caller holds oob_lock.
+ *
+ * Return: 0 always.
+ */
+static int qcn_sdio_enter_polling_locked(void)
+{
+	int ret;
+
+	if (sdio_ctxt->irq_mode == QCN_SDIO_IRQ_OOB) {
+		ret = qcn_sdio_write_oob_en(false);
+		if (ret)
+			pr_err("%s: failed to clear OOB_EN, ret=%d\n",
+			       __func__, ret);
+		if (sdio_ctxt->oob_irq_enabled) {
+			disable_irq(sdio_ctxt->oob_irq);
+			sdio_ctxt->oob_irq_enabled = false;
+		}
+		sdio_ctxt->irq_mode = QCN_SDIO_IRQ_POLLING;
+	}
+
+	sdio_ctxt->oob_ready_seen = false;
+
+	if (!sdio_ctxt->poll_stopping)
+		queue_work(sdio_ctxt->oob_poll_wq, &sdio_ctxt->oob_poll_work);
+
+	return 0;
+}
+
+/**
+ * qcn_sdio_enter_oob_locked() - hand the status path to the GPIO OOB IRQ
+ *
+ * Two-stage FW handshake: the device advertises readiness, then the host sets
+ * OOB_EN. Stage 1 is latched in oob_ready_seen so a retry only redoes the stage
+ * that failed. Caller holds oob_lock.
+ *
+ * Only ever reached from the poll work, which stops re-arming itself once
+ * irq_mode is OOB, so there is no pending poll to cancel here.
+ *
+ * Return: 0 on success, -EAGAIN while the device is not ready yet, -ENODEV if
+ * no OOB IRQ was requested, or a negative errno from the register access.
+ */
+static int qcn_sdio_enter_oob_locked(void)
+{
+	bool ready;
+	int ret;
+
+	if (sdio_ctxt->irq_mode == QCN_SDIO_IRQ_OOB)
+		return 0;
+
+	if (sdio_ctxt->oob_irq <= 0)
+		return -ENODEV;
+
+	if (!sdio_ctxt->oob_ready_seen) {
+		ret = qcn_sdio_read_oob_ready(&ready);
+		if (ret)
+			return ret;
+		if (!ready)
+			return -EAGAIN;
+
+		sdio_ctxt->oob_ready_seen = true;
+		pr_info("SDIO_QCN_CLIENT_TRANS_REG0(BIT0)=0x1, target OOB ready\n");
+	}
+
+	ret = qcn_sdio_write_oob_en(true);
+	if (ret) {
+		pr_err_ratelimited("Failed to set OOB_EN, ret=%d\n", ret);
+		return ret;
+	}
+
+	enable_irq(sdio_ctxt->oob_irq);
+	sdio_ctxt->oob_irq_enabled = true;
+	sdio_ctxt->irq_mode = QCN_SDIO_IRQ_OOB;
+
+	return 0;
+}
+
+static int qcn_sdio_set_irq_mode(enum qcn_sdio_irq_mode mode)
+{
+	enum qcn_sdio_irq_mode prev;
+	int ret = 0;
+
+	mutex_lock(&sdio_ctxt->oob_lock);
+	prev = sdio_ctxt->irq_mode;
+
+	switch (mode) {
+	case QCN_SDIO_IRQ_POLLING:
+		ret = qcn_sdio_enter_polling_locked();
+		break;
+	case QCN_SDIO_IRQ_OOB:
+		ret = qcn_sdio_enter_oob_locked();
+		break;
+	default:
+		mutex_unlock(&sdio_ctxt->oob_lock);
+		return -EINVAL;
+	}
+
+	if (sdio_ctxt->irq_mode != prev)
+		pr_info("OOB irq mode: %s -> %s\n", qcn_sdio_irq_mode_str(prev),
+			qcn_sdio_irq_mode_str(sdio_ctxt->irq_mode));
+
+	mutex_unlock(&sdio_ctxt->oob_lock);
+
+	return ret;
+}
+#endif
 
 int switch_to_rddm_thread(void *data)
 {
@@ -812,7 +1029,7 @@ MODULE_PARM_DESC(irq_max_loops, "Max IRQ handler loop count (1-16, default MAX_S
 #define IRQ_STATUS_LEN	(SDIO_QCN_CRQ_PULL - SDIO_QCN_IRQ_STATUS + 4)
 #define CRQ_OFFSET	(SDIO_QCN_CRQ_PULL - SDIO_QCN_IRQ_STATUS)
 
-static void qcn_sdio_irq_handler(struct sdio_func *func)
+static void qcn_sdio_irq_service(void)
 {
 	u8 buf[IRQ_STATUS_LEN];
 	int ret = 0;
@@ -825,7 +1042,21 @@ static void qcn_sdio_irq_handler(struct sdio_func *func)
 		if (ret) {
 			sdio_release_host(sdio_ctxt->func);
 
-			pr_err("%s: IRQ status read error ret = %d\n", __func__, ret);
+			pr_err_ratelimited("%s: IRQ status read error ret = %d\n",
+					   __func__, ret);
+
+#ifdef CONFIG_QCN_SDIO_OOB_IRQ
+			/* The device drops off the bus by itself at the end of
+			 * RDDM, and the OOB line keeps firing because it is
+			 * independent of the bus state. Forcing a host reset
+			 * here would contend for the host claim with the mmc
+			 * detect/remove path and delay re-enumeration past
+			 * QCN_SDIO_SW_RDDM_TIMEOUT_MS, so let the normal
+			 * remove/rescan flow handle it.
+			 */
+			if (FW_RDDM)
+				return;
+#endif
 
 			if (current_host && current_host->ios.clock &&
 			    current_host->ios.clock > 100000000) {
@@ -883,6 +1114,54 @@ static void qcn_sdio_irq_handler(struct sdio_func *func)
 		}
 	} while (--max_loops > 0);
 }
+
+#ifdef CONFIG_QCN_SDIO_OOB_IRQ
+/**
+ * qcn_sdio_poll_work() - poll the status path and retry the OOB handshake
+ * @work: the oob_poll_work work item.
+ *
+ * Drives the status path before OOB is up, and retries the OOB handshake once
+ * the device reaches Mission ROM. Sleeps for one poll gap and re-arms itself
+ * until it hands over to OOB mode or teardown sets poll_stopping.
+ */
+static void qcn_sdio_poll_work(struct work_struct *work)
+{
+	struct qcn_sdio *ctx = container_of(work, struct qcn_sdio,
+					    oob_poll_work);
+	uint interval_us = oob_poll_interval_us;
+
+	if (ctx->poll_stopping)
+		return;
+
+	qcn_sdio_irq_service();
+
+	if (ctx->curr_sw_mode == QCN_SDIO_SW_MROM)
+		qcn_sdio_set_irq_mode(QCN_SDIO_IRQ_OOB);
+
+	if (interval_us)
+		usleep_range(interval_us, interval_us + interval_us / 4);
+
+	if (!ctx->poll_stopping && ctx->irq_mode != QCN_SDIO_IRQ_OOB)
+		queue_work(ctx->oob_poll_wq, &ctx->oob_poll_work);
+}
+
+static irqreturn_t qcn_sdio_oob_irq_thread(int irq, void *data)
+{
+	struct qcn_sdio *ctx = data;
+
+	if (ctx->irq_mode != QCN_SDIO_IRQ_OOB)
+		return IRQ_HANDLED;
+
+	qcn_sdio_irq_service();
+
+	return IRQ_HANDLED;
+}
+#else
+static void qcn_sdio_irq_handler(struct sdio_func *func)
+{
+	qcn_sdio_irq_service();
+}
+#endif
 
 static int qcn_sdio_send_buff(u32 cid, void *buff, size_t len)
 {
@@ -1254,6 +1533,170 @@ static void qcn_sdio_debugfs_destroy(struct qcn_sdio *sdio_ctxt)
 	}
 }
 
+#ifdef CONFIG_QCN_SDIO_OOB_IRQ
+/**
+ * qcn_sdio_setup_oob_irq() - request the OOB IRQ and leave it disabled
+ * @func: the SDIO function whose of_node carries the "oob-irq" interrupt.
+ *
+ * Done up front in probe so the later polling -> OOB switch only has to
+ * enable_irq() an already-requested line and cannot lose the first event to a
+ * request/enable race.
+ *
+ * Return: 0 on success, -ENODEV if the DT node or interrupt is missing, or a
+ * negative errno from request_threaded_irq().
+ */
+static int qcn_sdio_setup_oob_irq(struct sdio_func *func)
+{
+	struct device_node *node = func->dev.of_node;
+	int irq, ret;
+
+	if (!node)
+		return -ENODEV;
+
+	irq = of_irq_get_byname(node, "oob-irq");
+	if (irq <= 0)
+		return irq ? irq : -ENODEV;
+
+	ret = request_threaded_irq(irq, NULL,
+				   qcn_sdio_oob_irq_thread,
+				   IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+				   "oob_irq", sdio_ctxt);
+	if (ret)
+		return ret;
+
+	sdio_ctxt->oob_irq = irq;
+	disable_irq(irq);
+
+	return 0;
+}
+
+/**
+ * qcn_sdio_setup_irq_path() - arm the OOB-capable interrupt mechanism
+ * @func: the SDIO function being probed.
+ *
+ * Called from probe with the host claimed, and releases it. Programs the OOB
+ * GPIO number while the device is still in PBL so SBL can mux the pin, requests
+ * the OOB IRQ disabled, and starts in polling mode. An OOB setup failure is not
+ * fatal: the driver stays in polling mode. Losing the poll workqueue is, as
+ * there would be no status path left at all.
+ *
+ * Return: 0 on success, -ENOMEM if the poll workqueue cannot be created.
+ */
+static int qcn_sdio_setup_irq_path(struct sdio_func *func)
+{
+	int ret;
+
+	sdio_ctxt->oob_poll_wq =
+		alloc_ordered_workqueue("qcn_sdio_poll",
+					WQ_HIGHPRI | WQ_MEM_RECLAIM);
+	if (!sdio_ctxt->oob_poll_wq) {
+		pr_err("%s: Error: SDIO create poll wq\n", __func__);
+		sdio_release_host(sdio_ctxt->func);
+		return -ENOMEM;
+	}
+
+	mutex_init(&sdio_ctxt->oob_lock);
+	INIT_WORK(&sdio_ctxt->oob_poll_work, qcn_sdio_poll_work);
+
+	sdio_writel(sdio_ctxt->func, oob_irq_gpio,
+		    SDIO_QCN_HOST_TRANS_REG0, &ret);
+	if (ret)
+		pr_err("%s: failed to program OOB GPIO number, ret=%d\n",
+		       __func__, ret);
+	pr_info("Set OOB interrupt GPIO num: %d\n", oob_irq_gpio);
+
+	sdio_release_host(sdio_ctxt->func);
+
+	ret = qcn_sdio_setup_oob_irq(func);
+	if (ret)
+		pr_err("%s: OOB IRQ setup failed, ret=%d; staying in polling mode\n",
+		       __func__, ret);
+
+	if (qcn_read_meta_info()) {
+		pr_err("%s: Error: SDIO Config\n", __func__);
+		qcn_send_meta_info((u8)QCN_SDIO_SW_MODE_HEVENT, (u32)0);
+	}
+
+	qcn_sdio_set_irq_mode(QCN_SDIO_IRQ_POLLING);
+
+	current_host = func->card->host;
+	return 0;
+}
+
+static void qcn_sdio_remove_irq(void)
+{
+	sdio_ctxt->poll_stopping = true;
+	cancel_work_sync(&sdio_ctxt->oob_poll_work);
+	destroy_workqueue(sdio_ctxt->oob_poll_wq);
+	sdio_ctxt->oob_poll_wq = NULL;
+
+	qcn_sdio_write_oob_en(false);
+
+	if (sdio_ctxt->oob_irq > 0) {
+		if (sdio_ctxt->oob_irq_enabled) {
+			disable_irq(sdio_ctxt->oob_irq);
+			sdio_ctxt->oob_irq_enabled = false;
+		}
+		free_irq(sdio_ctxt->oob_irq, sdio_ctxt);
+		sdio_ctxt->oob_irq = 0;
+	}
+	sdio_ctxt->irq_mode = QCN_SDIO_IRQ_NONE;
+}
+
+static void qcn_sdio_ctxt_free(void)
+{
+	mutex_destroy(&sdio_ctxt->oob_lock);
+	kfree(sdio_ctxt);
+	sdio_ctxt = NULL;
+}
+#else
+/**
+ * qcn_sdio_setup_irq_path() - arm the legacy in-band interrupt
+ * @func: the SDIO function being probed.
+ *
+ * Called from probe with the host claimed, and releases it. Claims the SDIO
+ * DAT1 in-band interrupt. Unlike the OOB variant, a failure here is fatal as
+ * there is no fallback path.
+ *
+ * Return: 0 on success or a negative errno from sdio_claim_irq().
+ */
+static int qcn_sdio_setup_irq_path(struct sdio_func *func)
+{
+	int ret;
+
+	ret = sdio_claim_irq(sdio_ctxt->func, qcn_sdio_irq_handler);
+	if (ret) {
+		pr_err("%s: Error:%d SDIO claim irq\n", __func__, ret);
+		sdio_release_host(sdio_ctxt->func);
+		return ret;
+	}
+
+	qcn_enable_async_irq(true);
+	sdio_release_host(sdio_ctxt->func);
+
+	if (qcn_read_meta_info()) {
+		pr_err("%s: Error: SDIO Config\n", __func__);
+		qcn_send_meta_info((u8)QCN_SDIO_SW_MODE_HEVENT, (u32)0);
+	}
+
+	current_host = func->card->host;
+	return 0;
+}
+
+static void qcn_sdio_remove_irq(void)
+{
+	sdio_claim_host(sdio_ctxt->func);
+	sdio_release_irq(sdio_ctxt->func);
+	sdio_release_host(sdio_ctxt->func);
+}
+
+static void qcn_sdio_ctxt_free(void)
+{
+	kfree(sdio_ctxt);
+	sdio_ctxt = NULL;
+}
+#endif
+
 static
 int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 {
@@ -1305,22 +1748,10 @@ int qcn_sdio_probe(struct sdio_func *func, const struct sdio_device_id *id)
 		sdio_release_host(sdio_ctxt->func);
 		goto err;
 	}
-	ret = sdio_claim_irq(sdio_ctxt->func, qcn_sdio_irq_handler);
-	if (ret) {
-		pr_err("%s: Error:%d SDIO claim irq\n", __func__, ret);
-		sdio_release_host(sdio_ctxt->func);
+
+	ret = qcn_sdio_setup_irq_path(func);
+	if (ret)
 		goto err;
-	}
-
-	qcn_enable_async_irq(true);
-	sdio_release_host(sdio_ctxt->func);
-
-	if (qcn_read_meta_info()) {
-		pr_err("%s: Error: SDIO Config\n", __func__);
-		qcn_send_meta_info((u8)QCN_SDIO_SW_MODE_HEVENT, (u32)0);
-	}
-
-	current_host = func->card->host;
 
 	if (!retune) {
 		pr_info("%s Probing driver with retune disabled\n", __func__);
@@ -1355,6 +1786,7 @@ static void qcn_sdio_remove(struct sdio_func *func)
 	qcn_enable_async_irq(false);
 	sdio_release_host(sdio_ctxt->func);
 #endif
+	qcn_sdio_remove_irq();
 
 	qcn_sdio_purge_rw_buff();
 
@@ -1378,12 +1810,7 @@ static void qcn_sdio_remove(struct sdio_func *func)
 	}
 	mutex_unlock(&lock);
 
-	sdio_claim_host(sdio_ctxt->func);
-	sdio_release_irq(sdio_ctxt->func);
-	sdio_release_host(sdio_ctxt->func);
-
-	kfree(sdio_ctxt);
-	sdio_ctxt = NULL;
+	qcn_sdio_ctxt_free();
 	mmc_retune_enable(current_host);
 }
 
@@ -1504,14 +1931,11 @@ static int qcn_sdio_plat_remove(struct platform_device *pdev)
 
 	mutex_destroy(&lock);
 	if (sdio_ctxt) {
+		qcn_sdio_remove_irq();
 		destroy_workqueue(sdio_ctxt->qcn_sdio_wq);
 		destroy_workqueue(sdio_ctxt->qcn_sdio_cmpl_wq);
 		mutex_destroy(&sdio_ctxt->lock_cmpl_q);
-		sdio_claim_host(sdio_ctxt->func);
-		sdio_release_irq(sdio_ctxt->func);
-		sdio_release_host(sdio_ctxt->func);
-		kfree(sdio_ctxt);
-		sdio_ctxt = NULL;
+		qcn_sdio_ctxt_free();
 	}
 
 	atomic_set(&status, 0);

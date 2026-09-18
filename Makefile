@@ -14,6 +14,11 @@ lpm_support ?= 0
 gpio_wakeup ?= of_irq
 block_size_fix ?= 0
 
+# Default use legacy SDIO DAT1/in-band interrupt path
+oob_irq_en ?= 0
+# Target side GPIO the device routes its OOB interrupt output to
+oob_irq_gpio ?= 43
+
 ifeq ($(diag_support), 1)
 KBUILD_OPTIONS += CONFIG_MSM_DIAG_INTERFACE=y
 
@@ -58,6 +63,10 @@ KBUILD_OPTIONS += CONFIG_WLAN_GPIO_WAKEUP_OF_IRQ=y
 endif
 ifeq ($(block_size_fix), 1)
 KBUILD_OPTIONS += CONFIG_BLOCK_SIZE_FIX=y
+endif
+ifeq ($(oob_irq_en), 1)
+KBUILD_OPTIONS += CONFIG_QCN_SDIO_OOB_IRQ=y
+KBUILD_OPTIONS += CONFIG_QCN_SDIO_OOB_GPIO_NUM=$(oob_irq_gpio)
 endif
 endif
 
