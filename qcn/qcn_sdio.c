@@ -1034,8 +1034,12 @@ static int qcn_sdio_suspend(struct device *dev)
 	}
 
 	dev_info(dev, "Notify client to suspend");
-	if ((ret = qcn_sdio_lpm_notify_client(LPM_ENTER)) != 0)
+	ret = qcn_sdio_lpm_notify_client(LPM_ENTER);
+	if (ret) {
 		dev_err(dev, "Client failed to suspend: %d", ret);
+		atomic_set(&sdio_ctxt->suspended, 0);
+		return ret;
+	}
 
 	pr_info("%s: func %d curr_sw_mode=%d\n", __func__,
 		func->num, sdio_ctxt->curr_sw_mode);
