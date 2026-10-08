@@ -132,8 +132,8 @@ MODULE_PARM_DESC(oob_poll_interval_us,
 #define QCN_SDIO_OOB_GPIO_NUM_DEFAULT 43
 #endif
 
-static uint oob_irq_gpio = QCN_SDIO_OOB_GPIO_NUM_DEFAULT;
-module_param(oob_irq_gpio, uint, S_IRUGO);
+static u8 oob_irq_gpio = QCN_SDIO_OOB_GPIO_NUM_DEFAULT;
+module_param(oob_irq_gpio, byte, S_IRUGO);
 #endif
 
 struct qcn_sdio {
@@ -711,7 +711,7 @@ static int qcn_sdio_read_oob_ready(bool *ready)
 	if (ret)
 		return ret;
 
-	*ready = value & BIT(0);
+	*ready = (value == oob_irq_gpio);
 
 	return 0;
 }
@@ -777,9 +777,9 @@ static int qcn_sdio_enter_polling_locked(void)
 			disable_irq(sdio_ctxt->oob_irq);
 			sdio_ctxt->oob_irq_enabled = false;
 		}
-		sdio_ctxt->irq_mode = QCN_SDIO_IRQ_POLLING;
 	}
 
+	sdio_ctxt->irq_mode = QCN_SDIO_IRQ_POLLING;
 	sdio_ctxt->oob_ready_seen = false;
 
 	if (!sdio_ctxt->poll_stopping)
@@ -820,7 +820,8 @@ static int qcn_sdio_enter_oob_locked(void)
 			return -EAGAIN;
 
 		sdio_ctxt->oob_ready_seen = true;
-		pr_info("SDIO_QCN_CLIENT_TRANS_REG0(BIT0)=0x1, target OOB ready\n");
+		pr_info("SDIO_QCN_CLIENT_TRANS_REG0=%u, target OOB ready\n",
+			oob_irq_gpio);
 	}
 
 	ret = qcn_sdio_write_oob_en(true);
@@ -1820,7 +1821,7 @@ static int qcn_sdio_setup_irq_path(struct sdio_func *func)
 	mutex_init(&sdio_ctxt->oob_lock);
 	INIT_WORK(&sdio_ctxt->oob_poll_work, qcn_sdio_poll_work);
 
-	sdio_writel(sdio_ctxt->func, oob_irq_gpio,
+	sdio_writeb(sdio_ctxt->func, oob_irq_gpio,
 		    SDIO_QCN_HOST_TRANS_REG0, &ret);
 	if (ret)
 		pr_err("%s: failed to program OOB GPIO number, ret=%d\n",
