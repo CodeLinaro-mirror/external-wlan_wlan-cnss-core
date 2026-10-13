@@ -888,6 +888,11 @@ int switch_to_rddm_thread(void *data)
 					 msecs_to_jiffies(QCN_SDIO_SW_RDDM_TIMEOUT_MS)))
 		pr_err("[%s:%d] RDDM completion timeout!\n",
 		       __func__, __LINE__);
+	if (!ssr_enable) {
+		pr_err("ssr disable, force kernel panic after 2s...\n");
+		msleep(2000);
+		panic("subsys-restart: Resetting the SoC wlan crashed\n");
+	}
 	// if rddm mode not change, the driver should reset sdio
 	if(sdio_ctxt->curr_sw_mode == QCN_SDIO_SW_RDDM) {
 		if(!qcn_sdio_card_state(false))
