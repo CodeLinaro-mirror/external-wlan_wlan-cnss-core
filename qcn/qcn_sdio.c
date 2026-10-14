@@ -74,7 +74,7 @@ module_param(ssr_enable, bool, S_IRUGO | S_IWUSR | S_IWGRP);
 
 static bool FW_RDDM = false;
 /* Maximum duration the system can remain in RDDM state */
-#define QCN_SDIO_SW_RDDM_TIMEOUT_MS (5000)
+#define QCN_SDIO_SW_RDDM_TIMEOUT_MS (30000)
 static DECLARE_COMPLETION(rddm_completion);
 
 static atomic_t rpm_in_own_transition = ATOMIC_INIT(0);
