@@ -1331,13 +1331,23 @@ static void qcn_sdio_cmpl_work(struct work_struct *work)
 		ch_handle = &sdio_ctxt->ch[rw_req->cid]->ch_handle;
 		rw_req->result.buf_addr = rw_req->buf;
 		rw_req->result.xfer_len = rw_req->len;
-		if (rw_req->dir)
-			sdio_ctxt->ch[rw_req->cid]->ch_data.dl_xfer_cb(
-					ch_handle, &rw_req->result, rw_req->ctxt);
-		else
-			sdio_ctxt->ch[rw_req->cid]->ch_data.ul_xfer_cb(
-					ch_handle, &rw_req->result, rw_req->ctxt);
+
+		/*
+		 * Copy all fields needed by xfer_cb to stack before freeing
+		 */
+		struct sdio_al_xfer_result result = rw_req->result;
+		void *ctxt = rw_req->ctxt;
+		enum sdio_al_dma_direction dir = rw_req->dir;
+		u32 cid = rw_req->cid;
+
 		qcn_sdio_free_rw_req(rw_req);
+
+		if (dir)
+			sdio_ctxt->ch[cid]->ch_data.dl_xfer_cb(
+					ch_handle, &result, ctxt);
+		else
+			sdio_ctxt->ch[cid]->ch_data.ul_xfer_cb(
+					ch_handle, &result, ctxt);
 	}
 }
 
