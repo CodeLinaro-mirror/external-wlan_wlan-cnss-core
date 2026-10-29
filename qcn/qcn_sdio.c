@@ -1484,11 +1484,11 @@ static int qcn_sdio_resume(struct device *dev)
 
 	qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT, (u32)0);
 
-	cnss_pr_dbg("Notify client to resume");
+	dev_info(dev, "Notify client to resume");
 	if ((ret = qcn_sdio_lpm_notify_client(LPM_EXIT)) != 0)
 		dev_err(dev, "Client failed to resume: %d", ret);
 
-	cnss_pr_dbg("resume exit\n");
+	dev_info(dev, "resume exit\n");
 	return ret;
 }
 
@@ -1564,6 +1564,7 @@ static int qcn_sdio_runtime_resume(struct device *dev)
 		return 0;
 	}
 
+	cnss_pr_dbg("Notify client to runtime resume");
 	atomic_set(&rpm_in_own_transition, 1);
 	ret = qcn_send_meta_info(QCN_SDIO_DOORBELL_HEVENT, (u32)0);
 	if (ret) {
