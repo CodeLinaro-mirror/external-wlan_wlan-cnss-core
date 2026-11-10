@@ -77,6 +77,21 @@ static bool FW_RDDM = false;
 #define QCN_SDIO_SW_RDDM_TIMEOUT_MS (30000)
 static DECLARE_COMPLETION(rddm_completion);
 
+static int qcn_sdio_rddm_done_set(const char *val,
+				  const struct kernel_param *kp)
+{
+	if (val && *val)
+		complete(&rddm_completion);
+
+	return 0;
+}
+
+static const struct kernel_param_ops rddm_done_ops = {
+	.set = qcn_sdio_rddm_done_set,
+};
+module_param_cb(rddm_done, &rddm_done_ops, NULL, S_IWUSR | S_IWGRP);
+MODULE_PARM_DESC(rddm_done, "Write any non-empty content to signal RDDM dump completion");
+
 static atomic_t rpm_in_own_transition = ATOMIC_INIT(0);
 static atomic_t rpm_suspended = ATOMIC_INIT(0);
 
@@ -886,11 +901,10 @@ int switch_to_rddm_thread(void *data)
 	//wait rddm exit
 	if (!wait_for_completion_timeout(&rddm_completion,
 					 msecs_to_jiffies(QCN_SDIO_SW_RDDM_TIMEOUT_MS)))
-		pr_err("[%s:%d] RDDM completion timeout!\n",
-		       __func__, __LINE__);
+		pr_err("[%s:%d] RDDM completion timeout=%dms!\n",
+		       __func__, __LINE__, QCN_SDIO_SW_RDDM_TIMEOUT_MS);
 	if (!ssr_enable) {
-		pr_err("ssr disable, force kernel panic after 2s...\n");
-		msleep(2000);
+		pr_err("ssr disable, force kernel panic now...\n");
 		panic("subsys-restart: Resetting the SoC wlan crashed\n");
 	}
 	// if rddm mode not change, the driver should reset sdio
@@ -969,8 +983,6 @@ int qcn_sw_mode_change(enum qcn_sdio_sw_mode mode)
 		qcn_channel_change(mode);
 		break;
 	case QCN_SDIO_SW_RESET:
-		/* Reached after RDDM */
-		complete(&rddm_completion);
 		if (!client_probe_complete_flag) {
 			client_probe_complete_flag = true;
 			ret = wait_for_completion_timeout(&client_probe_complete,
